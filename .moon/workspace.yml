@@ -1,0 +1,19 @@
+$schema: "https://moonrepo.dev/schemas/workspace.json"
+
+versionConstraint: ">=1.39.0 <2.0.0"
+
+projects:
+  - "apps/*"
+  - "packages/*"
+  - "control-plane"
+  - "runner"
+  - "deploy/compose"
+  - "sidecars/*"
+
+pipeline:
+  syncProjects: false
+  syncWorkspace: false
+
+vcs:
+  client: "git"
+  defaultBranch: "main"

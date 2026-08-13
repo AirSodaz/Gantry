@@ -1,0 +1,14 @@
+FROM rust:1.84-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /build
+COPY runner/Cargo.toml runner/Cargo.lock* ./
+COPY runner/crates/ crates/
+COPY proto/ /proto/
+RUN cargo build --release --bin runner 2>/dev/null || cargo build --release
+
+FROM alpine:3.21
+RUN apk --no-cache add ca-certificates
+COPY --from=builder /build/target/release/runner /usr/local/bin/gantry-runner
+ENTRYPOINT ["/usr/local/bin/gantry-runner"]

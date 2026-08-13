@@ -1,0 +1,23 @@
+{
+  "name": "gantry",
+  "private": true,
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "bootstrap": "pnpm install --frozen-lockfile",
+    "dev:admin": "pnpm --filter admin-web dev",
+    "dev:copilot": "pnpm --filter copilot-web dev",
+    "contracts:generate": "pnpm contracts:generate:openapi && pnpm contracts:generate:proto",
+    "contracts:generate:openapi": "openapi-typescript packages/contracts/openapi/admin-api.yaml -o packages/api-client/src/generated/admin-api.ts && openapi-typescript packages/contracts/openapi/copilot-api.yaml -o packages/api-client/src/generated/copilot-api.ts",
+    "contracts:generate:proto": "buf generate --template proto/buf.gen.yaml proto",
+    "contracts:check": "pnpm contracts:generate && git diff --exit-code -- control-plane/gen packages/api-client/src/generated",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint --if-present",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test --if-present",
+    "verify": "pnpm contracts:check && pnpm typecheck && pnpm build"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.55.1",
+    "openapi-typescript": "7.8.0"
+  }
+}

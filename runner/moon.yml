@@ -1,0 +1,24 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+type: 'application'
+language: 'rust'
+tags: ['backend', 'runner']
+tasks:
+  build:
+    command: 'cargo build'
+    deps:
+      - 'proto:generate'
+    type: 'build'
+    platform: 'system'
+  test:
+    command: 'cargo test'
+    deps:
+      - 'proto:generate'
+    type: 'test'
+    platform: 'system'
+  run:
+    command: 'cargo run --bin runner'
+    deps:
+      - 'proto:generate'
+    type: 'run'
+    platform: 'system'
+    local: true

@@ -1,0 +1,25 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+type: library
+language: other
+
+tags:
+  - proto
+  - contracts
+
+tasks:
+  generate:
+    command: 'buf generate'
+    type: 'run'
+    inputs:
+      - 'gantry/**/*.proto'
+      - 'buf.gen.yaml'
+      - 'buf.yaml'
+    outputs:
+      - '../control-plane/gen'
+  lint:
+    command: 'buf lint'
+    type: 'test'
+  breaking:
+    command: 'buf breaking --against ".git#branch=main"'
+    type: 'test'

@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: gantry-postgres
+    environment:
+      POSTGRES_USER: gantry
+      POSTGRES_PASSWORD: gantry_dev
+      POSTGRES_DB: gantry
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gantry"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  minio:
+    image: minio/minio:latest
+    container_name: gantry-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: gantry
+      MINIO_ROOT_PASSWORD: gantry_dev_secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: gantry-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set gantry http://minio:9000 gantry gantry_dev_secret &&
+      mc mb --ignore-existing gantry/artifacts &&
+      mc mb --ignore-existing gantry/content-segments &&
+      mc mb --ignore-existing gantry/evaluation-fixtures &&
+      mc mb --ignore-existing gantry/snapshots &&
+      echo 'Buckets created successfully'
+      "
+
+  control-plane:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.control-plane
+    container_name: gantry-control-plane
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      GANTRY_DB_HOST: postgres
+      GANTRY_DB_PORT: "5432"
+      GANTRY_DB_USER: gantry
+      GANTRY_DB_PASSWORD: gantry_dev
+      GANTRY_DB_NAME: gantry
+      GANTRY_S3_ENDPOINT: http://minio:9000
+      GANTRY_S3_ACCESS_KEY: gantry
+      GANTRY_S3_SECRET_KEY: gantry_dev_secret
+      GANTRY_S3_REGION: us-east-1
+      GANTRY_S3_USE_PATH_STYLE: "true"
+      GANTRY_LOG_LEVEL: debug
+      GANTRY_HTTP_PORT: "8080"
+      GANTRY_GRPC_PORT: "8081"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - default
+      - runner-net
+
+  runner:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.runner
+    container_name: gantry-runner
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    environment:
+      GANTRY_CONTROL_PLANE_ADDR: http://control-plane:8081
+      GANTRY_RUNNER_ID: dev-runner-01
+      GANTRY_LOG_LEVEL: debug
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+    networks:
+      - runner-net
+
+networks:
+  runner-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  pgdata:
+  miniodata:

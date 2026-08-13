@@ -1,0 +1,19 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+type: 'application'
+language: 'other'
+tags: ['infrastructure']
+
+tasks:
+  up:
+    command: 'docker compose -f docker-compose.yml up --build --detach'
+    type: 'run'
+    local: true
+  down:
+    command: 'docker compose -f docker-compose.yml down'
+    type: 'run'
+    local: true
+  logs:
+    command: 'docker compose -f docker-compose.yml logs --follow'
+    type: 'run'
+    local: true

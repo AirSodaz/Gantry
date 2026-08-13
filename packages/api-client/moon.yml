@@ -1,0 +1,23 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+type: 'library'
+language: 'typescript'
+tags: ['shared']
+tasks:
+  generate:
+    command: 'pnpm --dir ../.. contracts:generate:openapi'
+    type: 'run'
+    outputs:
+      - 'src/generated'
+  check-generated:
+    command: 'pnpm --dir ../.. contracts:check'
+    deps:
+      - '~:generate'
+    type: 'test'
+  build:
+    command: 'tsc --noEmit'
+    deps:
+      - '~:generate'
+    type: 'build'
+  typecheck:
+    command: 'tsc --noEmit'
+    type: 'test'

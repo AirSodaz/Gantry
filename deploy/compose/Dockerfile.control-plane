@@ -1,0 +1,14 @@
+FROM golang:1.26.5-alpine AS builder
+
+WORKDIR /build
+COPY control-plane/go.mod control-plane/go.sum* ./
+RUN go mod download
+COPY control-plane/ .
+RUN CGO_ENABLED=0 go build -o /gantry ./cmd/gantry
+
+FROM alpine:3.21
+RUN apk --no-cache add ca-certificates
+COPY --from=builder /gantry /usr/local/bin/gantry
+EXPOSE 8080 8081
+HEALTHCHECK --interval=5s --timeout=3s --retries=10 CMD wget -qO- http://127.0.0.1:8080/readyz || exit 1
+ENTRYPOINT ["/usr/local/bin/gantry"]

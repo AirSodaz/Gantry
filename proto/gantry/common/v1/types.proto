@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package gantry.common.v1;
+
+option go_package = "github.com/AirSodaz/gantry/gen/gantry/common/v1;commonv1";
+
+// Prefixed resource identifiers.
+message ResourceId {
+  string value = 1;
+}
+
+// Pagination cursor.
+message PageCursor {
+  string value = 1;
+}
+
+// Standard error detail.
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  string correlation_id = 3;
+  repeated FieldViolation field_violations = 4;
+}
+
+message FieldViolation {
+  string field = 1;
+  string description = 2;
+}

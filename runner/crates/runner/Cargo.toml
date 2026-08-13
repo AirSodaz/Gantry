@@ -1,0 +1,23 @@
+[package]
+name = "runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "runner"
+path = "src/main.rs"
+
+[dependencies]
+protocol = { path = "../protocol" }
+pty-handler = { path = "../pty-handler" }
+mcp-client = { path = "../mcp-client" }
+policy-enforcement = { path = "../policy-enforcement" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tonic.workspace = true
+tokio-stream = { version = "0.1", features = ["sync"] }

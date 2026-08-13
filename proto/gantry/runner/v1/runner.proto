@@ -1,0 +1,207 @@
+syntax = "proto3";
+
+package gantry.runner.v1;
+
+option go_package = "github.com/AirSodaz/gantry/gen/gantry/runner/v1;runnerv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// RunnerSession is the bidirectional stream between a runner and the control plane.
+service RunnerSession {
+  // Session opens a bidirectional stream for runner communication.
+  rpc Session(stream RunnerMessage) returns (stream ControlPlaneMessage);
+}
+
+// Messages sent from runner to control plane.
+message RunnerMessage {
+  string runner_id = 1;
+  string session_id = 2;
+  uint64 message_id = 3;
+  uint32 protocol_version = 4;
+
+  oneof payload {
+    RegisterRunner register = 10;
+    Heartbeat heartbeat = 11;
+    RunAccepted run_accepted = 12;
+    RunEventBatch event_batch = 13;
+    TerminalOutput terminal_output = 14;
+    ArtifactDeclaration artifact_declaration = 15;
+    CheckpointAvailable checkpoint_available = 16;
+    RunFinished run_finished = 17;
+  }
+}
+
+// Messages sent from control plane to runner.
+message ControlPlaneMessage {
+  string message_id = 1;
+  string correlation_id = 2;
+
+  oneof payload {
+    AssignRun assign_run = 10;
+    AcknowledgeEvents acknowledge_events = 11;
+    ApprovalResolution approval_resolution = 12;
+    CancelRun cancel_run = 13;
+    SuspendRun suspend_run = 14;
+    ResumeAction resume_action = 15;
+    RotateSession rotate_session = 16;
+    DrainRunner drain_runner = 17;
+  }
+}
+
+// Runner registration.
+message RegisterRunner {
+  string runner_version = 1;
+  repeated string capabilities = 2;
+  string organization_id = 3;
+  ResourceLimits resource_limits = 4;
+}
+
+message ResourceLimits {
+  uint64 max_memory_bytes = 1;
+  uint32 max_cpu_millicores = 2;
+  uint64 max_disk_bytes = 3;
+}
+
+// Heartbeat from runner.
+message Heartbeat {
+  google.protobuf.Timestamp timestamp = 1;
+  string run_id = 2;
+  uint64 lease_epoch = 3;
+  RunnerStatus status = 4;
+}
+
+enum RunnerStatus {
+  RUNNER_STATUS_UNSPECIFIED = 0;
+  RUNNER_STATUS_IDLE = 1;
+  RUNNER_STATUS_RUNNING = 2;
+  RUNNER_STATUS_DRAINING = 3;
+}
+
+// Run accepted by runner.
+message RunAccepted {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string manifest_digest = 3;
+}
+
+// Batch of run events.
+message RunEventBatch {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  repeated RunEvent events = 3;
+}
+
+message RunEvent {
+  uint64 client_sequence = 1;
+  string event_type = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  google.protobuf.Struct payload = 4;
+}
+
+// Terminal output chunk.
+message TerminalOutput {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string stream_id = 3;
+  uint64 offset = 4;
+  bytes data = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// Artifact declaration.
+message ArtifactDeclaration {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string artifact_id = 3;
+  string filename = 4;
+  string media_type = 5;
+  uint64 size_bytes = 6;
+  string digest = 7;
+}
+
+// Checkpoint available.
+message CheckpointAvailable {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string checkpoint_id = 3;
+  string digest = 4;
+}
+
+// Run finished notification.
+message RunFinished {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  RunTerminalStatus status = 3;
+  string reason = 4;
+}
+
+enum RunTerminalStatus {
+  RUN_TERMINAL_STATUS_UNSPECIFIED = 0;
+  RUN_TERMINAL_STATUS_COMPLETED = 1;
+  RUN_TERMINAL_STATUS_FAILED = 2;
+  RUN_TERMINAL_STATUS_CANCELED = 3;
+}
+
+// Assign a run to the runner.
+message AssignRun {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  bytes manifest = 3;
+  string manifest_digest = 4;
+  google.protobuf.Timestamp assignment_expiry = 5;
+}
+
+// Acknowledge events received.
+message AcknowledgeEvents {
+  string run_id = 1;
+  uint64 last_acknowledged_sequence = 2;
+}
+
+// Approval resolution.
+message ApprovalResolution {
+  string run_id = 1;
+  string approval_request_id = 2;
+  ApprovalDecisionType decision = 3;
+  string reason = 4;
+}
+
+enum ApprovalDecisionType {
+  APPROVAL_DECISION_TYPE_UNSPECIFIED = 0;
+  APPROVAL_DECISION_TYPE_APPROVED = 1;
+  APPROVAL_DECISION_TYPE_REJECTED = 2;
+}
+
+// Cancel a run.
+message CancelRun {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string reason = 3;
+  bool force = 4;
+}
+
+// Suspend a run.
+message SuspendRun {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string reason = 3;
+}
+
+// Resume action after approval.
+message ResumeAction {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string action_id = 3;
+}
+
+// Rotate session credentials.
+message RotateSession {
+  string new_session_id = 1;
+  google.protobuf.Timestamp effective_at = 2;
+}
+
+// Drain runner gracefully.
+message DrainRunner {
+  string reason = 1;
+  google.protobuf.Timestamp deadline = 2;
+}

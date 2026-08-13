@@ -1,0 +1,418 @@
+openapi: "3.1.0"
+info:
+  title: Gantry Copilot API
+  version: "1.0.0"
+  description: |
+    Employee-facing API for Gantry Copilot. Provides agent discovery,
+    task submission, run monitoring, approvals, and artifact access.
+  contact:
+    name: Gantry Platform Team
+
+servers:
+  - url: /api/copilot/v1
+    description: Copilot API v1
+
+security:
+  - oauth2:
+      - copilot
+
+paths:
+  /agents:
+    get:
+      operationId: listPublishedAgents
+      summary: List agents published to the current user
+      tags: [Agents]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Published agents visible to the employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotAgentList"
+
+  /tasks:
+    post:
+      operationId: submitTask
+      summary: Submit a new task
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitTaskRequest"
+      headers:
+        Idempotency-Key:
+          schema:
+            type: string
+          required: true
+      responses:
+        "201":
+          description: Task accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+    get:
+      operationId: listMyTasks
+      summary: List tasks for the current user
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of user's tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskList"
+
+  /tasks/{task_id}:
+    get:
+      operationId: getTask
+      summary: Get task details
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+  /tasks/{task_id}/runs/{run_id}:cancel:
+    post:
+      operationId: cancelRun
+      summary: Cancel a run
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancellation accepted or already terminal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatus"
+
+  /tasks/{task_id}:retry:
+    post:
+      operationId: retryTask
+      summary: Retry a task
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetryTaskRequest"
+      responses:
+        "201":
+          description: New run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+  /approvals:
+    get:
+      operationId: listMyApprovals
+      summary: List approvals assigned to the current user
+      tags: [Approvals]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Pending approvals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotApprovalList"
+
+  /approvals/{approval_id}:decide:
+    post:
+      operationId: decideApproval
+      summary: Approve or reject an action
+      tags: [Approvals]
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDecisionResponse"
+
+  /artifacts/{artifact_id}:
+    get:
+      operationId: getArtifact
+      summary: Get artifact metadata and download URL
+      tags: [Artifacts]
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Artifact metadata with download URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactResponse"
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth/authorize
+          tokenUrl: /oauth/token
+          scopes:
+            copilot: Employee Copilot access
+
+  parameters:
+    CursorParam:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    TaskIdParam:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    PageInfo:
+      type: object
+      required: [has_more]
+      properties:
+        next_cursor:
+          type: string
+        has_more:
+          type: boolean
+
+    Timestamp:
+      type: string
+      format: date-time
+
+    # --- Agents ---
+    CopilotAgent:
+      type: object
+      required: [id, display_name, description]
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        owner_name:
+          type: string
+        capability_summary:
+          type: string
+        data_scope:
+          type: string
+        is_favorite:
+          type: boolean
+
+    CopilotAgentList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopilotAgent"
+        page_info:
+          $ref: "#/components/schemas/PageInfo"
+
+    # --- Tasks ---
+    SubmitTaskRequest:
+      type: object
+      required: [agent_id, idempotency_key]
+      properties:
+        agent_id:
+          type: string
+        message:
+          type: string
+        structured_input:
+          type: object
+        attachment_ids:
+          type: array
+          items:
+            type: string
+        idempotency_key:
+          type: string
+
+    TaskResponse:
+      type: object
+      required: [id, agent_id, status]
+      properties:
+        id:
+          type: string
+        agent_id:
+          type: string
+        agent_display_name:
+          type: string
+        status:
+          type: string
+          enum: [queued, provisioning, running, awaiting_approval, suspended, canceling, completed, failed, canceled]
+        current_run:
+          $ref: "#/components/schemas/RunStatus"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    TaskList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskResponse"
+        page_info:
+          $ref: "#/components/schemas/PageInfo"
+
+    RunStatus:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        status_reason:
+          type: string
+
+    RetryTaskRequest:
+      type: object
+      properties:
+        use_latest_version:
+          type: boolean
+          default: false
+
+    # --- Approvals ---
+    CopilotApproval:
+      type: object
+      required: [id, run_id, action_preview, status]
+      properties:
+        id:
+          type: string
+        run_id:
+          type: string
+        agent_display_name:
+          type: string
+        action_preview:
+          type: object
+          description: Human-readable action summary
+        risk_class:
+          type: string
+        status:
+          type: string
+          enum: [pending, satisfied, rejected, expired]
+        expires_at:
+          $ref: "#/components/schemas/Timestamp"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    CopilotApprovalList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopilotApproval"
+        page_info:
+          $ref: "#/components/schemas/PageInfo"
+
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision, action_digest, idempotency_key]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+        action_digest:
+          type: string
+        idempotency_key:
+          type: string
+
+    ApprovalDecisionResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    # --- Artifacts ---
+    ArtifactResponse:
+      type: object
+      required: [id, filename, media_type, size_bytes]
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        media_type:
+          type: string
+        size_bytes:
+          type: integer
+        download_url:
+          type: string
+          description: Short-lived pre-signed download URL
+        download_url_expires_at:
+          $ref: "#/components/schemas/Timestamp"

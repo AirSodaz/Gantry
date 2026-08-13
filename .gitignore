@@ -1,0 +1,48 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Moon
+.moon/cache/
+.moon/docker/
+
+# Go
+control-plane/bin/
+control-plane/vendor/
+
+# Rust
+runner/target/
+
+# Node / TypeScript
+node_modules/
+dist/
+.turbo/
+
+# Docker
+.docker/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test
+coverage/
+*.cover
+*.out
+
+# Logs
+*.log

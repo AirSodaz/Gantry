@@ -1,0 +1,15 @@
+$schema: "https://moonrepo.dev/schemas/tasks.json"
+
+tasks:
+  install:
+    command: "pnpm install --frozen-lockfile"
+    type: "run"
+  lint:
+    command: "pnpm lint"
+    type: "run"
+  test:
+    command: "pnpm test"
+    type: "test"
+  build:
+    command: "pnpm build"
+    type: "build"

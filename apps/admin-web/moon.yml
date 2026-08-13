@@ -1,0 +1,15 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+type: 'application'
+language: 'typescript'
+tags: ['frontend']
+tasks:
+  build:
+    command: 'vite build'
+    type: 'build'
+  typecheck:
+    command: 'tsc --noEmit'
+    type: 'test'
+  dev:
+    command: 'vite'
+    type: 'run'
+    local: true

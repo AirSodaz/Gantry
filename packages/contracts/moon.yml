@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+type: 'library'
+language: 'typescript'
+tags: ['shared']
+tasks:
+  build:
+    command: 'tsc --noEmit'
+    type: 'build'
+  typecheck:
+    command: 'tsc --noEmit'
+    type: 'test'
