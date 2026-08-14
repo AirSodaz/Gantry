@@ -1,8 +1,9 @@
 use anyhow::Result;
 use protocol::gantry::runner::v1::{
-    Heartbeat, RegisterRunner, RunnerMessage, runner_message,
-    runner_session_client::RunnerSessionClient,
+    control_plane_message, runner_session_client::RunnerSessionClient,
 };
+mod executor;
+use executor::DemoExecutor;
 use std::env;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -19,36 +20,35 @@ async fn main() -> Result<()> {
     let channel = connect(address).await?;
     let mut client = RunnerSessionClient::new(channel);
     let (sender, receiver) = mpsc::channel(32);
-    sender.send(register(&runner_id)).await?;
+    let mut executor = DemoExecutor::new(runner_id);
+    sender.send(executor.register()).await?;
     let response = client.session(ReceiverStream::new(receiver)).await?;
     let mut inbound = response.into_inner();
-    let heartbeat_sender = sender.clone();
-    let heartbeat_id = runner_id.clone();
-    let heartbeat = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
-        loop {
-            interval.tick().await;
-            if heartbeat_sender
-                .send(heartbeat_message(&heartbeat_id))
-                .await
-                .is_err()
-            {
-                break;
-            }
-        }
-    });
+    let mut tick = tokio::time::interval(std::time::Duration::from_millis(250));
+    let mut heartbeat = tokio::time::interval(std::time::Duration::from_secs(5));
     loop {
         tokio::select! {
             message = inbound.message() => {
                 match message? {
-                    Some(message) => tracing::info!("control-plane message received: {:?}", message.payload),
+                    Some(message) => {
+                        match message.payload {
+                            Some(control_plane_message::Payload::AssignRun(assignment)) => {
+                                for outbound in executor.assign(&assignment) { sender.send(outbound).await?; }
+                            }
+                            Some(control_plane_message::Payload::CancelRun(cancel)) => {
+                                for outbound in executor.cancel(&cancel) { sender.send(outbound).await?; }
+                            }
+                            payload => tracing::info!("control-plane message received: {:?}", payload),
+                        }
+                    }
                     None => break,
                 }
             }
+            _ = tick.tick() => { for outbound in executor.tick() { sender.send(outbound).await?; } }
+            _ = heartbeat.tick() => { sender.send(executor.heartbeat()).await?; }
             _ = tokio::signal::ctrl_c() => break,
         }
     }
-    heartbeat.abort();
     Ok(())
 }
 
@@ -74,34 +74,4 @@ async fn connect(address: String) -> Result<Channel> {
         ),
     }
     Ok(endpoint.connect().await?)
-}
-
-fn register(runner_id: &str) -> RunnerMessage {
-    RunnerMessage {
-        runner_id: runner_id.into(),
-        session_id: format!("{runner_id}-session"),
-        message_id: 1,
-        protocol_version: 1,
-        payload: Some(runner_message::Payload::Register(RegisterRunner {
-            runner_version: env!("CARGO_PKG_VERSION").into(),
-            capabilities: vec!["phase0.session".into()],
-            organization_id: "dev".into(),
-            resource_limits: None,
-        })),
-    }
-}
-
-fn heartbeat_message(runner_id: &str) -> RunnerMessage {
-    RunnerMessage {
-        runner_id: runner_id.into(),
-        session_id: format!("{runner_id}-session"),
-        message_id: 2,
-        protocol_version: 1,
-        payload: Some(runner_message::Payload::Heartbeat(Heartbeat {
-            timestamp: None,
-            run_id: String::new(),
-            lease_epoch: 0,
-            status: 1,
-        })),
-    }
 }

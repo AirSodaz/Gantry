@@ -35,7 +35,7 @@ func main() {
 	}
 
 	public := publicServer(cfg, store)
-	runner := runnerServer(cfg, logger)
+	runner := runnerServer(cfg, logger, runnersession.NewScheduler())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -85,9 +85,9 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore) *http.Server
 	return &http.Server{Addr: cfg.HTTPAddress, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 }
 
-func runnerServer(cfg config.Config, logger *slog.Logger) *http.Server {
+func runnerServer(cfg config.Config, logger *slog.Logger, scheduler *runnersession.Scheduler) *http.Server {
 	mux := http.NewServeMux()
-	path, handler := runnersession.NewHandler(logger)
+	path, handler := runnersession.NewHandler(logger, scheduler)
 	mux.Handle(path, handler)
 	server := &http.Server{Addr: cfg.GRPCAddress, Handler: h2c.NewHandler(mux, &http2.Server{}), ReadHeaderTimeout: 5 * time.Second}
 	if cfg.RunnerTLS.CertificateFile == "" {
