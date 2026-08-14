@@ -7,7 +7,10 @@ services:
       - "5556:5556"
     volumes:
       - ./dex/config.yaml:/etc/dex/config.yaml:ro
-      - dexdata:/data
+    # Dex runs as UID 1001; a named volume is root-owned on first mount.
+    # Local Compose fixtures are disposable, so use a writable in-memory DB.
+    tmpfs:
+      - /data:uid=1001,gid=1001,mode=0755
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5556/dex/.well-known/openid-configuration"]
       interval: 5s
@@ -137,6 +140,5 @@ networks:
     internal: true
 
 volumes:
-  dexdata:
   pgdata:
   miniodata:

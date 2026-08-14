@@ -19,6 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 json_value() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body" | head -n1; }
+task_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
 task_run_id() { sed -n 's/.*"current_run":{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
 
 token_for() {
@@ -80,11 +81,11 @@ await_cancel_agent_id=agt_lifecycle_await_cancel
 complete_key="complete-${RANDOM}-${RANDOM}"
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
 [[ $response_status == 201 ]]
-complete_task=$(json_value id)
+complete_task=$(task_id)
 [[ -n $complete_task ]]
 wait_task_status "$complete_task" completed
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
-[[ $response_status == 200 && $(json_value id) == "$complete_task" ]]
+[[ $response_status == 200 && $(task_id) == "$complete_task" ]]
 
 other_token=$(token_for copilot-other gantry_other_password)
 access_token=$other_token
@@ -95,7 +96,7 @@ access_token=$(token_for copilot-demo gantry_demo_password)
 cancel_key="cancel-${RANDOM}-${RANDOM}"
 submit "$cancel_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"wait\"}"
 [[ $response_status == 201 ]]
-cancel_task=$(json_value id)
+cancel_task=$(task_id)
 cancel_run=$(task_run_id)
 wait_task_status "$cancel_task" running
 request POST "/api/copilot/v1/tasks/${cancel_task}/runs/${cancel_run}:cancel" '{}'
@@ -104,7 +105,7 @@ wait_task_status "$cancel_task" canceled
 
 loss_key="loss-${RANDOM}-${RANDOM}"
 submit "$loss_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"loss\"}"
-loss_task=$(json_value id)
+loss_task=$(task_id)
 wait_task_status "$loss_task" running
 "${compose[@]}" kill runner
 wait_task_status "$loss_task" failed
@@ -112,12 +113,17 @@ wait_task_status "$loss_task" failed
 
 restart_key="restart-${RANDOM}-${RANDOM}"
 submit "$restart_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"restart\"}"
-restart_task=$(json_value id)
+restart_task=$(task_id)
 wait_task_status "$restart_task" running
 "${compose[@]}" restart control-plane
 wait_task_status "$restart_task" failed
 request POST "/api/copilot/v1/tasks/${restart_task}:retry" '{}'
 [[ $response_status == 201 ]]
-wait_task_status "$restart_task" completed
+retry_run=$(task_run_id)
+[[ -n $retry_run ]]
+wait_task_status "$restart_task" running
+request POST "/api/copilot/v1/tasks/${restart_task}/runs/${retry_run}:cancel" '{}'
+[[ $response_status == 200 ]]
+wait_task_status "$restart_task" canceled
 
 echo "Copilot persistent lifecycle smoke test passed."

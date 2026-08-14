@@ -20,6 +20,7 @@ cleanup() {
 trap cleanup EXIT
 
 json_value() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body" | head -n1; }
+task_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
 
 token_for() {
   local client_id=$1 client_secret=$2 username=$3 password=$4 body
@@ -113,7 +114,7 @@ request "$copilot_token" GET /api/copilot/v1/agents
 [[ $response_status == 200 && $response_body == *"${agent_id}"* ]]
 submit_task "{\"agent_id\":\"${agent_id}\",\"message\":\"published by Admin\"}" "admin-published-${RANDOM}-${RANDOM}"
 [[ $response_status == 201 ]]
-task_id=$(json_value id)
+task_id=$(task_id)
 wait_task_status "$task_id" completed
 
 request "$admin_token" POST "/api/admin/v1/agents/${agent_id}:retire" '{}'
