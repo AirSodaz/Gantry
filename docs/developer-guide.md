@@ -70,23 +70,23 @@ are intentionally explicit (`GANTRY_RUNNER_CA_FILE`, `GANTRY_RUNNER_CERT_FILE`,
 and `GANTRY_RUNNER_KEY_FILE`) and remain unset for the local plaintext h2 smoke
 test.
 
-### Native Phase 0 smoke test
+### Runner development smoke test
 
 For a fast non-Docker lifecycle check, run PostgreSQL and an S3-compatible
 endpoint natively on the addresses configured in `.env.example`. The object
-store only needs to accept TCP connections for this Phase 0 proof; Dex is
+store only needs to accept TCP connections for this runner proof; Dex is
 not required. Copy the example to `.env.local`, set the database and object
 store values for those native services, then enable the developer probe:
 
 ```sh
 GANTRY_DEVELOPMENT_MODE=true
-GANTRY_PHASE0_DEV_API_TOKEN=local_phase0_token
+GANTRY_DEVELOPMENT_API_TOKEN=local_development_token
 ```
 
 From Git Bash, run:
 
 ```sh
-moon run deploy-local:phase0-smoke
+moon run deploy-local:runner-smoke
 ```
 
 The task reads `.env.local` automatically, builds temporary control-plane and
@@ -95,24 +95,24 @@ and runner-process loss. It always terminates the processes it started and
 prints their logs on failure. It does not validate OIDC, Dex fixtures, or
 the full Copilot API; use the Compose Copilot smoke test for those paths.
 
-### Phase 0 lifecycle smoke test
+### Agent runner lifecycle smoke test
 
 The Compose stack enables a token-protected, development-only lifecycle probe.
 It is not part of the public OpenAPI surface and must never be enabled in a
 production deployment. Set `GANTRY_DEVELOPMENT_MODE=true` and provide
-`GANTRY_PHASE0_DEV_API_TOKEN`; startup rejects development mode without a
-token. The local Compose default is `gantry_phase0_dev_token`, which is for
+`GANTRY_DEVELOPMENT_API_TOKEN`; startup rejects development mode without a
+token. The local Compose default is `gantry_development_token`, which is for
 local testing only.
 
 The probe exposes three development routes with an `Authorization: Bearer`
 token:
 
-- `POST /internal/phase0/runs` with `{"mode":"complete"}` or
+- `POST /internal/development/runs` with `{"mode":"complete"}` or
   `{"mode":"await_cancel"}` creates a deterministic run on the durable
   development task path.
-- `GET /internal/phase0/runs/{runID}` returns its lifecycle status, lease epoch,
+- `GET /internal/development/runs/{runID}` returns its lifecycle status, lease epoch,
   and acknowledged event sequence.
-- `POST /internal/phase0/runs/{runID}/cancel` requests asynchronous cancellation.
+- `POST /internal/development/runs/{runID}/cancel` requests asynchronous cancellation.
 
 On a machine with Docker and Git Bash, run:
 
@@ -166,7 +166,7 @@ The browser flow uses Authorization Code + PKCE and keeps the OIDC session in
 decided by the authenticated Copilot user; the page never receives credentials
 or raw agent specs. The workbench is desktop-first in this slice. Narrow breakpoints
 keep the component structure usable for a later mobile pass, but mobile visual
-parity is not a Phase 0 acceptance gate.
+parity is not a runner V1 acceptance gate.
 
 ### External identity providers
 
@@ -205,10 +205,11 @@ outputs differ.
 
 The persistent Copilot slice includes the development Dex browser login,
 catalog, task submission, polling, cancellation, retry, and action-time
-approval. The `lifecycle-await-approval` fixture proposes a deterministic write
-action, pauses in `awaiting_approval`, and resumes only after a matching action
-digest is approved or rejected. It intentionally excludes artifacts, event
-streaming, real models/tools, and sandboxing. Business workflow approvals such
+approval. The `lifecycle-await-approval` fixture proposes a policy-controlled
+shell action, pauses in `awaiting_approval`, and resumes only after a matching
+action digest is approved or rejected. It intentionally excludes durable
+artifacts and production gateway integration; the runner emits normalized
+model/tool events and keeps sandboxing as a future boundary. Business workflow approvals such
 as leave or expense approval remain owned by the external tool and are not
 represented by the Copilot approval list.
 
@@ -236,10 +237,9 @@ agent creation, draft read/update, review and semantic diff, version history,
 publication, rollback, and retirement. Draft updates and publication require
 an `If-Match` draft revision; publication also requires an approved review for
 that exact revision. Publication validates, freezes, and digests the canonical
-`gantry.phase0.demo/v1` manifest before it becomes visible to Copilot. The
-manifest mode belongs to the immutable version, never to task input. Retirement
-hides the agent from the catalog without deleting historical versions, tasks, or
-runs.
+`gantry.agent/v1` manifest before it becomes visible to Copilot. The
+The immutable version owns the complete execution manifest. Retirement hides the
+agent from the catalog without deleting historical versions, tasks, or runs.
 
 The Admin workbench is desktop-first. Start it after Compose is ready:
 

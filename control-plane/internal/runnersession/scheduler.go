@@ -39,7 +39,7 @@ type runner struct {
 	outbound      chan *runnerv1.ControlPlaneMessage
 }
 
-// Scheduler is an in-memory Phase 0 lifecycle coordinator. It intentionally
+// Scheduler is an in-memory development lifecycle coordinator. It intentionally
 // does not survive a process restart and is not a public task scheduler.
 type Scheduler struct {
 	mu                   sync.Mutex
@@ -71,9 +71,9 @@ func (s *Scheduler) Register(runnerID, sessionID string, messageID uint64) (<-ch
 	return state.outbound, nil
 }
 
-func (s *Scheduler) SubmitDemoRun(runID string, manifest []byte, manifestDigest string) (*Run, error) {
+func (s *Scheduler) SubmitRun(runID string, manifest []byte, manifestDigest string) (*Run, error) {
 	if runID == "" || len(manifest) == 0 || manifestDigest == "" {
-		return nil, fmt.Errorf("demo run requires ID, manifest, and manifest digest")
+		return nil, fmt.Errorf("run requires ID, manifest, and manifest digest")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

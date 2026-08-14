@@ -193,6 +193,12 @@ type RunnerMessage struct {
 	//	*RunnerMessage_ArtifactDeclaration
 	//	*RunnerMessage_CheckpointAvailable
 	//	*RunnerMessage_RunFinished
+	//	*RunnerMessage_ModelUsage
+	//	*RunnerMessage_CheckpointMetadata
+	//	*RunnerMessage_ModelDelta
+	//	*RunnerMessage_ToolLifecycle
+	//	*RunnerMessage_SecurityEvent
+	//	*RunnerMessage_CompactionEvent
 	Payload       isRunnerMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -335,6 +341,60 @@ func (x *RunnerMessage) GetRunFinished() *RunFinished {
 	return nil
 }
 
+func (x *RunnerMessage) GetModelUsage() *ModelUsage {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_ModelUsage); ok {
+			return x.ModelUsage
+		}
+	}
+	return nil
+}
+
+func (x *RunnerMessage) GetCheckpointMetadata() *CheckpointMetadata {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_CheckpointMetadata); ok {
+			return x.CheckpointMetadata
+		}
+	}
+	return nil
+}
+
+func (x *RunnerMessage) GetModelDelta() *ModelDelta {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_ModelDelta); ok {
+			return x.ModelDelta
+		}
+	}
+	return nil
+}
+
+func (x *RunnerMessage) GetToolLifecycle() *ToolLifecycle {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_ToolLifecycle); ok {
+			return x.ToolLifecycle
+		}
+	}
+	return nil
+}
+
+func (x *RunnerMessage) GetSecurityEvent() *SecurityEvent {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_SecurityEvent); ok {
+			return x.SecurityEvent
+		}
+	}
+	return nil
+}
+
+func (x *RunnerMessage) GetCompactionEvent() *CompactionEvent {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_CompactionEvent); ok {
+			return x.CompactionEvent
+		}
+	}
+	return nil
+}
+
 type isRunnerMessage_Payload interface {
 	isRunnerMessage_Payload()
 }
@@ -371,6 +431,30 @@ type RunnerMessage_RunFinished struct {
 	RunFinished *RunFinished `protobuf:"bytes,17,opt,name=run_finished,json=runFinished,proto3,oneof"`
 }
 
+type RunnerMessage_ModelUsage struct {
+	ModelUsage *ModelUsage `protobuf:"bytes,18,opt,name=model_usage,json=modelUsage,proto3,oneof"`
+}
+
+type RunnerMessage_CheckpointMetadata struct {
+	CheckpointMetadata *CheckpointMetadata `protobuf:"bytes,19,opt,name=checkpoint_metadata,json=checkpointMetadata,proto3,oneof"`
+}
+
+type RunnerMessage_ModelDelta struct {
+	ModelDelta *ModelDelta `protobuf:"bytes,20,opt,name=model_delta,json=modelDelta,proto3,oneof"`
+}
+
+type RunnerMessage_ToolLifecycle struct {
+	ToolLifecycle *ToolLifecycle `protobuf:"bytes,21,opt,name=tool_lifecycle,json=toolLifecycle,proto3,oneof"`
+}
+
+type RunnerMessage_SecurityEvent struct {
+	SecurityEvent *SecurityEvent `protobuf:"bytes,22,opt,name=security_event,json=securityEvent,proto3,oneof"`
+}
+
+type RunnerMessage_CompactionEvent struct {
+	CompactionEvent *CompactionEvent `protobuf:"bytes,23,opt,name=compaction_event,json=compactionEvent,proto3,oneof"`
+}
+
 func (*RunnerMessage_Register) isRunnerMessage_Payload() {}
 
 func (*RunnerMessage_Heartbeat) isRunnerMessage_Payload() {}
@@ -386,6 +470,18 @@ func (*RunnerMessage_ArtifactDeclaration) isRunnerMessage_Payload() {}
 func (*RunnerMessage_CheckpointAvailable) isRunnerMessage_Payload() {}
 
 func (*RunnerMessage_RunFinished) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_ModelUsage) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_CheckpointMetadata) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_ModelDelta) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_ToolLifecycle) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_SecurityEvent) isRunnerMessage_Payload() {}
+
+func (*RunnerMessage_CompactionEvent) isRunnerMessage_Payload() {}
 
 // Messages sent from control plane to runner.
 type ControlPlaneMessage struct {
@@ -1217,6 +1313,494 @@ func (x *CheckpointAvailable) GetDigest() string {
 	return ""
 }
 
+type ModelUsage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	InputTokens   uint64                 `protobuf:"varint,3,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
+	OutputTokens  uint64                 `protobuf:"varint,4,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
+	Provider      string                 `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
+	Model         string                 `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModelUsage) Reset() {
+	*x = ModelUsage{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModelUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModelUsage) ProtoMessage() {}
+
+func (x *ModelUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModelUsage.ProtoReflect.Descriptor instead.
+func (*ModelUsage) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ModelUsage) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ModelUsage) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *ModelUsage) GetInputTokens() uint64 {
+	if x != nil {
+		return x.InputTokens
+	}
+	return 0
+}
+
+func (x *ModelUsage) GetOutputTokens() uint64 {
+	if x != nil {
+		return x.OutputTokens
+	}
+	return 0
+}
+
+func (x *ModelUsage) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ModelUsage) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+type CheckpointMetadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	CheckpointId  string                 `protobuf:"bytes,3,opt,name=checkpoint_id,json=checkpointId,proto3" json:"checkpoint_id,omitempty"`
+	Digest        string                 `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	SchemaVersion uint32                 `protobuf:"varint,5,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	LocalPathHint string                 `protobuf:"bytes,6,opt,name=local_path_hint,json=localPathHint,proto3" json:"local_path_hint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckpointMetadata) Reset() {
+	*x = CheckpointMetadata{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckpointMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckpointMetadata) ProtoMessage() {}
+
+func (x *CheckpointMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckpointMetadata.ProtoReflect.Descriptor instead.
+func (*CheckpointMetadata) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CheckpointMetadata) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *CheckpointMetadata) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *CheckpointMetadata) GetCheckpointId() string {
+	if x != nil {
+		return x.CheckpointId
+	}
+	return ""
+}
+
+func (x *CheckpointMetadata) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+func (x *CheckpointMetadata) GetSchemaVersion() uint32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *CheckpointMetadata) GetLocalPathHint() string {
+	if x != nil {
+		return x.LocalPathHint
+	}
+	return ""
+}
+
+type ModelDelta struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	RunId           string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch      uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	StreamId        string                 `protobuf:"bytes,3,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Text            string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	ThinkingSummary string                 `protobuf:"bytes,5,opt,name=thinking_summary,json=thinkingSummary,proto3" json:"thinking_summary,omitempty"`
+	ToolCallId      string                 `protobuf:"bytes,6,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ModelDelta) Reset() {
+	*x = ModelDelta{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModelDelta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModelDelta) ProtoMessage() {}
+
+func (x *ModelDelta) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModelDelta.ProtoReflect.Descriptor instead.
+func (*ModelDelta) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ModelDelta) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ModelDelta) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *ModelDelta) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *ModelDelta) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *ModelDelta) GetThinkingSummary() string {
+	if x != nil {
+		return x.ThinkingSummary
+	}
+	return ""
+}
+
+func (x *ModelDelta) GetToolCallId() string {
+	if x != nil {
+		return x.ToolCallId
+	}
+	return ""
+}
+
+type ToolLifecycle struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	CallId        string                 `protobuf:"bytes,3,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	ToolName      string                 `protobuf:"bytes,4,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
+	Phase         string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	Ok            bool                   `protobuf:"varint,6,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolLifecycle) Reset() {
+	*x = ToolLifecycle{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolLifecycle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolLifecycle) ProtoMessage() {}
+
+func (x *ToolLifecycle) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolLifecycle.ProtoReflect.Descriptor instead.
+func (*ToolLifecycle) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ToolLifecycle) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ToolLifecycle) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *ToolLifecycle) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *ToolLifecycle) GetToolName() string {
+	if x != nil {
+		return x.ToolName
+	}
+	return ""
+}
+
+func (x *ToolLifecycle) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *ToolLifecycle) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type SecurityEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	Rule          string                 `protobuf:"bytes,3,opt,name=rule,proto3" json:"rule,omitempty"`
+	Action        string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	Confidence    string                 `protobuf:"bytes,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecurityEvent) Reset() {
+	*x = SecurityEvent{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecurityEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecurityEvent) ProtoMessage() {}
+
+func (x *SecurityEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecurityEvent.ProtoReflect.Descriptor instead.
+func (*SecurityEvent) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SecurityEvent) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *SecurityEvent) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *SecurityEvent) GetRule() string {
+	if x != nil {
+		return x.Rule
+	}
+	return ""
+}
+
+func (x *SecurityEvent) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *SecurityEvent) GetConfidence() string {
+	if x != nil {
+		return x.Confidence
+	}
+	return ""
+}
+
+type CompactionEvent struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	RunId            string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch       uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	Digest           string                 `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
+	RetainedMessages uint32                 `protobuf:"varint,4,opt,name=retained_messages,json=retainedMessages,proto3" json:"retained_messages,omitempty"`
+	Warning          string                 `protobuf:"bytes,5,opt,name=warning,proto3" json:"warning,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CompactionEvent) Reset() {
+	*x = CompactionEvent{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactionEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactionEvent) ProtoMessage() {}
+
+func (x *CompactionEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactionEvent.ProtoReflect.Descriptor instead.
+func (*CompactionEvent) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *CompactionEvent) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *CompactionEvent) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *CompactionEvent) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+func (x *CompactionEvent) GetRetainedMessages() uint32 {
+	if x != nil {
+		return x.RetainedMessages
+	}
+	return 0
+}
+
+func (x *CompactionEvent) GetWarning() string {
+	if x != nil {
+		return x.Warning
+	}
+	return ""
+}
+
 // Run finished notification.
 type RunFinished struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1230,7 +1814,7 @@ type RunFinished struct {
 
 func (x *RunFinished) Reset() {
 	*x = RunFinished{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1826,7 @@ func (x *RunFinished) String() string {
 func (*RunFinished) ProtoMessage() {}
 
 func (x *RunFinished) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1839,7 @@ func (x *RunFinished) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunFinished.ProtoReflect.Descriptor instead.
 func (*RunFinished) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{11}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RunFinished) GetRunId() string {
@@ -1300,7 +1884,7 @@ type AssignRun struct {
 
 func (x *AssignRun) Reset() {
 	*x = AssignRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1312,7 +1896,7 @@ func (x *AssignRun) String() string {
 func (*AssignRun) ProtoMessage() {}
 
 func (x *AssignRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1325,7 +1909,7 @@ func (x *AssignRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignRun.ProtoReflect.Descriptor instead.
 func (*AssignRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{12}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AssignRun) GetRunId() string {
@@ -1374,7 +1958,7 @@ type AcknowledgeEvents struct {
 
 func (x *AcknowledgeEvents) Reset() {
 	*x = AcknowledgeEvents{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1386,7 +1970,7 @@ func (x *AcknowledgeEvents) String() string {
 func (*AcknowledgeEvents) ProtoMessage() {}
 
 func (x *AcknowledgeEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1399,7 +1983,7 @@ func (x *AcknowledgeEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcknowledgeEvents.ProtoReflect.Descriptor instead.
 func (*AcknowledgeEvents) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{13}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AcknowledgeEvents) GetRunId() string {
@@ -1423,13 +2007,14 @@ type ApprovalResolution struct {
 	ApprovalRequestId string                 `protobuf:"bytes,2,opt,name=approval_request_id,json=approvalRequestId,proto3" json:"approval_request_id,omitempty"`
 	Decision          ApprovalDecisionType   `protobuf:"varint,3,opt,name=decision,proto3,enum=gantry.runner.v1.ApprovalDecisionType" json:"decision,omitempty"`
 	Reason            string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	LeaseEpoch        uint64                 `protobuf:"varint,5,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ApprovalResolution) Reset() {
 	*x = ApprovalResolution{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1441,7 +2026,7 @@ func (x *ApprovalResolution) String() string {
 func (*ApprovalResolution) ProtoMessage() {}
 
 func (x *ApprovalResolution) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1454,7 +2039,7 @@ func (x *ApprovalResolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalResolution.ProtoReflect.Descriptor instead.
 func (*ApprovalResolution) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{14}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ApprovalResolution) GetRunId() string {
@@ -1485,6 +2070,13 @@ func (x *ApprovalResolution) GetReason() string {
 	return ""
 }
 
+func (x *ApprovalResolution) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
 // Cancel a run.
 type CancelRun struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1498,7 +2090,7 @@ type CancelRun struct {
 
 func (x *CancelRun) Reset() {
 	*x = CancelRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1510,7 +2102,7 @@ func (x *CancelRun) String() string {
 func (*CancelRun) ProtoMessage() {}
 
 func (x *CancelRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1523,7 +2115,7 @@ func (x *CancelRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRun.ProtoReflect.Descriptor instead.
 func (*CancelRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{15}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CancelRun) GetRunId() string {
@@ -1566,7 +2158,7 @@ type SuspendRun struct {
 
 func (x *SuspendRun) Reset() {
 	*x = SuspendRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1578,7 +2170,7 @@ func (x *SuspendRun) String() string {
 func (*SuspendRun) ProtoMessage() {}
 
 func (x *SuspendRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1591,7 +2183,7 @@ func (x *SuspendRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendRun.ProtoReflect.Descriptor instead.
 func (*SuspendRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{16}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SuspendRun) GetRunId() string {
@@ -1627,7 +2219,7 @@ type ResumeAction struct {
 
 func (x *ResumeAction) Reset() {
 	*x = ResumeAction{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1639,7 +2231,7 @@ func (x *ResumeAction) String() string {
 func (*ResumeAction) ProtoMessage() {}
 
 func (x *ResumeAction) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1652,7 +2244,7 @@ func (x *ResumeAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeAction.ProtoReflect.Descriptor instead.
 func (*ResumeAction) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{17}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ResumeAction) GetRunId() string {
@@ -1687,7 +2279,7 @@ type RotateSession struct {
 
 func (x *RotateSession) Reset() {
 	*x = RotateSession{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1699,7 +2291,7 @@ func (x *RotateSession) String() string {
 func (*RotateSession) ProtoMessage() {}
 
 func (x *RotateSession) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1712,7 +2304,7 @@ func (x *RotateSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateSession.ProtoReflect.Descriptor instead.
 func (*RotateSession) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{18}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RotateSession) GetNewSessionId() string {
@@ -1740,7 +2332,7 @@ type DrainRunner struct {
 
 func (x *DrainRunner) Reset() {
 	*x = DrainRunner{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1752,7 +2344,7 @@ func (x *DrainRunner) String() string {
 func (*DrainRunner) ProtoMessage() {}
 
 func (x *DrainRunner) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1765,7 +2357,7 @@ func (x *DrainRunner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DrainRunner.ProtoReflect.Descriptor instead.
 func (*DrainRunner) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{19}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DrainRunner) GetReason() string {
@@ -1786,7 +2378,7 @@ var File_gantry_runner_v1_runner_proto protoreflect.FileDescriptor
 
 const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\n" +
-	"\x1dgantry/runner/v1/runner.proto\x12\x10gantry.runner.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xee\x05\n" +
+	"\x1dgantry/runner/v1/runner.proto\x12\x10gantry.runner.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xad\t\n" +
 	"\rRunnerMessage\x12\x1b\n" +
 	"\trunner_id\x18\x01 \x01(\tR\brunnerId\x12\x1d\n" +
 	"\n" +
@@ -1803,7 +2395,15 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\x0fterminal_output\x18\x0e \x01(\v2 .gantry.runner.v1.TerminalOutputH\x00R\x0eterminalOutput\x12Z\n" +
 	"\x14artifact_declaration\x18\x0f \x01(\v2%.gantry.runner.v1.ArtifactDeclarationH\x00R\x13artifactDeclaration\x12Z\n" +
 	"\x14checkpoint_available\x18\x10 \x01(\v2%.gantry.runner.v1.CheckpointAvailableH\x00R\x13checkpointAvailable\x12B\n" +
-	"\frun_finished\x18\x11 \x01(\v2\x1d.gantry.runner.v1.RunFinishedH\x00R\vrunFinishedB\t\n" +
+	"\frun_finished\x18\x11 \x01(\v2\x1d.gantry.runner.v1.RunFinishedH\x00R\vrunFinished\x12?\n" +
+	"\vmodel_usage\x18\x12 \x01(\v2\x1c.gantry.runner.v1.ModelUsageH\x00R\n" +
+	"modelUsage\x12W\n" +
+	"\x13checkpoint_metadata\x18\x13 \x01(\v2$.gantry.runner.v1.CheckpointMetadataH\x00R\x12checkpointMetadata\x12?\n" +
+	"\vmodel_delta\x18\x14 \x01(\v2\x1c.gantry.runner.v1.ModelDeltaH\x00R\n" +
+	"modelDelta\x12H\n" +
+	"\x0etool_lifecycle\x18\x15 \x01(\v2\x1f.gantry.runner.v1.ToolLifecycleH\x00R\rtoolLifecycle\x12H\n" +
+	"\x0esecurity_event\x18\x16 \x01(\v2\x1f.gantry.runner.v1.SecurityEventH\x00R\rsecurityEvent\x12N\n" +
+	"\x10compaction_event\x18\x17 \x01(\v2!.gantry.runner.v1.CompactionEventH\x00R\x0fcompactionEventB\t\n" +
 	"\apayload\"\xa7\x05\n" +
 	"\x13ControlPlaneMessage\x12\x1d\n" +
 	"\n" +
@@ -1879,7 +2479,58 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
 	"leaseEpoch\x12#\n" +
 	"\rcheckpoint_id\x18\x03 \x01(\tR\fcheckpointId\x12\x16\n" +
-	"\x06digest\x18\x04 \x01(\tR\x06digest\"\x9a\x01\n" +
+	"\x06digest\x18\x04 \x01(\tR\x06digest\"\xbe\x01\n" +
+	"\n" +
+	"ModelUsage\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12!\n" +
+	"\finput_tokens\x18\x03 \x01(\x04R\vinputTokens\x12#\n" +
+	"\routput_tokens\x18\x04 \x01(\x04R\foutputTokens\x12\x1a\n" +
+	"\bprovider\x18\x05 \x01(\tR\bprovider\x12\x14\n" +
+	"\x05model\x18\x06 \x01(\tR\x05model\"\xd8\x01\n" +
+	"\x12CheckpointMetadata\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12#\n" +
+	"\rcheckpoint_id\x18\x03 \x01(\tR\fcheckpointId\x12\x16\n" +
+	"\x06digest\x18\x04 \x01(\tR\x06digest\x12%\n" +
+	"\x0eschema_version\x18\x05 \x01(\rR\rschemaVersion\x12&\n" +
+	"\x0flocal_path_hint\x18\x06 \x01(\tR\rlocalPathHint\"\xc2\x01\n" +
+	"\n" +
+	"ModelDelta\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x1b\n" +
+	"\tstream_id\x18\x03 \x01(\tR\bstreamId\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12)\n" +
+	"\x10thinking_summary\x18\x05 \x01(\tR\x0fthinkingSummary\x12 \n" +
+	"\ftool_call_id\x18\x06 \x01(\tR\n" +
+	"toolCallId\"\xa3\x01\n" +
+	"\rToolLifecycle\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x17\n" +
+	"\acall_id\x18\x03 \x01(\tR\x06callId\x12\x1b\n" +
+	"\ttool_name\x18\x04 \x01(\tR\btoolName\x12\x14\n" +
+	"\x05phase\x18\x05 \x01(\tR\x05phase\x12\x0e\n" +
+	"\x02ok\x18\x06 \x01(\bR\x02ok\"\x93\x01\n" +
+	"\rSecurityEvent\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x12\n" +
+	"\x04rule\x18\x03 \x01(\tR\x04rule\x12\x16\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x05 \x01(\tR\n" +
+	"confidence\"\xa8\x01\n" +
+	"\x0fCompactionEvent\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x16\n" +
+	"\x06digest\x18\x03 \x01(\tR\x06digest\x12+\n" +
+	"\x11retained_messages\x18\x04 \x01(\rR\x10retainedMessages\x12\x18\n" +
+	"\awarning\x18\x05 \x01(\tR\awarning\"\x9a\x01\n" +
 	"\vRunFinished\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
@@ -1895,12 +2546,14 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\x11assignment_expiry\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x10assignmentExpiry\"h\n" +
 	"\x11AcknowledgeEvents\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12<\n" +
-	"\x1alast_acknowledged_sequence\x18\x02 \x01(\x04R\x18lastAcknowledgedSequence\"\xb7\x01\n" +
+	"\x1alast_acknowledged_sequence\x18\x02 \x01(\x04R\x18lastAcknowledgedSequence\"\xd8\x01\n" +
 	"\x12ApprovalResolution\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12.\n" +
 	"\x13approval_request_id\x18\x02 \x01(\tR\x11approvalRequestId\x12B\n" +
 	"\bdecision\x18\x03 \x01(\x0e2&.gantry.runner.v1.ApprovalDecisionTypeR\bdecision\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"q\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1f\n" +
+	"\vlease_epoch\x18\x05 \x01(\x04R\n" +
+	"leaseEpoch\"q\n" +
 	"\tCancelRun\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
@@ -1955,7 +2608,7 @@ func file_gantry_runner_v1_runner_proto_rawDescGZIP() []byte {
 }
 
 var file_gantry_runner_v1_runner_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_gantry_runner_v1_runner_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_gantry_runner_v1_runner_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_gantry_runner_v1_runner_proto_goTypes = []any{
 	(RunnerStatus)(0),             // 0: gantry.runner.v1.RunnerStatus
 	(RunTerminalStatus)(0),        // 1: gantry.runner.v1.RunTerminalStatus
@@ -1971,17 +2624,23 @@ var file_gantry_runner_v1_runner_proto_goTypes = []any{
 	(*TerminalOutput)(nil),        // 11: gantry.runner.v1.TerminalOutput
 	(*ArtifactDeclaration)(nil),   // 12: gantry.runner.v1.ArtifactDeclaration
 	(*CheckpointAvailable)(nil),   // 13: gantry.runner.v1.CheckpointAvailable
-	(*RunFinished)(nil),           // 14: gantry.runner.v1.RunFinished
-	(*AssignRun)(nil),             // 15: gantry.runner.v1.AssignRun
-	(*AcknowledgeEvents)(nil),     // 16: gantry.runner.v1.AcknowledgeEvents
-	(*ApprovalResolution)(nil),    // 17: gantry.runner.v1.ApprovalResolution
-	(*CancelRun)(nil),             // 18: gantry.runner.v1.CancelRun
-	(*SuspendRun)(nil),            // 19: gantry.runner.v1.SuspendRun
-	(*ResumeAction)(nil),          // 20: gantry.runner.v1.ResumeAction
-	(*RotateSession)(nil),         // 21: gantry.runner.v1.RotateSession
-	(*DrainRunner)(nil),           // 22: gantry.runner.v1.DrainRunner
-	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),       // 24: google.protobuf.Struct
+	(*ModelUsage)(nil),            // 14: gantry.runner.v1.ModelUsage
+	(*CheckpointMetadata)(nil),    // 15: gantry.runner.v1.CheckpointMetadata
+	(*ModelDelta)(nil),            // 16: gantry.runner.v1.ModelDelta
+	(*ToolLifecycle)(nil),         // 17: gantry.runner.v1.ToolLifecycle
+	(*SecurityEvent)(nil),         // 18: gantry.runner.v1.SecurityEvent
+	(*CompactionEvent)(nil),       // 19: gantry.runner.v1.CompactionEvent
+	(*RunFinished)(nil),           // 20: gantry.runner.v1.RunFinished
+	(*AssignRun)(nil),             // 21: gantry.runner.v1.AssignRun
+	(*AcknowledgeEvents)(nil),     // 22: gantry.runner.v1.AcknowledgeEvents
+	(*ApprovalResolution)(nil),    // 23: gantry.runner.v1.ApprovalResolution
+	(*CancelRun)(nil),             // 24: gantry.runner.v1.CancelRun
+	(*SuspendRun)(nil),            // 25: gantry.runner.v1.SuspendRun
+	(*ResumeAction)(nil),          // 26: gantry.runner.v1.ResumeAction
+	(*RotateSession)(nil),         // 27: gantry.runner.v1.RotateSession
+	(*DrainRunner)(nil),           // 28: gantry.runner.v1.DrainRunner
+	(*timestamppb.Timestamp)(nil), // 29: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),       // 30: google.protobuf.Struct
 }
 var file_gantry_runner_v1_runner_proto_depIdxs = []int32{
 	5,  // 0: gantry.runner.v1.RunnerMessage.register:type_name -> gantry.runner.v1.RegisterRunner
@@ -1991,34 +2650,40 @@ var file_gantry_runner_v1_runner_proto_depIdxs = []int32{
 	11, // 4: gantry.runner.v1.RunnerMessage.terminal_output:type_name -> gantry.runner.v1.TerminalOutput
 	12, // 5: gantry.runner.v1.RunnerMessage.artifact_declaration:type_name -> gantry.runner.v1.ArtifactDeclaration
 	13, // 6: gantry.runner.v1.RunnerMessage.checkpoint_available:type_name -> gantry.runner.v1.CheckpointAvailable
-	14, // 7: gantry.runner.v1.RunnerMessage.run_finished:type_name -> gantry.runner.v1.RunFinished
-	15, // 8: gantry.runner.v1.ControlPlaneMessage.assign_run:type_name -> gantry.runner.v1.AssignRun
-	16, // 9: gantry.runner.v1.ControlPlaneMessage.acknowledge_events:type_name -> gantry.runner.v1.AcknowledgeEvents
-	17, // 10: gantry.runner.v1.ControlPlaneMessage.approval_resolution:type_name -> gantry.runner.v1.ApprovalResolution
-	18, // 11: gantry.runner.v1.ControlPlaneMessage.cancel_run:type_name -> gantry.runner.v1.CancelRun
-	19, // 12: gantry.runner.v1.ControlPlaneMessage.suspend_run:type_name -> gantry.runner.v1.SuspendRun
-	20, // 13: gantry.runner.v1.ControlPlaneMessage.resume_action:type_name -> gantry.runner.v1.ResumeAction
-	21, // 14: gantry.runner.v1.ControlPlaneMessage.rotate_session:type_name -> gantry.runner.v1.RotateSession
-	22, // 15: gantry.runner.v1.ControlPlaneMessage.drain_runner:type_name -> gantry.runner.v1.DrainRunner
-	6,  // 16: gantry.runner.v1.RegisterRunner.resource_limits:type_name -> gantry.runner.v1.ResourceLimits
-	23, // 17: gantry.runner.v1.Heartbeat.timestamp:type_name -> google.protobuf.Timestamp
-	0,  // 18: gantry.runner.v1.Heartbeat.status:type_name -> gantry.runner.v1.RunnerStatus
-	10, // 19: gantry.runner.v1.RunEventBatch.events:type_name -> gantry.runner.v1.RunEvent
-	23, // 20: gantry.runner.v1.RunEvent.occurred_at:type_name -> google.protobuf.Timestamp
-	24, // 21: gantry.runner.v1.RunEvent.payload:type_name -> google.protobuf.Struct
-	23, // 22: gantry.runner.v1.TerminalOutput.timestamp:type_name -> google.protobuf.Timestamp
-	1,  // 23: gantry.runner.v1.RunFinished.status:type_name -> gantry.runner.v1.RunTerminalStatus
-	23, // 24: gantry.runner.v1.AssignRun.assignment_expiry:type_name -> google.protobuf.Timestamp
-	2,  // 25: gantry.runner.v1.ApprovalResolution.decision:type_name -> gantry.runner.v1.ApprovalDecisionType
-	23, // 26: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
-	23, // 27: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
-	3,  // 28: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
-	4,  // 29: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
-	29, // [29:30] is the sub-list for method output_type
-	28, // [28:29] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	20, // 7: gantry.runner.v1.RunnerMessage.run_finished:type_name -> gantry.runner.v1.RunFinished
+	14, // 8: gantry.runner.v1.RunnerMessage.model_usage:type_name -> gantry.runner.v1.ModelUsage
+	15, // 9: gantry.runner.v1.RunnerMessage.checkpoint_metadata:type_name -> gantry.runner.v1.CheckpointMetadata
+	16, // 10: gantry.runner.v1.RunnerMessage.model_delta:type_name -> gantry.runner.v1.ModelDelta
+	17, // 11: gantry.runner.v1.RunnerMessage.tool_lifecycle:type_name -> gantry.runner.v1.ToolLifecycle
+	18, // 12: gantry.runner.v1.RunnerMessage.security_event:type_name -> gantry.runner.v1.SecurityEvent
+	19, // 13: gantry.runner.v1.RunnerMessage.compaction_event:type_name -> gantry.runner.v1.CompactionEvent
+	21, // 14: gantry.runner.v1.ControlPlaneMessage.assign_run:type_name -> gantry.runner.v1.AssignRun
+	22, // 15: gantry.runner.v1.ControlPlaneMessage.acknowledge_events:type_name -> gantry.runner.v1.AcknowledgeEvents
+	23, // 16: gantry.runner.v1.ControlPlaneMessage.approval_resolution:type_name -> gantry.runner.v1.ApprovalResolution
+	24, // 17: gantry.runner.v1.ControlPlaneMessage.cancel_run:type_name -> gantry.runner.v1.CancelRun
+	25, // 18: gantry.runner.v1.ControlPlaneMessage.suspend_run:type_name -> gantry.runner.v1.SuspendRun
+	26, // 19: gantry.runner.v1.ControlPlaneMessage.resume_action:type_name -> gantry.runner.v1.ResumeAction
+	27, // 20: gantry.runner.v1.ControlPlaneMessage.rotate_session:type_name -> gantry.runner.v1.RotateSession
+	28, // 21: gantry.runner.v1.ControlPlaneMessage.drain_runner:type_name -> gantry.runner.v1.DrainRunner
+	6,  // 22: gantry.runner.v1.RegisterRunner.resource_limits:type_name -> gantry.runner.v1.ResourceLimits
+	29, // 23: gantry.runner.v1.Heartbeat.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 24: gantry.runner.v1.Heartbeat.status:type_name -> gantry.runner.v1.RunnerStatus
+	10, // 25: gantry.runner.v1.RunEventBatch.events:type_name -> gantry.runner.v1.RunEvent
+	29, // 26: gantry.runner.v1.RunEvent.occurred_at:type_name -> google.protobuf.Timestamp
+	30, // 27: gantry.runner.v1.RunEvent.payload:type_name -> google.protobuf.Struct
+	29, // 28: gantry.runner.v1.TerminalOutput.timestamp:type_name -> google.protobuf.Timestamp
+	1,  // 29: gantry.runner.v1.RunFinished.status:type_name -> gantry.runner.v1.RunTerminalStatus
+	29, // 30: gantry.runner.v1.AssignRun.assignment_expiry:type_name -> google.protobuf.Timestamp
+	2,  // 31: gantry.runner.v1.ApprovalResolution.decision:type_name -> gantry.runner.v1.ApprovalDecisionType
+	29, // 32: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
+	29, // 33: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
+	3,  // 34: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
+	4,  // 35: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
+	35, // [35:36] is the sub-list for method output_type
+	34, // [34:35] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_gantry_runner_v1_runner_proto_init() }
@@ -2035,6 +2700,12 @@ func file_gantry_runner_v1_runner_proto_init() {
 		(*RunnerMessage_ArtifactDeclaration)(nil),
 		(*RunnerMessage_CheckpointAvailable)(nil),
 		(*RunnerMessage_RunFinished)(nil),
+		(*RunnerMessage_ModelUsage)(nil),
+		(*RunnerMessage_CheckpointMetadata)(nil),
+		(*RunnerMessage_ModelDelta)(nil),
+		(*RunnerMessage_ToolLifecycle)(nil),
+		(*RunnerMessage_SecurityEvent)(nil),
+		(*RunnerMessage_CompactionEvent)(nil),
 	}
 	file_gantry_runner_v1_runner_proto_msgTypes[1].OneofWrappers = []any{
 		(*ControlPlaneMessage_AssignRun)(nil),
@@ -2052,7 +2723,7 @@ func file_gantry_runner_v1_runner_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gantry_runner_v1_runner_proto_rawDesc), len(file_gantry_runner_v1_runner_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   20,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

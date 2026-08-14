@@ -22,9 +22,9 @@ import (
 	"github.com/AirSodaz/gantry/internal/credentials"
 	"github.com/AirSodaz/gantry/internal/database"
 	"github.com/AirSodaz/gantry/internal/development"
+	"github.com/AirSodaz/gantry/internal/developmentapi"
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/objectstore"
-	"github.com/AirSodaz/gantry/internal/phase0dev"
 	"github.com/AirSodaz/gantry/internal/runnersession"
 	"github.com/AirSodaz/gantry/internal/tasks"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,7 +55,7 @@ func main() {
 		logger.Error("database schema initialization failed", "error", err)
 		os.Exit(1)
 	}
-	if cfg.Phase0Dev.Enabled {
+	if cfg.Development.Enabled {
 		if err := development.Seed(context.Background(), databasePool); err != nil {
 			logger.Error("development fixture seed failed", "error", err)
 			os.Exit(1)
@@ -69,7 +69,7 @@ func main() {
 	taskService := tasks.NewService(databasePool, approvalService)
 	authorizer := authorization.NewService(databasePool)
 	agentService := agentlifecycle.NewService(databasePool, authorizer)
-	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while demo run was active")
+	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while a run was active")
 	if err != nil {
 		logger.Error("could not recover interrupted runs", "error", err)
 		os.Exit(1)
@@ -149,8 +149,8 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
-	if cfg.Phase0Dev.Enabled {
-		mux.Handle("/internal/phase0/", phase0dev.NewHandler(cfg.Phase0Dev.Token, developmentLifecycle, scheduler, logger))
+	if cfg.Development.Enabled {
+		mux.Handle("/internal/development/", developmentapi.NewHandler(cfg.Development.Token, developmentLifecycle, scheduler, logger))
 	}
 	if copilotAuth != nil {
 		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, approvalService, scheduler, logger)))

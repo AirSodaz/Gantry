@@ -6,23 +6,23 @@ import {
   RotateCcw,
   Send,
   ShieldCheck,
-  Sparkles,
   TriangleAlert,
 } from 'lucide-react';
-import { Button, Select, type SelectOption, StatusMark } from '@gantry/design-system';
+import { Button, StatusMark } from '@gantry/design-system';
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAdminApi } from '../../api/ApiProvider';
-import type { DemoSpec } from '../../api/types';
+import type { AgentSpec } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 
-const defaultSpec: DemoSpec = { kind: 'gantry.phase0.demo/v1', mode: 'complete' };
-
-const MODE_OPTIONS: SelectOption[] = [
-  { value: 'complete', label: 'Complete (Normal Execution)', icon: <Sparkles size={13} /> },
-  { value: 'await_cancel', label: 'Await Cancel (Testing Run Suspension)', icon: <TriangleAlert size={13} /> },
-  { value: 'await_approval', label: 'Await Approval (Testing Governance)', icon: <ShieldCheck size={13} /> },
-];
+const defaultSpec: AgentSpec = {
+  kind: 'gantry.agent/v1',
+  model: { provider: 'scripted', model: 'deterministic' },
+  workspace_root: '.',
+  limits: { max_turns: 12, max_output_bytes: 131072 },
+  checkpoint: { enabled: false },
+  command_policy: { allow_shell: false },
+};
 
 export function AgentDetailPage() {
   const { agentId = '' } = useParams();
@@ -49,11 +49,11 @@ export function AgentDetailPage() {
     queryFn: () => api.getReview(agentId),
   });
 
-  const [spec, setSpec] = useState<DemoSpec>(defaultSpec);
+  const [spec, setSpec] = useState<AgentSpec>(defaultSpec);
   const [releaseNotes, setReleaseNotes] = useState('');
 
   useEffect(() => {
-    if (draft.data?.spec) setSpec(draft.data.spec as unknown as DemoSpec);
+    if (draft.data?.spec) setSpec(draft.data.spec as unknown as AgentSpec);
   }, [draft.data?.spec]);
 
   const refresh = () =>
@@ -116,7 +116,7 @@ export function AgentDetailPage() {
     );
   }
 
-  const isDirty = spec.mode !== (draft.data.spec as unknown as DemoSpec).mode;
+  const isDirty = JSON.stringify(spec) !== JSON.stringify(draft.data.spec);
   const busy =
     save.isPending ||
     publish.isPending ||
@@ -200,16 +200,6 @@ export function AgentDetailPage() {
             <FileClock size={19} />
           </div>
 
-          <div className="admin-field-select-wrap">
-            <Select
-              label="Lifecycle mode"
-              options={MODE_OPTIONS}
-              value={spec.mode}
-              onChange={(val) => setSpec({ ...spec, mode: val as DemoSpec['mode'] })}
-              disabled={busy}
-            />
-          </div>
-
           <div
             className={`admin-validation ${
               draft.data.validation_status === 'valid'
@@ -240,10 +230,6 @@ export function AgentDetailPage() {
             <div>
               <dt>Manifest kind</dt>
               <dd>{spec.kind}</dd>
-            </div>
-            <div>
-              <dt>Mode</dt>
-              <dd>{spec.mode}</dd>
             </div>
           </dl>
         </section>

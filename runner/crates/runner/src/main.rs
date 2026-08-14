@@ -2,8 +2,14 @@ use anyhow::Result;
 use protocol::gantry::runner::v1::{
     control_plane_message, runner_session_client::RunnerSessionClient,
 };
+mod checkpoint;
+mod context;
+mod diagnostics;
 mod executor;
-use executor::DemoExecutor;
+mod model;
+mod rules;
+mod tools;
+use executor::AgentExecutor;
 use std::env;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -31,7 +37,7 @@ async fn session(address: String, runner_id: String) -> Result<bool> {
     let channel = connect(address).await?;
     let mut client = RunnerSessionClient::new(channel);
     let (sender, receiver) = mpsc::channel(32);
-    let mut executor = DemoExecutor::new(runner_id);
+    let mut executor = AgentExecutor::new(runner_id);
     sender.send(executor.register()).await?;
     let response = client.session(ReceiverStream::new(receiver)).await?;
     let mut inbound = response.into_inner();
@@ -52,13 +58,19 @@ async fn session(address: String, runner_id: String) -> Result<bool> {
                             Some(control_plane_message::Payload::ApprovalResolution(resolution)) => {
                                 for outbound in executor.resolve_approval(&resolution) { sender.send(outbound).await?; }
                             }
+                            Some(control_plane_message::Payload::SuspendRun(suspend)) => {
+                                for outbound in executor.suspend(&suspend) { sender.send(outbound).await?; }
+                            }
+                            Some(control_plane_message::Payload::ResumeAction(resume)) => {
+                                for outbound in executor.resume_action(&resume) { sender.send(outbound).await?; }
+                            }
                             payload => tracing::info!("control-plane message received: {:?}", payload),
                         }
                     }
                     None => return Ok(true),
                 }
             }
-            _ = tick.tick() => { for outbound in executor.tick() { sender.send(outbound).await?; } }
+            _ = tick.tick() => { for outbound in executor.tick().await { sender.send(outbound).await?; } }
             _ = heartbeat.tick() => { sender.send(executor.heartbeat()).await?; }
             _ = tokio::signal::ctrl_c() => return Ok(false),
         }

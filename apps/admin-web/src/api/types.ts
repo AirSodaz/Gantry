@@ -9,4 +9,11 @@ export type CreateAgentInput = Components['schemas']['CreateAgentRequest'];
 export type AgentReview = Components['schemas']['AgentReview'];
 export type DiffEntry = Components['schemas']['DiffEntry'];
 
-export type DemoSpec = { kind: 'gantry.phase0.demo/v1'; mode: 'complete' | 'await_cancel' | 'await_approval' };
+export type AgentSpec = {
+  kind: 'gantry.agent/v1';
+  model: { provider: 'scripted'; model: string };
+  workspace_root: string;
+  limits: { max_turns: number; max_output_bytes: number };
+  checkpoint: { enabled: boolean };
+  command_policy: { allow_shell: boolean };
+};

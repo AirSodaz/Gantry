@@ -29,6 +29,12 @@ message RunnerMessage {
     ArtifactDeclaration artifact_declaration = 15;
     CheckpointAvailable checkpoint_available = 16;
     RunFinished run_finished = 17;
+    ModelUsage model_usage = 18;
+    CheckpointMetadata checkpoint_metadata = 19;
+    ModelDelta model_delta = 20;
+    ToolLifecycle tool_lifecycle = 21;
+    SecurityEvent security_event = 22;
+    CompactionEvent compaction_event = 23;
   }
 }
 
@@ -128,6 +134,58 @@ message CheckpointAvailable {
   string digest = 4;
 }
 
+message ModelUsage {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  uint64 input_tokens = 3;
+  uint64 output_tokens = 4;
+  string provider = 5;
+  string model = 6;
+}
+
+message CheckpointMetadata {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string checkpoint_id = 3;
+  string digest = 4;
+  uint32 schema_version = 5;
+  string local_path_hint = 6;
+}
+
+message ModelDelta {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string stream_id = 3;
+  string text = 4;
+  string thinking_summary = 5;
+  string tool_call_id = 6;
+}
+
+message ToolLifecycle {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string call_id = 3;
+  string tool_name = 4;
+  string phase = 5;
+  bool ok = 6;
+}
+
+message SecurityEvent {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string rule = 3;
+  string action = 4;
+  string confidence = 5;
+}
+
+message CompactionEvent {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string digest = 3;
+  uint32 retained_messages = 4;
+  string warning = 5;
+}
+
 // Run finished notification.
 message RunFinished {
   string run_id = 1;
@@ -164,6 +222,7 @@ message ApprovalResolution {
   string approval_request_id = 2;
   ApprovalDecisionType decision = 3;
   string reason = 4;
+  uint64 lease_epoch = 5;
 }
 
 enum ApprovalDecisionType {

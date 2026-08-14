@@ -15,6 +15,7 @@ pty-handler = { path = "../pty-handler" }
 mcp-client = { path = "../mcp-client" }
 policy-enforcement = { path = "../policy-enforcement" }
 tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
@@ -22,3 +23,14 @@ serde.workspace = true
 serde_json.workspace = true
 tonic.workspace = true
 tokio-stream = { version = "0.1", features = ["sync"] }
+async-trait.workspace = true
+aes-gcm.workspace = true
+bytes.workspace = true
+futures-util.workspace = true
+globset.workspace = true
+ignore.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+sha2.workspace = true
+hex.workspace = true
+uuid.workspace = true

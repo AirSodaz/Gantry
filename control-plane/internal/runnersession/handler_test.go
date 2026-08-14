@@ -39,7 +39,7 @@ func TestRunnerSessionStreamsLifecycleMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForRunner(t, scheduler)
-	run, err := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
+	run, err := scheduler.SubmitRun("run-1", []byte("manifest"), "sha256:manifest")
 	if err != nil {
 		t.Fatal(err)
 	}

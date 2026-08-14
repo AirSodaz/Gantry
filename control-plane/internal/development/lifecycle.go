@@ -16,7 +16,7 @@ type Lifecycle struct{ tasks *tasks.Service }
 func NewLifecycle(taskService *tasks.Service) *Lifecycle { return &Lifecycle{tasks: taskService} }
 
 func (l *Lifecycle) Start(ctx context.Context, mode string) (tasks.TaskRun, error) {
-	agentID := DemoAgentID
+	agentID := CompleteAgentID
 	if mode == "await_cancel" {
 		agentID = AwaitCancelAgentID
 	} else if mode != "complete" {
@@ -39,7 +39,7 @@ func (l *Lifecycle) Cancel(ctx context.Context, runID string) (tasks.CancelResul
 	return l.tasks.Cancel(ctx, demoActor(), run.TaskID, runID)
 }
 func demoActor() identity.Principal {
-	return identity.Principal{ID: DemoPrincipalID, OrganizationID: OrganizationID}
+	return identity.Principal{ID: DevelopmentPrincipalID, OrganizationID: OrganizationID}
 }
 func newID() string {
 	bytes := make([]byte, 16)

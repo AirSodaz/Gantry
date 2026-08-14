@@ -94,11 +94,11 @@ request "$admin_token" GET "/api/admin/v1/agents/${agent_id}/draft"
 revision=$(sed -n 's/.*"revision":\([0-9]*\).*/\1/p' <<<"$response_body")
 [[ $revision == 1 ]]
 
-request "$admin_token" PUT "/api/admin/v1/agents/${agent_id}/draft" '{"spec":{"kind":"gantry.phase0.demo/v1","mode":"complete"}}'
+request "$admin_token" PUT "/api/admin/v1/agents/${agent_id}/draft" '{"spec":{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false},"mode":"complete"}}'
 [[ $response_status == 428 ]]
 
 output=$(mktemp)
-response_status=$(curl -sS -o "$output" -w '%{http_code}' -X PUT "${api_url}/api/admin/v1/agents/${agent_id}/draft" -H "Authorization: Bearer ${admin_token}" -H 'Content-Type: application/json' -H 'If-Match: 1' --data '{"spec":{"kind":"gantry.phase0.demo/v1","mode":"complete"}}')
+response_status=$(curl -sS -o "$output" -w '%{http_code}' -X PUT "${api_url}/api/admin/v1/agents/${agent_id}/draft" -H "Authorization: Bearer ${admin_token}" -H 'Content-Type: application/json' -H 'If-Match: 1' --data '{"spec":{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false},"mode":"complete"}}')
 response_body=$(<"$output")
 rm -f "$output"
 [[ $response_status == 200 ]]

@@ -1,4 +1,4 @@
-package phase0dev
+package developmentapi
 
 import (
 	"context"
@@ -18,7 +18,7 @@ type persistentDispatcher interface {
 	RequestCancel(string, uint64, string) bool
 }
 
-// NewHandler preserves the Phase 0 developer route while sending its
+// NewHandler exposes the development-only lifecycle route while sending its
 // deterministic runs through the durable task and runner path.
 func NewHandler(token string, lifecycle *development.Lifecycle, dispatcher persistentDispatcher, logger *slog.Logger) http.Handler {
 	if logger == nil {
@@ -26,9 +26,9 @@ func NewHandler(token string, lifecycle *development.Lifecycle, dispatcher persi
 	}
 	h := handler{token: token, lifecycle: lifecycle, dispatcher: dispatcher, logger: logger}
 	mux := http.NewServeMux()
-	mux.Handle("POST /internal/phase0/runs", h.authorize(http.HandlerFunc(h.create)))
-	mux.Handle("GET /internal/phase0/runs/{runID}", h.authorize(http.HandlerFunc(h.get)))
-	mux.Handle("POST /internal/phase0/runs/{runID}/cancel", h.authorize(http.HandlerFunc(h.cancel)))
+	mux.Handle("POST /internal/development/runs", h.authorize(http.HandlerFunc(h.create)))
+	mux.Handle("GET /internal/development/runs/{runID}", h.authorize(http.HandlerFunc(h.get)))
+	mux.Handle("POST /internal/development/runs/{runID}/cancel", h.authorize(http.HandlerFunc(h.cancel)))
 	return mux
 }
 
@@ -64,22 +64,22 @@ func (h handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	run, err := h.lifecycle.Start(r.Context(), request.Mode)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid demo mode")
+		writeError(w, http.StatusBadRequest, "invalid development scenario")
 		return
 	}
 	if err := h.dispatcher.Dispatch(r.Context()); err != nil {
-		h.logger.Error("phase 0 durable dispatch failed", "error", err, "run_id", run.Run.ID)
+		h.logger.Error("development durable dispatch failed", "error", err, "run_id", run.Run.ID)
 	}
 	writeJSON(w, http.StatusCreated, runResponse{RunID: run.Run.ID, Status: run.Run.Status, LeaseEpoch: run.Run.LeaseEpoch, AcknowledgedEventSequence: run.Run.AcknowledgedEventSequence})
 }
 func (h handler) get(w http.ResponseWriter, r *http.Request) {
 	run, err := h.lifecycle.Get(r.Context(), r.PathValue("runID"))
 	if errors.Is(err, tasks.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "demo run not found")
+		writeError(w, http.StatusNotFound, "development run not found")
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not read demo run")
+		writeError(w, http.StatusInternalServerError, "could not read development run")
 		return
 	}
 	writeJSON(w, http.StatusOK, runResponse{RunID: run.Run.ID, Status: run.Run.Status, LeaseEpoch: run.Run.LeaseEpoch, AcknowledgedEventSequence: run.Run.AcknowledgedEventSequence})
@@ -87,7 +87,7 @@ func (h handler) get(w http.ResponseWriter, r *http.Request) {
 func (h handler) cancel(w http.ResponseWriter, r *http.Request) {
 	result, err := h.lifecycle.Cancel(r.Context(), r.PathValue("runID"))
 	if errors.Is(err, tasks.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "demo run not found")
+		writeError(w, http.StatusNotFound, "development run not found")
 		return
 	}
 	if err != nil {
@@ -95,7 +95,7 @@ func (h handler) cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if result.Deliver {
-		h.dispatcher.RequestCancel(result.Run.ID, result.Run.LeaseEpoch, "phase 0 developer API request")
+		h.dispatcher.RequestCancel(result.Run.ID, result.Run.LeaseEpoch, "development API request")
 	}
 	writeJSON(w, http.StatusAccepted, runResponse{RunID: result.Run.ID, Status: result.Run.Status, LeaseEpoch: result.Run.LeaseEpoch, AcknowledgedEventSequence: result.Run.AcknowledgedEventSequence})
 }

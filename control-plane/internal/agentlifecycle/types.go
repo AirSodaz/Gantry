@@ -12,7 +12,7 @@ import (
 	"io"
 )
 
-const ManifestKind = "gantry.phase0.demo/v1"
+const ManifestKind = "gantry.agent/v1"
 
 var (
 	ErrNotFound         = errors.New("not found")
@@ -23,8 +23,47 @@ var (
 )
 
 type Manifest struct {
-	Kind string `json:"kind"`
-	Mode string `json:"mode"`
+	Kind          string         `json:"kind"`
+	Model         ModelConfig    `json:"model"`
+	SystemPrompt  string         `json:"system_prompt,omitempty"`
+	UserInput     string         `json:"user_input,omitempty"`
+	Rules         []RuleSnapshot `json:"rules,omitempty"`
+	Tools         []string       `json:"tools,omitempty"`
+	WorkspaceRoot string         `json:"workspace_root"`
+	Limits        ResourceLimits `json:"limits"`
+	Checkpoint    Checkpoint     `json:"checkpoint"`
+	CommandPolicy CommandPolicy  `json:"command_policy"`
+}
+
+type ModelConfig struct {
+	Provider         string `json:"provider"`
+	Model            string `json:"model"`
+	BaseURL          string `json:"base_url,omitempty"`
+	MaxContextTokens int    `json:"max_context_tokens,omitempty"`
+}
+type RuleSnapshot struct {
+	Name          string   `json:"name"`
+	Content       string   `json:"content"`
+	Globs         []string `json:"globs,omitempty"`
+	AlwaysApply   bool     `json:"always_apply,omitempty"`
+	Condition     string   `json:"condition,omitempty"`
+	Scope         []string `json:"scope,omitempty"`
+	InterruptMode string   `json:"interrupt_mode,omitempty"`
+}
+type ResourceLimits struct {
+	MaxTurns         int `json:"max_turns"`
+	MaxOutputBytes   int `json:"max_output_bytes"`
+	ContextSoftLimit int `json:"context_soft_limit,omitempty"`
+	TimeoutSeconds   int `json:"timeout_seconds,omitempty"`
+}
+type Checkpoint struct {
+	Enabled bool   `json:"enabled,omitempty"`
+	Path    string `json:"path,omitempty"`
+}
+type CommandPolicy struct {
+	AllowShell          bool     `json:"allow_shell,omitempty"`
+	InterceptorPatterns []string `json:"interceptor_patterns,omitempty"`
+	DeniedPatterns      []string `json:"denied_patterns,omitempty"`
 }
 
 type Finding struct {
@@ -84,8 +123,20 @@ func ValidateSpec(spec json.RawMessage) (json.RawMessage, []Finding) {
 	if manifest.Kind != ManifestKind {
 		findings = append(findings, Finding{Path: "/kind", Message: "Unsupported manifest kind."})
 	}
-	if manifest.Mode != "complete" && manifest.Mode != "await_cancel" && manifest.Mode != "await_approval" {
-		findings = append(findings, Finding{Path: "/mode", Message: "Mode must be complete, await_cancel, or await_approval."})
+	if manifest.Model.Provider != "scripted" && manifest.Model.Provider != "openai" && manifest.Model.Provider != "openai-compatible" && manifest.Model.Provider != "anthropic" {
+		findings = append(findings, Finding{Path: "/model/provider", Message: "Model provider must be scripted, openai-compatible, or anthropic."})
+	}
+	if manifest.Model.Model == "" {
+		findings = append(findings, Finding{Path: "/model/model", Message: "Model name is required."})
+	}
+	if manifest.WorkspaceRoot == "" {
+		findings = append(findings, Finding{Path: "/workspace_root", Message: "Workspace root is required."})
+	}
+	if manifest.Limits.MaxTurns <= 0 {
+		findings = append(findings, Finding{Path: "/limits/max_turns", Message: "Max turns must be greater than zero."})
+	}
+	if manifest.Limits.MaxOutputBytes <= 0 {
+		findings = append(findings, Finding{Path: "/limits/max_output_bytes", Message: "Max output bytes must be greater than zero."})
 	}
 	if len(findings) != 0 {
 		return nil, findings
@@ -98,7 +149,7 @@ func ValidateSpec(spec json.RawMessage) (json.RawMessage, []Finding) {
 }
 
 func defaultSpec() json.RawMessage {
-	return json.RawMessage(`{"kind":"gantry.phase0.demo/v1","mode":"complete"}`)
+	return json.RawMessage(`{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false}}`)
 }
 
 func newID(prefix string) string {

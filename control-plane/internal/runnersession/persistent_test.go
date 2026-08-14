@@ -35,6 +35,10 @@ func (c *fakeRunCoordinator) RecordEvents(_ context.Context, _ string, _ string,
 	return events[len(events)-1].ClientSequence, nil
 }
 
+func (c *fakeRunCoordinator) RecordControlEvent(context.Context, string, string, uint64, string, string) error {
+	return nil
+}
+
 func (c *fakeRunCoordinator) Finish(_ context.Context, _ string, _ string, _ uint64, terminal, _ string) error {
 	c.finished = terminal
 	return nil
@@ -111,7 +115,7 @@ func persistentAccepted(messageID uint64, runID string, epoch uint64) *runnerv1.
 func persistentEvents(messageID uint64, runID string, epoch uint64, sequences ...uint64) *runnerv1.RunnerMessage {
 	events := make([]*runnerv1.RunEvent, 0, len(sequences))
 	for _, sequence := range sequences {
-		events = append(events, &runnerv1.RunEvent{ClientSequence: sequence, EventType: "demo.progress"})
+		events = append(events, &runnerv1.RunEvent{ClientSequence: sequence, EventType: "model.delta"})
 	}
 	return &runnerv1.RunnerMessage{
 		RunnerId:        "runner_1",

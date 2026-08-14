@@ -27,7 +27,7 @@ type Config struct {
 	DatabaseURL   string
 	ObjectStorage ObjectStorageConfig
 	RunnerTLS     RunnerTLSConfig
-	Phase0Dev     Phase0DevConfig
+	Development   DevelopmentConfig
 	DevCredential DevCredentialConfig
 	CopilotOIDC   CopilotOIDCConfig
 	AdminOIDC     AdminOIDCConfig
@@ -35,7 +35,7 @@ type Config struct {
 
 type RunnerTLSConfig struct{ CertificateFile, KeyFile, ClientCAFile string }
 
-type Phase0DevConfig struct {
+type DevelopmentConfig struct {
 	Enabled bool
 	Token   string
 }
@@ -76,9 +76,9 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("GANTRY_DEVELOPMENT_MODE: %w", err)
 	}
-	phase0Token := value("GANTRY_PHASE0_DEV_API_TOKEN", "")
-	if developmentMode && phase0Token == "" {
-		return Config{}, fmt.Errorf("GANTRY_PHASE0_DEV_API_TOKEN is required when GANTRY_DEVELOPMENT_MODE is true")
+	developmentToken := value("GANTRY_DEVELOPMENT_API_TOKEN", "")
+	if developmentMode && developmentToken == "" {
+		return Config{}, fmt.Errorf("GANTRY_DEVELOPMENT_API_TOKEN is required when GANTRY_DEVELOPMENT_MODE is true")
 	}
 	devCredentialFile := value("GANTRY_DEV_CREDENTIAL_FILE", "/tmp/gantry-dev-credentials.enc")
 	devCredentialKey, err := credentials.DecodeKey(value("GANTRY_DEV_CREDENTIAL_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="))
@@ -109,7 +109,7 @@ func Load() (Config, error) {
 		DatabaseURL:   databaseURL,
 		ObjectStorage: ObjectStorageConfig{Endpoint: value("GANTRY_S3_ENDPOINT", "http://localhost:9000"), AccessKey: value("GANTRY_S3_ACCESS_KEY", "gantry"), SecretKey: value("GANTRY_S3_SECRET_KEY", "gantry_dev_secret"), Region: value("GANTRY_S3_REGION", "us-east-1"), UsePathStyle: pathStyle},
 		RunnerTLS:     RunnerTLSConfig{CertificateFile: value("GANTRY_RUNNER_SERVER_CERT_FILE", ""), KeyFile: value("GANTRY_RUNNER_SERVER_KEY_FILE", ""), ClientCAFile: value("GANTRY_RUNNER_CLIENT_CA_FILE", "")},
-		Phase0Dev:     Phase0DevConfig{Enabled: developmentMode, Token: phase0Token},
+		Development:   DevelopmentConfig{Enabled: developmentMode, Token: developmentToken},
 		DevCredential: DevCredentialConfig{File: devCredentialFile, Key: devCredentialKey},
 		CopilotOIDC:   CopilotOIDCConfig{Issuer: copilotIssuer, Audience: copilotAudience},
 		AdminOIDC:     AdminOIDCConfig{Issuer: adminIssuer, Audience: adminAudience},

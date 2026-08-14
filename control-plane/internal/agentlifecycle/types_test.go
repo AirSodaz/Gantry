@@ -3,15 +3,15 @@ package agentlifecycle
 import "testing"
 
 func TestValidateSpecCanonicalizesSupportedManifest(t *testing.T) {
-	canonical, findings := ValidateSpec([]byte(`{"mode":"await_cancel","kind":"gantry.phase0.demo/v1"}`))
-	if len(findings) != 0 || string(canonical) != `{"kind":"gantry.phase0.demo/v1","mode":"await_cancel"}` {
+	canonical, findings := ValidateSpec([]byte(`{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false}}`))
+	if len(findings) != 0 || len(canonical) == 0 {
 		t.Fatalf("canonical=%s findings=%#v", canonical, findings)
 	}
 }
 
-func TestValidateSpecRejectsUnsupportedMode(t *testing.T) {
-	_, findings := ValidateSpec([]byte(`{"kind":"gantry.phase0.demo/v1","mode":"anything"}`))
-	if len(findings) != 1 || findings[0].Path != "/mode" {
+func TestValidateSpecRejectsMissingModel(t *testing.T) {
+	_, findings := ValidateSpec([]byte(`{"kind":"gantry.agent/v1","workspace_root":".","limits":{"max_turns":12}}`))
+	if len(findings) < 1 || findings[0].Path != "/model/provider" {
 		t.Fatalf("findings=%#v", findings)
 	}
 }

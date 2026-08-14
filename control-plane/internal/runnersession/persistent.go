@@ -9,6 +9,7 @@ import (
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
 	"github.com/AirSodaz/gantry/internal/tasks"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // PersistentScheduler keeps only live streams in memory. Task and run state is
@@ -27,6 +28,7 @@ type runCoordinator interface {
 	ClaimNext(context.Context, string) (tasks.Assignment, bool, error)
 	Accept(context.Context, string, string, uint64, string) error
 	RecordEvents(context.Context, string, string, uint64, []tasks.RunnerEvent) (uint64, error)
+	RecordControlEvent(context.Context, string, string, uint64, string, string) error
 	Finish(context.Context, string, string, uint64, string, string) error
 	FailActive(context.Context, string, string, string) error
 }
@@ -37,6 +39,12 @@ type persistentRunner struct {
 	activeRunID   string
 	activeEpoch   uint64
 	outbound      chan *runnerv1.ControlPlaneMessage
+}
+
+type semanticEvent interface {
+	ProtoReflect() protoreflect.Message
+	GetRunId() string
+	GetLeaseEpoch() uint64
 }
 
 func NewPersistentScheduler(logger *slog.Logger, taskService runCoordinator) *PersistentScheduler {
@@ -132,6 +140,18 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 		}
 		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: batch.GetRunId(), Payload: &runnerv1.ControlPlaneMessage_AcknowledgeEvents{AcknowledgeEvents: &runnerv1.AcknowledgeEvents{RunId: batch.GetRunId(), LastAcknowledgedSequence: sequence}}})
 		return nil
+	case message.GetModelUsage() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "model.usage", message.GetModelUsage())
+	case message.GetCheckpointMetadata() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "run.checkpoint_created", message.GetCheckpointMetadata())
+	case message.GetModelDelta() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "model.delta", message.GetModelDelta())
+	case message.GetToolLifecycle() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "tool.lifecycle", message.GetToolLifecycle())
+	case message.GetSecurityEvent() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "security.untrusted_context", message.GetSecurityEvent())
+	case message.GetCompactionEvent() != nil:
+		return s.recordSemanticEventLocked(runnerID, runner, "context.compacted", message.GetCompactionEvent())
 	case message.GetRunFinished() != nil:
 		finished := message.GetRunFinished()
 		if runner.activeRunID != finished.GetRunId() || runner.activeEpoch != finished.GetLeaseEpoch() {
@@ -149,6 +169,17 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 	default:
 		return fmt.Errorf("unsupported runner message payload")
 	}
+}
+
+func (s *PersistentScheduler) recordSemanticEventLocked(runnerID string, runner *persistentRunner, eventType string, message semanticEvent) error {
+	if runner.activeRunID == "" || runner.activeEpoch == 0 || message.GetRunId() != runner.activeRunID || message.GetLeaseEpoch() != runner.activeEpoch {
+		return fmt.Errorf("semantic event has no active run")
+	}
+	payload, err := protojson.Marshal(message)
+	if err != nil {
+		return err
+	}
+	return s.tasks.RecordControlEvent(context.Background(), runnerID, runner.activeRunID, runner.activeEpoch, eventType, string(payload))
 }
 
 func (s *PersistentScheduler) RequestCancel(runID string, epoch uint64, reason string) bool {
@@ -175,7 +206,7 @@ func (s *PersistentScheduler) ResolveApproval(runID, approvalID, decision, reaso
 		if decision == "approve" {
 			controlDecision = runnerv1.ApprovalDecisionType_APPROVAL_DECISION_TYPE_APPROVED
 		}
-		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_ApprovalResolution{ApprovalResolution: &runnerv1.ApprovalResolution{RunId: runID, ApprovalRequestId: approvalID, Decision: controlDecision, Reason: reason}}})
+		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_ApprovalResolution{ApprovalResolution: &runnerv1.ApprovalResolution{RunId: runID, LeaseEpoch: runner.activeEpoch, ApprovalRequestId: approvalID, Decision: controlDecision, Reason: reason}}})
 		return true
 	}
 	return false

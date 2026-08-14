@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
@@ -100,6 +101,9 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		return 0, ErrInvalidInput
 	}
 	for _, event := range events {
+		if err := validateRunnerEvent(event); err != nil {
+			return 0, err
+		}
 		if event.ClientSequence != current+1 {
 			return 0, ErrInvalidInput
 		}
@@ -142,6 +146,57 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		return 0, err
 	}
 	return current, nil
+}
+
+func validateRunnerEvent(event RunnerEvent) error {
+	if event.ClientSequence == 0 || len(event.Type) == 0 || len(event.Type) > 128 {
+		return ErrInvalidInput
+	}
+	if !strings.HasPrefix(event.Type, "agent.") &&
+		!strings.HasPrefix(event.Type, "action.") &&
+		!strings.HasPrefix(event.Type, "checkpoint.") &&
+		!strings.HasPrefix(event.Type, "context.") &&
+		!strings.HasPrefix(event.Type, "model.") &&
+		!strings.HasPrefix(event.Type, "run.") &&
+		!strings.HasPrefix(event.Type, "security.") &&
+		!strings.HasPrefix(event.Type, "tool.") {
+		return ErrInvalidInput
+	}
+	if event.Payload == "" {
+		return nil
+	}
+	var payload any
+	if err := json.Unmarshal([]byte(event.Payload), &payload); err != nil {
+		return ErrInvalidInput
+	}
+	return nil
+}
+
+// RecordControlEvent persists a control-plane-owned transition without
+// consuming the runner's client event sequence.
+func (s *Service) RecordControlEvent(ctx context.Context, runnerID, runID string, epoch uint64, eventType, payload string) error {
+	if err := validateRunnerEvent(RunnerEvent{ClientSequence: 1, Type: eventType, Payload: payload}); err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var status string
+	if err := tx.QueryRow(ctx, `SELECT status FROM gantry.runs WHERE id=$1 AND runner_id=$2 AND lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if status != "accepted" && status != "canceling" {
+		return ErrInvalidInput
+	}
+	if err := appendEventPayload(ctx, tx, runID, eventType, payload); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint64, terminal, reason string) error {

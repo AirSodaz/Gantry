@@ -5,8 +5,8 @@ language: 'other'
 tags: ['infrastructure']
 
 tasks:
-  phase0-smoke:
-    command: 'bash phase0-smoke.sh'
+  runner-smoke:
+    command: 'bash runner-smoke.sh'
     type: 'run'
     options:
       runInCI: false

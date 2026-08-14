@@ -13,7 +13,7 @@ func TestSchedulerCompletesRunAndAcknowledgesContiguousEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
+	run, err := scheduler.SubmitRun("run-1", []byte("manifest"), "sha256:manifest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestSchedulerCompletesRunAndAcknowledgesContiguousEvents(t *testing.T) {
 	if completed.Status != RunStatusCompleted {
 		t.Fatalf("status = %s", completed.Status)
 	}
-	if _, err := scheduler.SubmitDemoRun("run-2", []byte("demo"), "sha256:next"); err != nil {
+	if _, err := scheduler.SubmitRun("run-2", []byte("manifest"), "sha256:next"); err != nil {
 		t.Fatalf("runner was not released: %v", err)
 	}
 }
@@ -46,7 +46,7 @@ func TestSchedulerCompletesRunAndAcknowledgesContiguousEvents(t *testing.T) {
 func TestSchedulerCancelsRunAndFailsRunOnDisconnect(t *testing.T) {
 	scheduler := NewScheduler(slog.Default())
 	outbound, _ := scheduler.Register("runner-1", "session-1", 1)
-	run, _ := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
+	run, _ := scheduler.SubmitRun("run-1", []byte("manifest"), "sha256:manifest")
 	<-outbound
 	if err := scheduler.Handle("runner-1", "session-1", accepted("runner-1", "session-1", 2, run)); err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestSchedulerCancelsRunAndFailsRunOnDisconnect(t *testing.T) {
 	if canceled.Status != RunStatusCanceled {
 		t.Fatalf("status = %s", canceled.Status)
 	}
-	run, _ = scheduler.SubmitDemoRun("run-2", []byte("demo"), "sha256:next")
+	run, _ = scheduler.SubmitRun("run-2", []byte("manifest"), "sha256:next")
 	<-outbound
 	scheduler.Disconnect("runner-1", "session-1")
 	failed, _ := scheduler.Run(run.ID)
@@ -77,7 +77,7 @@ func TestSchedulerCancelsRunAndFailsRunOnDisconnect(t *testing.T) {
 func TestSchedulerRejectsInvalidLeaseAndEventSequences(t *testing.T) {
 	scheduler := NewScheduler(slog.Default())
 	outbound, _ := scheduler.Register("runner-1", "session-1", 1)
-	run, _ := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
+	run, _ := scheduler.SubmitRun("run-1", []byte("manifest"), "sha256:manifest")
 	<-outbound
 	if err := scheduler.Handle("runner-1", "session-1", accepted("runner-1", "session-1", 1, run)); err == nil {
 		t.Fatal("accepted duplicate message ID")
@@ -101,7 +101,7 @@ func accepted(runnerID, sessionID string, messageID uint64, run *Run) *runnerv1.
 func events(runnerID, sessionID string, messageID uint64, run *Run, sequences ...uint64) *runnerv1.RunnerMessage {
 	events := make([]*runnerv1.RunEvent, 0, len(sequences))
 	for _, sequence := range sequences {
-		events = append(events, &runnerv1.RunEvent{ClientSequence: sequence, EventType: "demo.progress"})
+		events = append(events, &runnerv1.RunEvent{ClientSequence: sequence, EventType: "model.delta"})
 	}
 	return &runnerv1.RunnerMessage{RunnerId: runnerID, SessionId: sessionID, MessageId: messageID, ProtocolVersion: protocolVersion, Payload: &runnerv1.RunnerMessage_EventBatch{EventBatch: &runnerv1.RunEventBatch{RunId: run.ID, LeaseEpoch: run.LeaseEpoch, Events: events}}}
 }

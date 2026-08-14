@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-compose=(docker compose -p gantry-phase0-smoke -f docker-compose.yml)
-api_url="${GANTRY_PHASE0_SMOKE_API_URL:-http://localhost:8080}"
-export GANTRY_PHASE0_DEV_API_TOKEN="${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}"
+compose=(docker compose -p gantry-runner-smoke -f docker-compose.yml)
+api_url="${GANTRY_RUNNER_SMOKE_API_URL:-http://localhost:8080}"
+export GANTRY_DEVELOPMENT_API_TOKEN="${GANTRY_DEVELOPMENT_API_TOKEN:-gantry_development_token}"
 response_body=""
 response_status=""
 
@@ -23,7 +23,7 @@ request() {
   local payload=${3:-}
   local output
   output=$(mktemp)
-  local args=(-sS -o "$output" -w '%{http_code}' -X "$method" -H "Authorization: Bearer ${GANTRY_PHASE0_DEV_API_TOKEN}")
+  local args=(-sS -o "$output" -w '%{http_code}' -X "$method" -H "Authorization: Bearer ${GANTRY_DEVELOPMENT_API_TOKEN}")
   if [[ -n $payload ]]; then
     args+=(-H 'Content-Type: application/json' --data "$payload")
   fi
@@ -41,7 +41,7 @@ wait_for_status() {
   local run_id=$1
   local expected=$2
   for _ in $(seq 1 60); do
-    request GET "/internal/phase0/runs/${run_id}"
+    request GET "/internal/development/runs/${run_id}"
     if [[ $response_status == 200 && $(json_value status) == "$expected" ]]; then
       return 0
     fi
@@ -54,7 +54,7 @@ wait_for_status() {
 start_run() {
   local mode=$1
   for _ in $(seq 1 60); do
-    request POST /internal/phase0/runs "{\"mode\":\"${mode}\"}"
+    request POST /internal/development/runs "{\"mode\":\"${mode}\"}"
     if [[ $response_status == 201 ]]; then
       json_value run_id
       return 0
@@ -76,7 +76,7 @@ wait_for_status "$complete_run" completed
 
 cancel_run=$(start_run await_cancel)
 wait_for_status "$cancel_run" running
-request POST "/internal/phase0/runs/${cancel_run}/cancel"
+request POST "/internal/development/runs/${cancel_run}/cancel"
 [[ $response_status == 202 ]]
 wait_for_status "$cancel_run" canceled
 
@@ -85,4 +85,4 @@ wait_for_status "$lost_runner_run" running
 "${compose[@]}" kill runner
 wait_for_status "$lost_runner_run" failed
 
-echo "Phase 0 Compose lifecycle smoke test passed."
+echo "Runner Compose lifecycle smoke test passed."

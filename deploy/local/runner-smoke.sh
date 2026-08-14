@@ -20,7 +20,7 @@ if [[ -f ${environment_file} ]]; then
 fi
 
 export GANTRY_DEVELOPMENT_MODE=${GANTRY_DEVELOPMENT_MODE:-true}
-export GANTRY_PHASE0_DEV_API_TOKEN=${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
+export GANTRY_DEVELOPMENT_API_TOKEN=${GANTRY_DEVELOPMENT_API_TOKEN:-gantry_development_token}
 export GANTRY_CONTROL_PLANE_ADDR=${GANTRY_CONTROL_PLANE_ADDR:-"http://127.0.0.1:${GANTRY_GRPC_PORT:-8081}"}
 export GANTRY_RUNNER_ID=${GANTRY_RUNNER_ID:-native-runner-01}
 
@@ -47,7 +47,7 @@ trap cleanup EXIT
 
 require_command() {
   if ! command -v "$1" >/dev/null; then
-    echo "${1} is required for the native Phase 0 smoke test" >&2
+    echo "${1} is required for the runner smoke test" >&2
     return 1
   fi
 }
@@ -57,7 +57,7 @@ request() {
   output=$(mktemp)
   local args=(-sS -o "${output}" -w '%{http_code}' -X "${method}")
   if [[ ${path} == /internal/* ]]; then
-    args+=(-H "Authorization: Bearer ${GANTRY_PHASE0_DEV_API_TOKEN}")
+    args+=(-H "Authorization: Bearer ${GANTRY_DEVELOPMENT_API_TOKEN}")
   fi
   if [[ -n ${payload} ]]; then
     args+=(-H 'Content-Type: application/json' --data "${payload}")
@@ -76,7 +76,7 @@ json_value() {
 wait_for_status() {
   local run_id=$1 expected=$2
   for _ in $(seq 1 80); do
-    request GET "/internal/phase0/runs/${run_id}"
+    request GET "/internal/development/runs/${run_id}"
     if [[ ${response_status} == 200 && $(json_value status) == "${expected}" ]]; then
       return 0
     fi
@@ -101,7 +101,7 @@ wait_for_ready() {
 start_run() {
   local mode=$1
   for _ in $(seq 1 80); do
-    request POST /internal/phase0/runs "{\"mode\":\"${mode}\"}"
+    request POST /internal/development/runs "{\"mode\":\"${mode}\"}"
     if [[ ${response_status} == 201 ]]; then
       json_value run_id
       return 0
@@ -121,11 +121,11 @@ require_command go
 require_command cargo
 
 if [[ ${GANTRY_DEVELOPMENT_MODE} != true ]]; then
-  echo "GANTRY_DEVELOPMENT_MODE must be true for the native Phase 0 smoke test" >&2
+  echo "GANTRY_DEVELOPMENT_MODE must be true for the runner smoke test" >&2
   exit 1
 fi
-if [[ -z ${GANTRY_PHASE0_DEV_API_TOKEN} ]]; then
-  echo "GANTRY_PHASE0_DEV_API_TOKEN must be set for the native Phase 0 smoke test" >&2
+if [[ -z ${GANTRY_DEVELOPMENT_API_TOKEN} ]]; then
+  echo "GANTRY_DEVELOPMENT_API_TOKEN must be set for the runner smoke test" >&2
   exit 1
 fi
 
@@ -158,7 +158,7 @@ wait_for_status "${complete_run}" completed
 
 cancel_run=$(start_run await_cancel)
 wait_for_status "${cancel_run}" running
-request POST "/internal/phase0/runs/${cancel_run}/cancel"
+request POST "/internal/development/runs/${cancel_run}/cancel"
 [[ ${response_status} == 202 ]]
 wait_for_status "${cancel_run}" canceled
 
@@ -168,4 +168,4 @@ stop_process "${runner_pid}"
 runner_pid=""
 wait_for_status "${lost_runner_run}" failed
 
-echo "Native Phase 0 lifecycle smoke test passed."
+echo "Runner development lifecycle smoke test passed."
