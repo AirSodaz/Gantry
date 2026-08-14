@@ -1,24 +1,152 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { Bot, LogOut, PanelLeft, Settings2 } from 'lucide-react';
-import { IconButton } from '@gantry/design-system';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Bot, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
+import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
+
+const ADMIN_SIDEBAR_STORAGE_KEY = 'gantry_admin_sidebar_collapsed';
 
 export function AppShell() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const name = user?.profile.preferred_username ?? user?.profile.name ?? 'Administrator';
+
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(ADMIN_SIDEBAR_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ADMIN_SIDEBAR_STORAGE_KEY, String(isCollapsed));
+    } catch {
+      // Ignore storage errors in restricted contexts
+    }
+  }, [isCollapsed]);
+
+  const isNewAgentActive = location.pathname === '/new';
+
   return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-brand"><span className="admin-brand-mark"><Bot size={18} /></span><span>Gantry Admin</span></div>
+    <div className={`admin-shell ${isCollapsed ? 'admin-shell-collapsed' : ''}`}>
+      <aside className={`admin-sidebar ${isCollapsed ? 'admin-sidebar-collapsed' : ''}`}>
+        <div className="admin-sidebar-header">
+          <div className="admin-brand">
+            <span className="admin-brand-mark">
+              <Bot size={18} strokeWidth={2.2} />
+            </span>
+            {!isCollapsed ? <span className="admin-brand-title">Gantry Admin</span> : null}
+          </div>
+          <IconButton
+            label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            className="admin-sidebar-toggle-btn"
+          >
+            {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </IconButton>
+        </div>
+
+        {/* ChatGPT "+ New agent" Action Button */}
+        <div className="admin-sidebar-action-wrap">
+          {!isCollapsed ? (
+            <button
+              type="button"
+              onClick={() => navigate('/new')}
+              className={`admin-new-agent-btn ${
+                isNewAgentActive ? 'admin-new-agent-btn-active' : ''
+              }`}
+            >
+              <div className="admin-new-agent-icon">
+                <Plus size={15} strokeWidth={2.5} />
+              </div>
+              <span>New agent</span>
+            </button>
+          ) : (
+            <IconButton
+              label="New agent"
+              onClick={() => navigate('/new')}
+              className={`admin-new-agent-btn-collapsed ${
+                isNewAgentActive ? 'admin-new-agent-collapsed-active' : ''
+              }`}
+            >
+              <Plus size={18} strokeWidth={2.5} />
+            </IconButton>
+          )}
+        </div>
+
         <nav className="admin-nav" aria-label="Admin navigation">
-          <span className="admin-nav-label">Agent management</span>
-          <NavLink end to="/" className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''}`}><PanelLeft size={17} /><span>Agents</span></NavLink>
-          <span className="admin-nav-label admin-nav-label-spaced">Later</span>
-          <span className="admin-nav-link admin-nav-link-disabled" aria-disabled="true" title="Not available in this release"><Settings2 size={17} /><span>Operations</span></span>
+          {!isCollapsed ? (
+            <span className="admin-nav-label">Agent management</span>
+          ) : (
+            <div className="admin-nav-divider" />
+          )}
+
+          <NavLink
+            end
+            to="/"
+            title={isCollapsed ? 'Agents' : undefined}
+            className={({ isActive }) =>
+              `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${
+                isCollapsed ? 'admin-nav-link-collapsed' : ''
+              }`
+            }
+          >
+            <PanelLeft size={17} className="admin-nav-icon" />
+            {!isCollapsed ? <span>Agents</span> : null}
+          </NavLink>
+
+          {!isCollapsed ? (
+            <span className="admin-nav-label admin-nav-label-spaced">Later</span>
+          ) : (
+            <div className="admin-nav-divider admin-nav-divider-spaced" />
+          )}
+
+          <span
+            className={`admin-nav-link admin-nav-link-disabled ${
+              isCollapsed ? 'admin-nav-link-collapsed' : ''
+            }`}
+            aria-disabled="true"
+            title="Not available in this release"
+          >
+            <Settings2 size={17} className="admin-nav-icon" />
+            {!isCollapsed ? <span>Operations</span> : null}
+          </span>
         </nav>
-        <div className="admin-profile"><span className="admin-avatar">{name.slice(0, 1).toUpperCase()}</span><span>{name}</span><IconButton label="Sign out" onClick={() => void signOut()}><LogOut size={16} /></IconButton></div>
+
+        {/* Sidebar Footer with Theme Toggle and Admin Profile */}
+        <div className="admin-sidebar-footer">
+          {!isCollapsed ? (
+            <div className="admin-theme-section">
+              <ThemeToggle variant="segmented" size="sm" />
+            </div>
+          ) : (
+            <div className="admin-theme-section-collapsed">
+              <ThemeToggle variant="icon" size="sm" />
+            </div>
+          )}
+
+          <div className="admin-profile" title={name}>
+            <div className="admin-profile-info">
+              <span className="admin-avatar">{name.slice(0, 1).toUpperCase()}</span>
+              {!isCollapsed ? <span className="admin-profile-name">{name}</span> : null}
+            </div>
+            <IconButton
+              label="Sign out"
+              onClick={() => void signOut()}
+              className="admin-signout-btn"
+            >
+              <LogOut size={16} />
+            </IconButton>
+          </div>
+        </div>
       </aside>
-      <main className="admin-main"><Outlet /></main>
+
+      <main className="admin-main">
+        <Outlet />
+      </main>
     </div>
   );
 }

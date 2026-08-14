@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { Bot, LogIn } from 'lucide-react';
 import { Button } from '@gantry/design-system';
 import { LoadingState } from './components/AsyncState';
 import { useAuth } from './auth/AuthProvider';
@@ -31,11 +32,24 @@ function SignInScreen({ error, onSignIn }: { error: Error | null; onSignIn: () =
   return (
     <main className="sign-in-screen">
       <section className="sign-in-panel">
-        <div className="brand-lockup"><div className="brand-mark" aria-hidden="true">G</div><span>Gantry Copilot</span></div>
+        <div className="brand-lockup">
+          <div className="brand-mark" aria-hidden="true">
+            <Bot size={22} strokeWidth={2.2} />
+          </div>
+          <span style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em' }}>
+            Gantry Copilot
+          </span>
+        </div>
         <h1>Your work, in motion.</h1>
-        <p>Sign in to discover approved capabilities and follow your task runs.</p>
-        {error ? <p className="inline-error" role="alert">{error.message}</p> : null}
-        <Button onClick={onSignIn}>Sign in to continue</Button>
+        <p>Sign in to discover approved capabilities and follow your task runs in real time.</p>
+        {error ? (
+          <p className="inline-error" role="alert" style={{ marginBottom: '20px' }}>
+            {error.message}
+          </p>
+        ) : null}
+        <Button size="lg" fullWidth onClick={onSignIn}>
+          <LogIn size={17} /> Sign in to continue
+        </Button>
       </section>
     </main>
   );

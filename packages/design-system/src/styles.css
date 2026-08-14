@@ -1,85 +1,788 @@
-:root {
-  --ds-bg: #f7f8fa;
+/* ==========================================================================
+   @gantry/design-system — ChatGPT-Style Theme Tokens & Core Components
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Light Theme Tokens (Default :root & [data-theme="light"])
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme="light"],
+.light {
+  /* Surfaces & Backgrounds */
+  --ds-bg: #f9f9fb;
+  --ds-sidebar-bg: #f7f7f8;
   --ds-surface: #ffffff;
-  --ds-surface-muted: #f0f2f5;
-  --ds-text: #17202a;
-  --ds-text-muted: #66717d;
-  --ds-border: #dce1e7;
-  --ds-border-strong: #c7cfd8;
-  --ds-accent: #0b8273;
-  --ds-accent-dark: #096657;
-  --ds-danger: #bd4a45;
-  --ds-warning: #a76b16;
-  --ds-success: #14764c;
-  --ds-radius: 6px;
-  --ds-shadow: 0 12px 28px rgb(22 32 42 / 8%);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ds-surface-elevated: #f4f4f7;
+  --ds-surface-muted: #ececf1;
+  --ds-surface-active: #e3e3e8;
+  --ds-surface-overlay: rgba(255, 255, 255, 0.85);
+
+  /* Micro-Borders & Glows */
+  --ds-border-subtle: rgba(0, 0, 0, 0.04);
+  --ds-border: rgba(0, 0, 0, 0.09);
+  --ds-border-strong: rgba(0, 0, 0, 0.16);
+  --ds-border-glow: rgba(0, 0, 0, 0.24);
+  --ds-border-focus: rgba(0, 0, 0, 0.38);
+
+  /* Typography */
+  --ds-text: #0d0d0d;
+  --ds-text-muted: #5d5d5d;
+  --ds-text-dim: #8e8ea0;
+
+  /* Primary Button & Brand Accents (ChatGPT Solid Pill) */
+  --ds-primary: #0d0d0d;
+  --ds-primary-text: #ffffff;
+  --ds-primary-hover: #262626;
+  --ds-primary-active: #404040;
+
+  --ds-accent: #0d0d0d;
+  --ds-accent-dark: #343541;
+  --ds-accent-hover: #202123;
+  --ds-brand-cyan: #0284c7;
+  --ds-brand-indigo: #6366f1;
+  --ds-brand-glow: rgba(2, 132, 199, 0.12);
+
+  /* Status Colors */
+  --ds-status-running: #d97706;
+  --ds-status-completed: #0284c7;
+  --ds-status-failed: #e11d48;
+  --ds-status-queued: #6366f1;
+  --ds-status-canceled: #71717a;
+  --ds-status-published: #0284c7;
+  --ds-status-draft: #6366f1;
+  --ds-status-write: #d97706;
+  --ds-status-high: #e11d48;
+  --ds-status-medium: #d97706;
+  --ds-status-low: #0284c7;
+  --ds-danger: #e11d48;
+  --ds-warning: #d97706;
+  --ds-success: #0284c7;
+
+  /* Geometry & Shadows */
+  --ds-radius-sm: 8px;
+  --ds-radius: 12px;
+  --ds-radius-lg: 16px;
+  --ds-radius-xl: 24px;
+  --ds-radius-pill: 9999px;
+
+  --ds-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --ds-shadow: 0 4px 20px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --ds-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --ds-shadow-glow: 0 0 24px rgba(0, 0, 0, 0.05);
+
+  /* Timing & Curves */
+  --ds-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ds-duration: 180ms;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
 }
 
+/* --------------------------------------------------------------------------
+   2. Dark Theme Tokens ([data-theme="dark"] & .dark)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"],
+.dark {
+  /* Surfaces & Backgrounds */
+  --ds-bg: #171717;
+  --ds-sidebar-bg: #171717;
+  --ds-surface: #212121;
+  --ds-surface-elevated: #2f2f2f;
+  --ds-surface-muted: #383838;
+  --ds-surface-active: #424242;
+  --ds-surface-overlay: rgba(33, 33, 33, 0.85);
+
+  /* Micro-Borders & Glows */
+  --ds-border-subtle: rgba(255, 255, 255, 0.06);
+  --ds-border: rgba(255, 255, 255, 0.1);
+  --ds-border-strong: rgba(255, 255, 255, 0.18);
+  --ds-border-glow: rgba(255, 255, 255, 0.3);
+  --ds-border-focus: rgba(255, 255, 255, 0.45);
+
+  /* Typography */
+  --ds-text: #ececec;
+  --ds-text-muted: #b4b4b4;
+  --ds-text-dim: #737373;
+
+  /* Primary Button & Brand Accents (ChatGPT Solid Pill) */
+  --ds-primary: #ffffff;
+  --ds-primary-text: #0d0d0d;
+  --ds-primary-hover: #f0f0f0;
+  --ds-primary-active: #dcdcdc;
+
+  --ds-accent: #ffffff;
+  --ds-accent-dark: #cbd5e1;
+  --ds-accent-hover: #e2e8f0;
+  --ds-brand-cyan: #38bdf8;
+  --ds-brand-indigo: #818cf8;
+  --ds-brand-glow: rgba(56, 189, 248, 0.15);
+
+  /* Status Colors */
+  --ds-status-running: #f59e0b;
+  --ds-status-completed: #38bdf8;
+  --ds-status-failed: #f43f5e;
+  --ds-status-queued: #818cf8;
+  --ds-status-canceled: #71717a;
+  --ds-status-published: #38bdf8;
+  --ds-status-draft: #818cf8;
+  --ds-status-write: #f59e0b;
+  --ds-status-high: #f43f5e;
+  --ds-status-medium: #f59e0b;
+  --ds-status-low: #38bdf8;
+  --ds-danger: #f43f5e;
+  --ds-warning: #f59e0b;
+  --ds-success: #38bdf8;
+
+  /* Geometry & Shadows */
+  --ds-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --ds-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --ds-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --ds-shadow-glow: 0 0 24px rgba(255, 255, 255, 0.08);
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   3. Animations
+   -------------------------------------------------------------------------- */
+@keyframes ds-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ds-dropdown-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes ds-pulse-dot {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes ds-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ds-spin {
+  animation: ds-spin 800ms linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   4. Base Form Elements & Resets
+   -------------------------------------------------------------------------- */
 .ds-button,
 .ds-icon-button,
-.ds-input {
-  font: inherit;
+.ds-input,
+.ds-select {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background-color var(--ds-duration) var(--ds-ease),
+    border-color var(--ds-duration) var(--ds-ease),
+    color var(--ds-duration) var(--ds-ease),
+    box-shadow var(--ds-duration) var(--ds-ease),
+    transform var(--ds-duration) var(--ds-ease);
 }
 
+/* --------------------------------------------------------------------------
+   5. Buttons (ChatGPT Rounded Pills)
+   -------------------------------------------------------------------------- */
 .ds-button {
-  min-height: 40px;
-  border: 1px solid transparent;
-  border-radius: var(--ds-radius);
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--ds-radius-pill);
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  border: 1px solid transparent;
+  user-select: none;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.ds-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .ds-button:disabled,
 .ds-icon-button:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
-  opacity: 0.5;
+  transform: none !important;
 }
 
-.ds-button-primary { background: var(--ds-accent); color: white; }
-.ds-button-primary:hover:not(:disabled) { background: var(--ds-accent-dark); }
-.ds-button-secondary { background: var(--ds-surface); border-color: var(--ds-border-strong); color: var(--ds-text); }
-.ds-button-secondary:hover:not(:disabled) { background: var(--ds-surface-muted); }
-.ds-button-quiet { background: transparent; color: var(--ds-text-muted); }
-.ds-button-quiet:hover:not(:disabled) { background: var(--ds-surface-muted); color: var(--ds-text); }
-.ds-button-danger { background: transparent; border-color: #e4b5b2; color: var(--ds-danger); }
-.ds-button-danger:hover:not(:disabled) { background: #fff3f2; }
+/* Primary: Solid High-Contrast Pill (Black on Light, White on Dark) */
+.ds-button-primary {
+  background: var(--ds-primary);
+  color: var(--ds-primary-text);
+  border-color: var(--ds-primary);
+}
 
+.ds-button-primary:hover:not(:disabled) {
+  background: var(--ds-primary-hover);
+  border-color: var(--ds-primary-hover);
+}
+
+/* Secondary: Subtle Surface Button */
+.ds-button-secondary {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+  border-color: var(--ds-border);
+}
+
+.ds-button-secondary:hover:not(:disabled) {
+  background: var(--ds-surface-active);
+  border-color: var(--ds-border-strong);
+}
+
+/* Quiet / Ghost Button */
+.ds-button-quiet {
+  background: transparent;
+  color: var(--ds-text-muted);
+  border-color: transparent;
+}
+
+.ds-button-quiet:hover:not(:disabled) {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+}
+
+/* Danger Button */
+.ds-button-danger {
+  background: transparent;
+  color: var(--ds-danger);
+  border-color: rgba(225, 29, 72, 0.25);
+}
+
+.ds-button-danger:hover:not(:disabled) {
+  background: rgba(225, 29, 72, 0.1);
+  border-color: var(--ds-danger);
+}
+
+/* Accent Button */
+.ds-button-accent {
+  background: var(--ds-brand-cyan);
+  color: #ffffff;
+  border-color: var(--ds-brand-cyan);
+}
+
+.ds-button-accent:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* Button Sizes */
+.ds-button-sm {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.ds-button-lg {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+
+.ds-button-full {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   6. Icon Buttons
+   -------------------------------------------------------------------------- */
 .ds-icon-button {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
-  border: 1px solid transparent;
-  border-radius: var(--ds-radius);
+  padding: 0;
+  border-radius: var(--ds-radius-pill);
   background: transparent;
+  border: 1px solid transparent;
   color: var(--ds-text-muted);
   cursor: pointer;
 }
 
 .ds-icon-button:hover:not(:disabled),
-.ds-icon-button:focus-visible { border-color: var(--ds-border); background: var(--ds-surface-muted); color: var(--ds-text); }
+.ds-icon-button:focus-visible {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+  border-color: var(--ds-border);
+}
 
-.ds-field { display: grid; gap: 7px; }
-.ds-field-label { color: var(--ds-text-muted); font-size: 12px; font-weight: 650; letter-spacing: 0.02em; }
+.ds-icon-button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.ds-icon-button-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.ds-icon-button-lg {
+  width: 44px;
+  height: 44px;
+}
+
+.ds-icon-button-active {
+  background: var(--ds-surface-active);
+  color: var(--ds-text);
+  border-color: var(--ds-border-strong);
+}
+
+/* --------------------------------------------------------------------------
+   7. Text Inputs & Form Fields
+   -------------------------------------------------------------------------- */
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ds-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-text-muted);
+  letter-spacing: 0.02em;
+}
+
 .ds-input {
   width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  color: var(--ds-text);
+  outline: none;
+}
+
+.ds-input::placeholder {
+  color: var(--ds-text-dim);
+}
+
+.ds-input:hover:not(:disabled) {
+  border-color: var(--ds-border-strong);
+}
+
+.ds-input:focus {
+  border-color: var(--ds-border-focus);
+  box-shadow: 0 0 0 3px var(--ds-brand-glow);
+}
+
+/* --------------------------------------------------------------------------
+   8. Custom Select Component
+   -------------------------------------------------------------------------- */
+.ds-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ds-select-native {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.ds-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 0 12px 0 14px;
+}
+
+.ds-select-trigger-open {
+  border-color: var(--ds-border-focus);
+  box-shadow: 0 0 0 3px var(--ds-brand-glow);
+}
+
+.ds-select-trigger-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-select-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ds-text-muted);
+  flex-shrink: 0;
+}
+
+.ds-select-value {
+  color: var(--ds-text);
+  font-size: 14px;
+}
+
+.ds-select-placeholder {
+  color: var(--ds-text-dim);
+  font-size: 14px;
+}
+
+.ds-select-chevron {
+  color: var(--ds-text-muted);
+  flex-shrink: 0;
+  transition: transform var(--ds-duration) var(--ds-ease),
+    color var(--ds-duration) var(--ds-ease);
+}
+
+.ds-select-chevron-open {
+  transform: rotate(180deg);
+  color: var(--ds-text);
+}
+
+/* Floating Dropdown Menus */
+.ds-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.ds-dropdown-trigger-box {
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.ds-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 90;
+  min-width: 180px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--ds-surface-elevated);
   border: 1px solid var(--ds-border-strong);
   border-radius: var(--ds-radius);
+  box-shadow: var(--ds-shadow-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  max-height: 260px;
+  overflow-y: auto;
+  animation: ds-dropdown-in 160ms var(--ds-ease);
+  transform-origin: top;
+}
+
+.ds-select-dropdown {
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+
+.ds-dropdown-menu-left {
+  left: 0;
+}
+
+.ds-dropdown-menu-right {
+  right: 0;
+}
+
+.ds-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ds-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  transition: background-color var(--ds-duration) var(--ds-ease),
+    color var(--ds-duration) var(--ds-ease);
+}
+
+.ds-dropdown-item:hover,
+.ds-dropdown-item:focus {
+  background: var(--ds-surface-muted);
+  color: var(--ds-text);
+  outline: none;
+}
+
+.ds-dropdown-item-selected {
+  background: var(--ds-surface-active);
+  font-weight: 500;
+}
+
+.ds-dropdown-item-danger {
+  color: var(--ds-danger);
+}
+
+.ds-dropdown-item-danger:hover {
+  background: rgba(225, 29, 72, 0.1);
+  color: var(--ds-danger);
+}
+
+.ds-dropdown-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-dropdown-item-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ds-text-muted);
+  flex-shrink: 0;
+}
+
+.ds-dropdown-check {
+  color: var(--ds-brand-cyan);
+  flex-shrink: 0;
+}
+
+.ds-dropdown-divider {
+  height: 1px;
+  background: var(--ds-border);
+  margin: 4px -2px;
+}
+
+/* --------------------------------------------------------------------------
+   9. Theme Toggle Components
+   -------------------------------------------------------------------------- */
+.ds-theme-segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  gap: 2px;
+}
+
+.ds-theme-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--ds-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--ds-duration) var(--ds-ease);
+}
+
+.ds-theme-seg-btn:hover {
+  color: var(--ds-text);
+}
+
+.ds-theme-seg-active {
   background: var(--ds-surface);
   color: var(--ds-text);
-  padding: 0 12px;
+  box-shadow: var(--ds-shadow-sm);
 }
-.ds-input:focus { border-color: var(--ds-accent); outline: 3px solid rgb(11 130 115 / 16%); }
 
-.ds-status { display: inline-flex; align-items: center; gap: 7px; color: var(--ds-text-muted); font-size: 12px; font-weight: 650; text-transform: capitalize; }
-.ds-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ds-border-strong); }
-.ds-status-running .ds-status-dot, .ds-status-queued .ds-status-dot, .ds-status-canceling .ds-status-dot { background: var(--ds-warning); }
-.ds-status-completed .ds-status-dot { background: var(--ds-success); }
-.ds-status-failed .ds-status-dot { background: var(--ds-danger); }
-.ds-status-canceled .ds-status-dot { background: var(--ds-text-muted); }
+.ds-theme-segmented-sm .ds-theme-seg-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.ds-theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--ds-duration) var(--ds-ease);
+}
+
+.ds-theme-toggle-btn:hover {
+  background: var(--ds-surface-active);
+  border-color: var(--ds-border-strong);
+}
+
+.ds-theme-toggle-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.ds-theme-icon-btn {
+  color: var(--ds-text-muted);
+}
+
+.ds-theme-icon-btn:hover {
+  color: var(--ds-text);
+}
+
+/* --------------------------------------------------------------------------
+   10. Status Mark
+   -------------------------------------------------------------------------- */
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-text-muted);
+}
+
+.ds-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-text-dim);
+  flex-shrink: 0;
+}
+
+/* Status Dot Colors & Breathing Animations */
+.ds-status-running .ds-status-dot,
+.ds-status-queued .ds-status-dot,
+.ds-status-provisioning .ds-status-dot,
+.ds-status-canceling .ds-status-dot,
+.ds-status-awaiting-approval .ds-status-dot,
+.ds-status-suspended .ds-status-dot {
+  background: var(--ds-status-running);
+  animation: ds-pulse-dot 2s infinite ease-in-out;
+}
+
+.ds-status-completed .ds-status-dot,
+.ds-status-published .ds-status-dot,
+.ds-status-valid .ds-status-dot {
+  background: var(--ds-status-completed);
+}
+
+.ds-status-failed .ds-status-dot,
+.ds-status-high .ds-status-dot,
+.ds-status-invalid .ds-status-dot {
+  background: var(--ds-status-failed);
+}
+
+.ds-status-canceled .ds-status-dot {
+  background: var(--ds-status-canceled);
+}
+
+.ds-status-draft .ds-status-dot,
+.ds-status-pending .ds-status-dot {
+  background: var(--ds-status-queued);
+}
+
+/* --------------------------------------------------------------------------
+   11. Card Components (ChatGPT Clean Elevated Surfaces)
+   -------------------------------------------------------------------------- */
+.ds-card {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  overflow: hidden;
+  transition: background-color var(--ds-duration) var(--ds-ease),
+    border-color var(--ds-duration) var(--ds-ease),
+    box-shadow var(--ds-duration) var(--ds-ease),
+    transform var(--ds-duration) var(--ds-ease);
+}
+
+.ds-card-interactive:hover {
+  border-color: var(--ds-border-strong);
+  background: var(--ds-surface-elevated);
+}
+
+.ds-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.ds-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ds-text);
+  letter-spacing: -0.01em;
+}
+
+.ds-card-description {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--ds-text-muted);
+  line-height: 1.5;
+}
+
+.ds-card-content {
+  padding: 24px;
+}
+
+.ds-card-footer {
+  padding: 16px 24px;
+  background: var(--ds-surface-elevated);
+  border-top: 1px solid var(--ds-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   12. Accessibility: Reduced Motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
