@@ -2,17 +2,14 @@ package tasks
 
 import "testing"
 
-func TestNormalizeInputSelectsDeterministicMode(t *testing.T) {
-	input, mode, err := normalizeInput(SubmitRequest{Message: "hello", StructuredInput: []byte(`{"mode":"await_cancel"}`)})
-	if err != nil || mode != "await_cancel" || input == "" {
-		t.Fatalf("input=%q mode=%q err=%v", input, mode, err)
+func TestNormalizeInputPreservesStructuredUserInput(t *testing.T) {
+	input, err := normalizeInput(SubmitRequest{Message: "hello", StructuredInput: []byte(`{"mode":"await_cancel"}`)})
+	if err != nil || input == "" {
+		t.Fatalf("input=%q err=%v", input, err)
 	}
 }
-func TestNormalizeInputRejectsUnsupportedAttachmentsAndModes(t *testing.T) {
-	if _, _, err := normalizeInput(SubmitRequest{Message: "hello", AttachmentIDs: []string{"artifact"}}); err != ErrInvalidInput {
+func TestNormalizeInputRejectsUnsupportedAttachments(t *testing.T) {
+	if _, err := normalizeInput(SubmitRequest{Message: "hello", AttachmentIDs: []string{"artifact"}}); err != ErrInvalidInput {
 		t.Fatalf("attachment err=%v", err)
-	}
-	if _, _, err := normalizeInput(SubmitRequest{StructuredInput: []byte(`{"mode":"other"}`)}); err != ErrInvalidInput {
-		t.Fatalf("mode err=%v", err)
 	}
 }

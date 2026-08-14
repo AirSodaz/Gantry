@@ -21,3 +21,11 @@ func TestDevelopmentModeEnablesPhase0API(t *testing.T) {
 		t.Fatalf("phase 0 config = %#v", config.Phase0Dev)
 	}
 }
+
+func TestAdminOIDCRequiresCompleteAudienceConfiguration(t *testing.T) {
+	t.Setenv("GANTRY_ADMIN_OIDC_ISSUER", "https://issuer.example.test/realms/gantry")
+	t.Setenv("GANTRY_ADMIN_OIDC_AUDIENCE", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load succeeded with an incomplete Admin OIDC configuration")
+	}
+}

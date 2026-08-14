@@ -75,6 +75,7 @@ request GET /api/copilot/v1/agents
 [[ $response_status == 200 ]]
 agent_id=$(json_value id)
 [[ $agent_id == agt_lifecycle_demo ]]
+await_cancel_agent_id=agt_lifecycle_await_cancel
 
 complete_key="complete-${RANDOM}-${RANDOM}"
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
@@ -92,7 +93,7 @@ request GET "/api/copilot/v1/tasks/${complete_task}"
 access_token=$(token_for copilot-demo gantry_demo_password)
 
 cancel_key="cancel-${RANDOM}-${RANDOM}"
-submit "$cancel_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"wait\",\"structured_input\":{\"mode\":\"await_cancel\"}}"
+submit "$cancel_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"wait\"}"
 [[ $response_status == 201 ]]
 cancel_task=$(json_value id)
 cancel_run=$(task_run_id)
@@ -102,7 +103,7 @@ request POST "/api/copilot/v1/tasks/${cancel_task}/runs/${cancel_run}:cancel" '{
 wait_task_status "$cancel_task" canceled
 
 loss_key="loss-${RANDOM}-${RANDOM}"
-submit "$loss_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"loss\",\"structured_input\":{\"mode\":\"await_cancel\"}}"
+submit "$loss_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"loss\"}"
 loss_task=$(json_value id)
 wait_task_status "$loss_task" running
 "${compose[@]}" kill runner
@@ -110,7 +111,7 @@ wait_task_status "$loss_task" failed
 "${compose[@]}" up --detach runner
 
 restart_key="restart-${RANDOM}-${RANDOM}"
-submit "$restart_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"restart\",\"structured_input\":{\"mode\":\"await_cancel\"}}"
+submit "$restart_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"restart\"}"
 restart_task=$(json_value id)
 wait_task_status "$restart_task" running
 "${compose[@]}" restart control-plane

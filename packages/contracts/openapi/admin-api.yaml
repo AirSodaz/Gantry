@@ -2,207 +2,166 @@ openapi: "3.1.0"
 info:
   title: Gantry Admin API
   version: "1.0.0"
-  description: |
-    Administrative API for Gantry platform. Used by the Admin web application
-    for agent design, publication, operations, evaluation, and audit.
-  contact:
-    name: Gantry Platform Team
-
+  description: Administrative API for immutable agent lifecycle management.
 servers:
   - url: /api/admin/v1
-    description: Admin API v1
-
 security:
-  - oauth2:
-      - admin
-
+  - oauth2: [admin]
 paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      summary: Health check
-      tags: [Platform]
-      responses:
-        "200":
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
-
   /workspaces:
     get:
-      operationId: listWorkspaces
-      summary: List workspaces
+      operationId: listManagedWorkspaces
+      summary: List workspaces manageable by the current administrator
       tags: [Workspaces]
-      parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
       responses:
         "200":
-          description: List of workspaces
+          description: Managed workspaces
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/WorkspaceList"
-
+              schema: {$ref: "#/components/schemas/WorkspaceList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /agents:
     get:
       operationId: listAgents
-      summary: List agents
+      summary: List agents in manageable workspaces
       tags: [Agents]
       parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
         - name: workspace_id
           in: query
-          schema:
-            type: string
-        - name: lifecycle_status
-          in: query
-          schema:
-            type: string
-            enum: [draft, published, deprecated, retired]
+          schema: {type: string}
       responses:
         "200":
-          description: List of agents
+          description: Agents
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AgentList"
+              schema: {$ref: "#/components/schemas/AgentList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
     post:
       operationId: createAgent
-      summary: Create a new agent
+      summary: Create an agent and its initial draft
       tags: [Agents]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAgentRequest"
+            schema: {$ref: "#/components/schemas/CreateAgentRequest"}
       responses:
         "201":
           description: Agent created
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Agent"
-
+              schema: {$ref: "#/components/schemas/Agent"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
   /agents/{agent_id}:
     get:
       operationId: getAgent
-      summary: Get agent details
+      summary: Get an agent in the current administrator domain
       tags: [Agents]
-      parameters:
-        - $ref: "#/components/parameters/AgentIdParam"
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
       responses:
         "200":
-          description: Agent details
+          description: Agent
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Agent"
-
+              schema: {$ref: "#/components/schemas/Agent"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /agents/{agent_id}/draft:
     get:
       operationId: getAgentDraft
-      summary: Get current agent draft
-      tags: [Agents]
-      parameters:
-        - $ref: "#/components/parameters/AgentIdParam"
+      summary: Get the editable current draft
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
       responses:
         "200":
-          description: Current draft
+          description: Draft
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AgentDraft"
+              schema: {$ref: "#/components/schemas/AgentDraft"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
     put:
       operationId: updateAgentDraft
-      summary: Update agent draft
-      tags: [Agents]
+      summary: Replace an agent draft with optimistic concurrency
+      tags: [Drafts]
       parameters:
-        - $ref: "#/components/parameters/AgentIdParam"
-        - name: If-Match
-          in: header
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDraftRequest"
+            schema: {$ref: "#/components/schemas/UpdateDraftRequest"}
       responses:
         "200":
-          description: Draft updated
+          description: Updated draft
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AgentDraft"
-
+              schema: {$ref: "#/components/schemas/AgentDraft"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "412": {$ref: "#/components/responses/RevisionConflict"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
   /agents/{agent_id}/versions:
     get:
       operationId: listAgentVersions
-      summary: List agent versions
-      tags: [Agents]
-      parameters:
-        - $ref: "#/components/parameters/AgentIdParam"
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
+      summary: List immutable versions
+      tags: [Versions]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
       responses:
         "200":
-          description: List of versions
+          description: Version history
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AgentVersionList"
-
-  /runs:
-    get:
-      operationId: listRuns
-      summary: List runs with filters
-      tags: [Runs]
+              schema: {$ref: "#/components/schemas/AgentVersionList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}:publish:
+    post:
+      operationId: publishAgentDraft
+      summary: Freeze and publish the current valid draft
+      tags: [Publications]
       parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
-        - name: workspace_id
-          in: query
-          schema:
-            type: string
-        - name: agent_id
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/IfMatch"
       responses:
         "200":
-          description: List of runs
+          description: Version from an idempotent publication retry
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/RunList"
-
-  /approvals:
-    get:
-      operationId: listApprovals
-      summary: List pending approvals
-      tags: [Approvals]
-      parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
+              schema: {$ref: "#/components/schemas/AgentVersion"}
+        "201":
+          description: Published immutable version
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AgentVersion"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+        "412": {$ref: "#/components/responses/RevisionConflict"}
+  /agents/{agent_id}:retire:
+    post:
+      operationId: retireAgent
+      summary: Retire the currently published agent
+      tags: [Publications]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
       responses:
-        "200":
-          description: List of approval requests
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApprovalList"
-
+        "204": {description: Agent retired}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
 components:
   securitySchemes:
     oauth2:
@@ -211,309 +170,131 @@ components:
         authorizationCode:
           authorizationUrl: /oauth/authorize
           tokenUrl: /oauth/token
-          scopes:
-            admin: Full administrative access
-
+          scopes: {admin: Administrative agent lifecycle access}
   parameters:
-    CursorParam:
-      name: cursor
-      in: query
-      schema:
-        type: string
-      description: Pagination cursor from previous response
-    LimitParam:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 25
-      description: Maximum number of items to return
-    AgentIdParam:
+    AgentId:
       name: agent_id
       in: path
       required: true
-      schema:
-        type: string
-
+      schema: {type: string}
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: {type: string}
+      description: Current draft revision.
+  responses:
+    Unauthorized:
+      description: Authentication is required.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    Forbidden:
+      description: Administrative access is required.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    NotFound:
+      description: Resource was not found.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    InvalidInput:
+      description: Request is invalid.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    InvalidState:
+      description: Operation is not permitted in the current state.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    RevisionConflict:
+      description: Draft revision is stale.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
   schemas:
-    HealthResponse:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          enum: [ok, degraded]
-
-    Timestamp:
-      type: string
-      format: date-time
-
-    PageInfo:
-      type: object
-      required: [has_more]
-      properties:
-        next_cursor:
-          type: string
-        has_more:
-          type: boolean
-
     ErrorResponse:
       type: object
       required: [error]
       properties:
         error:
           type: object
-          required: [code, message, correlation_id]
+          required: [code, message]
           properties:
-            code:
-              type: string
-            message:
-              type: string
-            correlation_id:
-              type: string
-            details:
-              type: array
-              items:
-                type: object
-                properties:
-                  field:
-                    type: string
-                  description:
-                    type: string
-
-    # --- Workspaces ---
+            code: {type: string}
+            message: {type: string}
+    PageInfo:
+      type: object
+      required: [has_more]
+      properties:
+        has_more: {type: boolean}
     Workspace:
       type: object
-      required: [id, organization_id, slug, display_name, status]
+      required: [id, slug, display_name]
       properties:
-        id:
-          type: string
-        organization_id:
-          type: string
-        slug:
-          type: string
-        display_name:
-          type: string
-        classification:
-          type: string
-        status:
-          type: string
-          enum: [active, archived]
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-
+        id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
     WorkspaceList:
       type: object
       required: [items, page_info]
       properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Workspace"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    # --- Agents ---
+        items: {type: array, items: {$ref: "#/components/schemas/Workspace"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
     Agent:
       type: object
-      required: [id, organization_id, workspace_id, slug, display_name, lifecycle_status]
+      required: [id, organization_id, workspace_id, slug, display_name, description, category, lifecycle_status]
       properties:
-        id:
-          type: string
-        organization_id:
-          type: string
-        workspace_id:
-          type: string
-        slug:
-          type: string
-        display_name:
-          type: string
-        description:
-          type: string
-        category:
-          type: string
-        lifecycle_status:
-          type: string
-          enum: [draft, published, deprecated, retired]
-        current_published_version_id:
-          type: string
-        owner_principal_id:
-          type: string
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-
+        id: {type: string}
+        organization_id: {type: string}
+        workspace_id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        category: {type: string}
+        lifecycle_status: {type: string, enum: [draft, published, retired]}
+        current_published_version_id: {type: string}
     AgentList:
       type: object
       required: [items, page_info]
       properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Agent"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
+        items: {type: array, items: {$ref: "#/components/schemas/Agent"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
     CreateAgentRequest:
       type: object
-      required: [workspace_id, slug, display_name]
+      required: [workspace_id, slug, display_name, description, category]
       properties:
-        workspace_id:
-          type: string
-        slug:
-          type: string
-        display_name:
-          type: string
-        description:
-          type: string
-        category:
-          type: string
-
+        workspace_id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        category: {type: string}
     AgentDraft:
       type: object
-      required: [id, agent_id, revision, spec, schema_version, validation_status]
+      required: [agent_id, revision, spec, validation_status, validation_findings, updated_by]
       properties:
-        id:
-          type: string
-        agent_id:
-          type: string
-        revision:
-          type: integer
-        spec:
-          type: object
-          description: The draft agent specification JSON
-        schema_version:
-          type: string
-        validation_status:
-          type: string
-          enum: [valid, invalid, unchecked]
+        agent_id: {type: string}
+        revision: {type: integer}
+        spec: {type: object}
+        validation_status: {type: string, enum: [valid, invalid]}
         validation_findings:
           type: array
-          items:
-            type: object
-            properties:
-              severity:
-                type: string
-                enum: [error, warning, info]
-              message:
-                type: string
-              path:
-                type: string
-        updated_by:
-          type: string
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-
+          items: {$ref: "#/components/schemas/ValidationFinding"}
+        updated_by: {type: string}
     UpdateDraftRequest:
       type: object
       required: [spec]
       properties:
-        spec:
-          type: object
-
+        spec: {type: object}
+    ValidationFinding:
+      type: object
+      required: [path, message]
+      properties:
+        path: {type: string}
+        message: {type: string}
     AgentVersion:
       type: object
-      required: [id, agent_id, version, spec_digest]
+      required: [id, agent_id, version, source_draft_revision, spec, spec_digest]
       properties:
-        id:
-          type: string
-        agent_id:
-          type: string
-        version:
-          type: string
-        spec_digest:
-          type: string
-        release_notes:
-          type: string
-        created_from_draft_revision:
-          type: integer
-        created_by:
-          type: string
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-
+        id: {type: string}
+        agent_id: {type: string}
+        version: {type: integer}
+        source_draft_revision: {type: integer}
+        spec: {type: object}
+        spec_digest: {type: string}
     AgentVersionList:
       type: object
       required: [items, page_info]
       properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/AgentVersion"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    # --- Runs ---
-    Run:
-      type: object
-      required: [id, task_id, attempt_number, status]
-      properties:
-        id:
-          type: string
-        task_id:
-          type: string
-        attempt_number:
-          type: integer
-        agent_version_id:
-          type: string
-        status:
-          type: string
-          enum: [queued, provisioning, running, awaiting_approval, suspended, canceling, completed, failed, canceled, expired]
-        status_reason:
-          type: string
-        lease_epoch:
-          type: integer
-        started_at:
-          $ref: "#/components/schemas/Timestamp"
-        completed_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    RunList:
-      type: object
-      required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Run"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    # --- Approvals ---
-    ApprovalRequest:
-      type: object
-      required: [id, run_id, action_digest, status]
-      properties:
-        id:
-          type: string
-        run_id:
-          type: string
-        action_digest:
-          type: string
-        action_preview:
-          type: object
-        risk_class:
-          type: string
-        status:
-          type: string
-          enum: [pending, satisfied, rejected, expired, superseded]
-        expires_at:
-          $ref: "#/components/schemas/Timestamp"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    ApprovalList:
-      type: object
-      required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApprovalRequest"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
+        items: {type: array, items: {$ref: "#/components/schemas/AgentVersion"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}

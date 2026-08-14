@@ -19,7 +19,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if key = strings.TrimSpace(key); key == "" || len(key) > 256 {
 		return Task{}, false, ErrInvalidInput
 	}
-	input, mode, err := normalizeInput(request)
+	input, err := normalizeInput(request)
 	if err != nil {
 		return Task{}, false, err
 	}
@@ -54,7 +54,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tasks (id, organization_id, workspace_id, requester_principal_id, agent_id, input_json, current_run_id, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'queued')`, taskID, actor.OrganizationID, workspaceID, actor.ID, request.AgentID, input, runID); err != nil {
 		return Task{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, demo_mode, status) VALUES ($1,$2,$3,1,$4,'queued')`, runID, taskID, versionID, mode); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, status) VALUES ($1,$2,$3,1,'queued')`, runID, taskID, versionID); err != nil {
 		return Task{}, false, err
 	}
 	if err := appendEvent(ctx, tx, runID, "task.accepted"); err != nil {
@@ -77,31 +77,22 @@ func resolvePublishedAgent(ctx context.Context, tx pgx.Tx, actor identity.Princi
 	return
 }
 
-func normalizeInput(request SubmitRequest) (string, string, error) {
+func normalizeInput(request SubmitRequest) (string, error) {
 	if len(request.AttachmentIDs) != 0 {
-		return "", "", ErrInvalidInput
+		return "", ErrInvalidInput
 	}
 	message := strings.TrimSpace(request.Message)
 	var structured any
 	if len(request.StructuredInput) != 0 && string(request.StructuredInput) != "null" {
 		if err := json.Unmarshal(request.StructuredInput, &structured); err != nil {
-			return "", "", ErrInvalidInput
+			return "", ErrInvalidInput
 		}
 	}
 	if message == "" && structured == nil {
-		return "", "", ErrInvalidInput
-	}
-	mode := "complete"
-	if object, ok := structured.(map[string]any); ok {
-		if candidate, ok := object["mode"].(string); ok {
-			mode = candidate
-		}
-	}
-	if mode != "complete" && mode != "await_cancel" {
-		return "", "", ErrInvalidInput
+		return "", ErrInvalidInput
 	}
 	payload, err := json.Marshal(map[string]any{"message": message, "structured_input": structured})
-	return string(payload), mode, err
+	return string(payload), err
 }
 
 func requestDigest(agentID, input string) string {

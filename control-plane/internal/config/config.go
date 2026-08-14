@@ -27,6 +27,7 @@ type Config struct {
 	RunnerTLS     RunnerTLSConfig
 	Phase0Dev     Phase0DevConfig
 	CopilotOIDC   CopilotOIDCConfig
+	AdminOIDC     AdminOIDCConfig
 }
 
 type RunnerTLSConfig struct{ CertificateFile, KeyFile, ClientCAFile string }
@@ -37,6 +38,11 @@ type Phase0DevConfig struct {
 }
 
 type CopilotOIDCConfig struct {
+	Issuer   string
+	Audience string
+}
+
+type AdminOIDCConfig struct {
 	Issuer   string
 	Audience string
 }
@@ -78,6 +84,11 @@ func Load() (Config, error) {
 	if (copilotIssuer == "") != (copilotAudience == "") {
 		return Config{}, fmt.Errorf("configure both GANTRY_COPILOT_OIDC_ISSUER and GANTRY_COPILOT_OIDC_AUDIENCE or neither")
 	}
+	adminIssuer := value("GANTRY_ADMIN_OIDC_ISSUER", "")
+	adminAudience := value("GANTRY_ADMIN_OIDC_AUDIENCE", "")
+	if (adminIssuer == "") != (adminAudience == "") {
+		return Config{}, fmt.Errorf("configure both GANTRY_ADMIN_OIDC_ISSUER and GANTRY_ADMIN_OIDC_AUDIENCE or neither")
+	}
 	cfg := Config{
 		HTTPAddress:   net.JoinHostPort("", strconv.Itoa(httpPort)),
 		GRPCAddress:   net.JoinHostPort("", strconv.Itoa(grpcPort)),
@@ -87,6 +98,7 @@ func Load() (Config, error) {
 		RunnerTLS:     RunnerTLSConfig{CertificateFile: value("GANTRY_RUNNER_SERVER_CERT_FILE", ""), KeyFile: value("GANTRY_RUNNER_SERVER_KEY_FILE", ""), ClientCAFile: value("GANTRY_RUNNER_CLIENT_CA_FILE", "")},
 		Phase0Dev:     Phase0DevConfig{Enabled: developmentMode, Token: phase0Token},
 		CopilotOIDC:   CopilotOIDCConfig{Issuer: copilotIssuer, Audience: copilotAudience},
+		AdminOIDC:     AdminOIDCConfig{Issuer: adminIssuer, Audience: adminAudience},
 	}
 	if parsed, err := url.Parse(cfg.ObjectStorage.Endpoint); err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return Config{}, fmt.Errorf("GANTRY_S3_ENDPOINT must be an absolute URL")

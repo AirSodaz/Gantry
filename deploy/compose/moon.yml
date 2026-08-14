@@ -30,3 +30,8 @@ tasks:
     type: 'run'
     options:
       runInCI: false
+  admin-smoke:
+    command: 'bash admin-smoke.sh'
+    type: 'run'
+    options:
+      runInCI: false

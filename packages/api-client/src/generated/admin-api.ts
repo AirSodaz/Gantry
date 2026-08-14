@@ -4,23 +4,6 @@
  */
 
 export interface paths {
-    "/healthz": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health check */
-        get: operations["healthCheck"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -28,8 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List workspaces */
-        get: operations["listWorkspaces"];
+        /** List workspaces manageable by the current administrator */
+        get: operations["listManagedWorkspaces"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45,10 +28,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List agents */
+        /** List agents in manageable workspaces */
         get: operations["listAgents"];
         put?: never;
-        /** Create a new agent */
+        /** Create an agent and its initial draft */
         post: operations["createAgent"];
         delete?: never;
         options?: never;
@@ -63,7 +46,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get agent details */
+        /** Get an agent in the current administrator domain */
         get: operations["getAgent"];
         put?: never;
         post?: never;
@@ -80,9 +63,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get current agent draft */
+        /** Get the editable current draft */
         get: operations["getAgentDraft"];
-        /** Update agent draft */
+        /** Replace an agent draft with optimistic concurrency */
         put: operations["updateAgentDraft"];
         post?: never;
         delete?: never;
@@ -98,7 +81,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List agent versions */
+        /** List immutable versions */
         get: operations["listAgentVersions"];
         put?: never;
         post?: never;
@@ -108,34 +91,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/runs": {
+    "/agents/{agent_id}:publish": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List runs with filters */
-        get: operations["listRuns"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Freeze and publish the current valid draft */
+        post: operations["publishAgentDraft"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/approvals": {
+    "/agents/{agent_id}:retire": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List pending approvals */
-        get: operations["listApprovals"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Retire the currently published agent */
+        post: operations["retireAgent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -146,37 +129,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        HealthResponse: {
-            /** @enum {string} */
-            status: "ok" | "degraded";
-        };
-        /** Format: date-time */
-        Timestamp: string;
-        PageInfo: {
-            next_cursor?: string;
-            has_more: boolean;
-        };
         ErrorResponse: {
             error: {
                 code: string;
                 message: string;
-                correlation_id: string;
-                details?: {
-                    field?: string;
-                    description?: string;
-                }[];
             };
+        };
+        PageInfo: {
+            has_more: boolean;
         };
         Workspace: {
             id: string;
-            organization_id: string;
             slug: string;
             display_name: string;
-            classification?: string;
-            /** @enum {string} */
-            status: "active" | "archived";
-            created_at?: components["schemas"]["Timestamp"];
-            updated_at?: components["schemas"]["Timestamp"];
         };
         WorkspaceList: {
             items: components["schemas"]["Workspace"][];
@@ -188,14 +153,11 @@ export interface components {
             workspace_id: string;
             slug: string;
             display_name: string;
-            description?: string;
-            category?: string;
+            description: string;
+            category: string;
             /** @enum {string} */
-            lifecycle_status: "draft" | "published" | "deprecated" | "retired";
+            lifecycle_status: "draft" | "published" | "retired";
             current_published_version_id?: string;
-            owner_principal_id?: string;
-            created_at?: components["schemas"]["Timestamp"];
-            updated_at?: components["schemas"]["Timestamp"];
         };
         AgentList: {
             items: components["schemas"]["Agent"][];
@@ -205,83 +167,98 @@ export interface components {
             workspace_id: string;
             slug: string;
             display_name: string;
-            description?: string;
-            category?: string;
+            description: string;
+            category: string;
         };
         AgentDraft: {
-            id: string;
             agent_id: string;
             revision: number;
-            /** @description The draft agent specification JSON */
             spec: Record<string, never>;
-            schema_version: string;
             /** @enum {string} */
-            validation_status: "valid" | "invalid" | "unchecked";
-            validation_findings?: {
-                /** @enum {string} */
-                severity?: "error" | "warning" | "info";
-                message?: string;
-                path?: string;
-            }[];
-            updated_by?: string;
-            updated_at?: components["schemas"]["Timestamp"];
+            validation_status: "valid" | "invalid";
+            validation_findings: components["schemas"]["ValidationFinding"][];
+            updated_by: string;
         };
         UpdateDraftRequest: {
             spec: Record<string, never>;
         };
+        ValidationFinding: {
+            path: string;
+            message: string;
+        };
         AgentVersion: {
             id: string;
             agent_id: string;
-            version: string;
+            version: number;
+            source_draft_revision: number;
+            spec: Record<string, never>;
             spec_digest: string;
-            release_notes?: string;
-            created_from_draft_revision?: number;
-            created_by?: string;
-            created_at?: components["schemas"]["Timestamp"];
         };
         AgentVersionList: {
             items: components["schemas"]["AgentVersion"][];
             page_info: components["schemas"]["PageInfo"];
         };
-        Run: {
-            id: string;
-            task_id: string;
-            attempt_number: number;
-            agent_version_id?: string;
-            /** @enum {string} */
-            status: "queued" | "provisioning" | "running" | "awaiting_approval" | "suspended" | "canceling" | "completed" | "failed" | "canceled" | "expired";
-            status_reason?: string;
-            lease_epoch?: number;
-            started_at?: components["schemas"]["Timestamp"];
-            completed_at?: components["schemas"]["Timestamp"];
+    };
+    responses: {
+        /** @description Authentication is required. */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
         };
-        RunList: {
-            items: components["schemas"]["Run"][];
-            page_info: components["schemas"]["PageInfo"];
+        /** @description Administrative access is required. */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
         };
-        ApprovalRequest: {
-            id: string;
-            run_id: string;
-            action_digest: string;
-            action_preview?: Record<string, never>;
-            risk_class?: string;
-            /** @enum {string} */
-            status: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
-            expires_at?: components["schemas"]["Timestamp"];
-            created_at?: components["schemas"]["Timestamp"];
+        /** @description Resource was not found. */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
         };
-        ApprovalList: {
-            items: components["schemas"]["ApprovalRequest"][];
-            page_info: components["schemas"]["PageInfo"];
+        /** @description Request is invalid. */
+        InvalidInput: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Operation is not permitted in the current state. */
+        InvalidState: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Draft revision is stale. */
+        RevisionConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
         };
     };
-    responses: never;
     parameters: {
-        /** @description Pagination cursor from previous response */
-        CursorParam: string;
-        /** @description Maximum number of items to return */
-        LimitParam: number;
-        AgentIdParam: string;
+        AgentId: string;
+        /** @description Current draft revision. */
+        IfMatch: string;
     };
     requestBodies: never;
     headers: never;
@@ -289,7 +266,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    healthCheck: {
+    listManagedWorkspaces: {
         parameters: {
             query?: never;
             header?: never;
@@ -298,32 +275,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service is healthy */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
-    };
-    listWorkspaces: {
-        parameters: {
-            query?: {
-                /** @description Pagination cursor from previous response */
-                cursor?: components["parameters"]["CursorParam"];
-                /** @description Maximum number of items to return */
-                limit?: components["parameters"]["LimitParam"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of workspaces */
+            /** @description Managed workspaces */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -332,17 +284,14 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceList"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listAgents: {
         parameters: {
             query?: {
-                /** @description Pagination cursor from previous response */
-                cursor?: components["parameters"]["CursorParam"];
-                /** @description Maximum number of items to return */
-                limit?: components["parameters"]["LimitParam"];
                 workspace_id?: string;
-                lifecycle_status?: "draft" | "published" | "deprecated" | "retired";
             };
             header?: never;
             path?: never;
@@ -350,7 +299,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List of agents */
+            /** @description Agents */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -359,6 +308,9 @@ export interface operations {
                     "application/json": components["schemas"]["AgentList"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     createAgent: {
@@ -383,6 +335,10 @@ export interface operations {
                     "application/json": components["schemas"]["Agent"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
         };
     };
     getAgent: {
@@ -390,13 +346,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentIdParam"];
+                agent_id: components["parameters"]["AgentId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Agent details */
+            /** @description Agent */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -405,6 +361,9 @@ export interface operations {
                     "application/json": components["schemas"]["Agent"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getAgentDraft: {
@@ -412,13 +371,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentIdParam"];
+                agent_id: components["parameters"]["AgentId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Current draft */
+            /** @description Draft */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -427,16 +386,20 @@ export interface operations {
                     "application/json": components["schemas"]["AgentDraft"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     updateAgentDraft: {
         parameters: {
             query?: never;
             header: {
-                "If-Match": string;
+                /** @description Current draft revision. */
+                "If-Match": components["parameters"]["IfMatch"];
             };
             path: {
-                agent_id: components["parameters"]["AgentIdParam"];
+                agent_id: components["parameters"]["AgentId"];
             };
             cookie?: never;
         };
@@ -446,7 +409,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Draft updated */
+            /** @description Updated draft */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -455,25 +418,25 @@ export interface operations {
                     "application/json": components["schemas"]["AgentDraft"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            412: components["responses"]["RevisionConflict"];
+            422: components["responses"]["InvalidInput"];
         };
     };
     listAgentVersions: {
         parameters: {
-            query?: {
-                /** @description Pagination cursor from previous response */
-                cursor?: components["parameters"]["CursorParam"];
-                /** @description Maximum number of items to return */
-                limit?: components["parameters"]["LimitParam"];
-            };
+            query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentIdParam"];
+                agent_id: components["parameters"]["AgentId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description List of versions */
+            /** @description Version history */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -482,59 +445,72 @@ export interface operations {
                     "application/json": components["schemas"]["AgentVersionList"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
-    listRuns: {
+    publishAgentDraft: {
         parameters: {
-            query?: {
-                /** @description Pagination cursor from previous response */
-                cursor?: components["parameters"]["CursorParam"];
-                /** @description Maximum number of items to return */
-                limit?: components["parameters"]["LimitParam"];
-                workspace_id?: string;
-                agent_id?: string;
-                status?: string;
+            query?: never;
+            header: {
+                /** @description Current draft revision. */
+                "If-Match": components["parameters"]["IfMatch"];
             };
-            header?: never;
-            path?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description List of runs */
+            /** @description Version from an idempotent publication retry */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunList"];
+                    "application/json": components["schemas"]["AgentVersion"];
                 };
             };
-        };
-    };
-    listApprovals: {
-        parameters: {
-            query?: {
-                /** @description Pagination cursor from previous response */
-                cursor?: components["parameters"]["CursorParam"];
-                /** @description Maximum number of items to return */
-                limit?: components["parameters"]["LimitParam"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of approval requests */
-            200: {
+            /** @description Published immutable version */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalList"];
+                    "application/json": components["schemas"]["AgentVersion"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+            412: components["responses"]["RevisionConflict"];
+        };
+    };
+    retireAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
         };
     };
 }

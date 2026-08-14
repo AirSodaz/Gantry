@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"fmt"
 
+	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -16,11 +17,16 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 		return Assignment{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	var runID, mode string
-	err = tx.QueryRow(ctx, `SELECT id, demo_mode FROM gantry.runs WHERE status='queued' ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1`).Scan(&runID, &mode)
+	var runID string
+	var spec json.RawMessage
+	err = tx.QueryRow(ctx, `SELECT r.id, v.spec_json FROM gantry.runs r JOIN gantry.agent_versions v ON v.id=r.agent_version_id WHERE r.status='queued' ORDER BY r.created_at, r.id FOR UPDATE OF r SKIP LOCKED LIMIT 1`).Scan(&runID, &spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Assignment{}, false, nil
 	}
+	if err != nil {
+		return Assignment{}, false, err
+	}
+	manifest, digest, err := executionManifest(spec)
 	if err != nil {
 		return Assignment{}, false, err
 	}
@@ -37,7 +43,6 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 	if err := tx.Commit(ctx); err != nil {
 		return Assignment{}, false, err
 	}
-	manifest, digest := demoManifest(mode)
 	return Assignment{RunID: runID, LeaseEpoch: epoch, Manifest: manifest, ManifestDigest: digest}, true, nil
 }
 
@@ -47,15 +52,18 @@ func (s *Service) Accept(ctx context.Context, runnerID, runID string, epoch uint
 		return err
 	}
 	defer tx.Rollback(ctx)
-	var mode string
-	err = tx.QueryRow(ctx, `SELECT demo_mode FROM gantry.runs WHERE id=$1 AND runner_id=$2 AND lease_epoch=$3 AND status='assigned' FOR UPDATE`, runID, runnerID, epoch).Scan(&mode)
+	var spec json.RawMessage
+	err = tx.QueryRow(ctx, `SELECT v.spec_json FROM gantry.runs r JOIN gantry.agent_versions v ON v.id=r.agent_version_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 AND r.status='assigned' FOR UPDATE OF r`, runID, runnerID, epoch).Scan(&spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	_, expected := demoManifest(mode)
+	_, expected, err := executionManifest(spec)
+	if err != nil {
+		return err
+	}
 	if digest != expected {
 		return ErrInvalidInput
 	}
@@ -209,8 +217,11 @@ func (s *Service) FailInFlight(ctx context.Context, reason string) (int, error) 
 	return len(failed), nil
 }
 
-func demoManifest(mode string) ([]byte, string) {
-	manifest := []byte(fmt.Sprintf(`{"kind":"gantry.phase0.demo/v1","mode":%q}`, mode))
+func executionManifest(spec json.RawMessage) ([]byte, string, error) {
+	manifest, findings := agentlifecycle.ValidateSpec(spec)
+	if len(findings) != 0 {
+		return nil, "", ErrInvalidInput
+	}
 	sum := sha256.Sum256(manifest)
-	return manifest, "sha256:" + hex.EncodeToString(sum[:])
+	return manifest, "sha256:" + hex.EncodeToString(sum[:]), nil
 }

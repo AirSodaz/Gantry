@@ -30,10 +30,10 @@ Prefer a clear replacement over a narrowly scoped patch that preserves
 avoidable complexity.
 
 Keep reusable visual primitives such as buttons, icon buttons, text fields, and
-status marks in `packages/design-system`. Keep authentication, API clients,
-catalog controls, task controls, and page composition in the owning app under
-`apps/copilot-web/src`; do not move business-specific components into the
-shared package just to shorten an import path.
+status marks in `packages/design-system`. Keep authentication, API clients, and
+feature workflows in their owning application under `apps/copilot-web/src` or
+`apps/admin-web/src`; do not move business-specific components into the shared
+package just to shorten an import path.
 
 ## Bootstrap
 
@@ -132,9 +132,10 @@ process recovery.
 The initial schema is embedded as a clean bootstrap schema because Gantry has
 no prior released database shape. Development fixtures are isolated in the
 development package and are only seeded when `GANTRY_DEVELOPMENT_MODE=true`.
-They create a development workspace, two local principals, and one published
-Lifecycle Demo agent. They are not production data or a substitute for the
-Admin publication workflow.
+They create a development workspace, two Copilot principals, one Admin
+principal with an organization-level role binding, and published deterministic
+completion and cancellation agents. They are not production data or a
+substitute for the Admin publication workflow.
 
 Compose imports the `gantry-dev` Keycloak realm. The control plane validates
 issuer, expiry, signature, and the `gantry-copilot-api` audience before mapping
@@ -189,7 +190,65 @@ outputs differ.
 
 The persistent Copilot slice includes the development Keycloak browser login,
 catalog, task submission, polling, cancellation, and retry. It intentionally
-excludes Admin agent lifecycle, approvals, artifacts, event streaming, real
-models/tools, and sandboxing. It uses the deterministic fixture agent to validate task ownership,
+excludes approvals, artifacts, event streaming, real models/tools, and
+sandboxing. It uses deterministic fixture agents to validate task ownership,
 runner leases, low-frequency event persistence, cancellation, failure, and
 retry without executing external effects.
+
+### Admin agent lifecycle
+
+The Admin API is a separate audience boundary at `/api/admin/v1`. Keycloak uses
+the same development issuer and principal mapping as Copilot, but browser and
+smoke tokens carry the `gantry-admin-api` audience. Gantry then authorizes the
+principal from database-backed role bindings: `organization_admin` may manage
+every workspace in its organization, while `workspace_agent_editor` is limited
+to its bound workspace. A Copilot token cannot call Admin routes, and an agent
+outside an administrator's managed workspace is returned as `404`.
+
+The implemented Admin contract is intentionally limited to workspace listing,
+agent creation, draft read/update, version history, direct publication, and
+retirement. Draft updates and publication require an `If-Match` draft revision.
+Publication validates, freezes, and digests the canonical
+`gantry.phase0.demo/v1` manifest before it becomes visible to Copilot. The
+manifest mode belongs to the immutable version, never to task input. Retirement
+hides the agent from the catalog without deleting historical versions, tasks, or
+runs.
+
+The Admin workbench is desktop-first. Start it after Compose is ready:
+
+```sh
+pnpm dev:admin
+```
+
+Open `http://localhost:3001` and sign in as `admin-demo` with password
+`gantry_admin_password`. The corresponding PKCE client is `gantry-admin-web`.
+For a native control plane or different browser origin, override:
+
+```sh
+VITE_ADMIN_OIDC_ISSUER=http://localhost:8180/realms/gantry-dev \
+VITE_ADMIN_OIDC_CLIENT_ID=gantry-admin-web \
+VITE_ADMIN_API_BASE=http://localhost:8080/api/admin/v1 \
+pnpm dev:admin
+```
+
+Run the direct API lifecycle smoke on a Docker-capable machine with Git Bash:
+
+```sh
+moon run deploy-compose:admin-smoke
+```
+
+It obtains real Admin and Copilot Keycloak tokens, creates a draft, verifies
+revision preconditions, publishes an immutable version, observes catalog
+visibility and successful execution, then retires the agent. It prints relevant
+service logs and removes its Compose project on failure.
+
+The Admin schema is an intentionally clean pre-release replacement, not a
+forward migration. Reset a local Compose database created by an older build
+before starting this version:
+
+```sh
+docker compose -f deploy/compose/docker-compose.yml down --volumes
+```
+
+Do not use this reset against data that needs to be retained. Versioned
+migrations begin only once Gantry has an externally released schema contract.

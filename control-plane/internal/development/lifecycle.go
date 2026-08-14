@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/tasks"
@@ -17,8 +16,13 @@ type Lifecycle struct{ tasks *tasks.Service }
 func NewLifecycle(taskService *tasks.Service) *Lifecycle { return &Lifecycle{tasks: taskService} }
 
 func (l *Lifecycle) Start(ctx context.Context, mode string) (tasks.TaskRun, error) {
-	input, _ := json.Marshal(map[string]string{"mode": mode})
-	task, _, err := l.tasks.Submit(ctx, demoActor(), newID(), tasks.SubmitRequest{AgentID: DemoAgentID, Message: "development lifecycle probe", StructuredInput: input})
+	agentID := DemoAgentID
+	if mode == "await_cancel" {
+		agentID = AwaitCancelAgentID
+	} else if mode != "complete" {
+		return tasks.TaskRun{}, tasks.ErrInvalidInput
+	}
+	task, _, err := l.tasks.Submit(ctx, demoActor(), newID(), tasks.SubmitRequest{AgentID: agentID, Message: "development lifecycle probe"})
 	if err != nil {
 		return tasks.TaskRun{}, err
 	}

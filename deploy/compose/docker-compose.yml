@@ -118,6 +118,8 @@ services:
       GANTRY_PHASE0_DEV_API_TOKEN: ${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
       GANTRY_COPILOT_OIDC_ISSUER: http://gantry-keycloak.localhost:8180/realms/gantry-dev
       GANTRY_COPILOT_OIDC_AUDIENCE: gantry-copilot-api
+      GANTRY_ADMIN_OIDC_ISSUER: http://gantry-keycloak.localhost:8180/realms/gantry-dev
+      GANTRY_ADMIN_OIDC_AUDIENCE: gantry-admin-api
     deploy:
       resources:
         limits:

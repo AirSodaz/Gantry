@@ -85,13 +85,12 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 			return Task{}, err
 		}
 	}
-	var mode string
 	var attempt int
-	if err := tx.QueryRow(ctx, `SELECT demo_mode, attempt_number+1 FROM gantry.runs WHERE id=$1`, oldRunID).Scan(&mode, &attempt); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT attempt_number+1 FROM gantry.runs WHERE id=$1`, oldRunID).Scan(&attempt); err != nil {
 		return Task{}, err
 	}
 	runID := newID("run")
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, demo_mode, status) VALUES ($1,$2,$3,$4,$5,'queued')`, runID, taskID, versionID, attempt, mode); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, status) VALUES ($1,$2,$3,$4,'queued')`, runID, taskID, versionID, attempt); err != nil {
 		return Task{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued' WHERE id=$1`, taskID, runID); err != nil {

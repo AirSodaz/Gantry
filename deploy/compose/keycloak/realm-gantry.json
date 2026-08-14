@@ -20,6 +20,15 @@
       "firstName": "Copilot",
       "lastName": "Other",
       "credentials": [{"type": "password", "value": "gantry_other_password", "temporary": false}]
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "admin-demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [{"type": "password", "value": "gantry_admin_password", "temporary": false}]
     }
   ],
   "clients": [
@@ -41,6 +50,25 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocolMappers": [{"name": "copilot-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-copilot-api", "access.token.claim": "true", "id.token.claim": "false"}}]
+    },
+    {
+      "clientId": "gantry-admin-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3001/*"],
+      "postLogoutRedirectUris": ["http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3001"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "protocolMappers": [{"name": "admin-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-admin-api", "access.token.claim": "true", "id.token.claim": "false"}}]
+    },
+    {
+      "clientId": "gantry-admin-smoke",
+      "secret": "gantry-admin-smoke-secret",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [{"name": "admin-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-admin-api", "access.token.claim": "true", "id.token.claim": "false"}}]
     }
   ]
 }
