@@ -61,21 +61,20 @@ moon run deploy-compose:up
 ```
 
 It starts PostgreSQL on `5432`, MinIO API on `9000`, MinIO console on `9001`,
-Keycloak on `8180`, public OpenAPI-owned HTTP on `8080`, and the private runner
+Dex on `5556`, public OpenAPI-owned HTTP on `8080`, and the private runner
 gRPC endpoint on `8081`. Admin Vite runs on `3001`; Copilot Vite runs on `3002`. Both proxy
 `/api` to `http://localhost:8080`.
 
-The `minio-init` container creates the development buckets. Do not use MinIO
-SDK types outside the storage adapter. Runner mTLS variables are intentionally
-explicit (`GANTRY_RUNNER_CA_FILE`, `GANTRY_RUNNER_CERT_FILE`, and
-`GANTRY_RUNNER_KEY_FILE`) and remain unset for the local plaintext h2 smoke
+Do not use MinIO SDK types outside the storage adapter. Runner mTLS variables
+are intentionally explicit (`GANTRY_RUNNER_CA_FILE`, `GANTRY_RUNNER_CERT_FILE`,
+and `GANTRY_RUNNER_KEY_FILE`) and remain unset for the local plaintext h2 smoke
 test.
 
 ### Native Phase 0 smoke test
 
 For a fast non-Docker lifecycle check, run PostgreSQL and an S3-compatible
 endpoint natively on the addresses configured in `.env.example`. The object
-store only needs to accept TCP connections for this Phase 0 proof; Keycloak is
+store only needs to accept TCP connections for this Phase 0 proof; Dex is
 not required. Copy the example to `.env.local`, set the database and object
 store values for those native services, then enable the developer probe:
 
@@ -93,7 +92,7 @@ moon run deploy-local:phase0-smoke
 The task reads `.env.local` automatically, builds temporary control-plane and
 runner binaries, waits for `/readyz`, and verifies completion, cancellation,
 and runner-process loss. It always terminates the processes it started and
-prints their logs on failure. It does not validate OIDC, Keycloak fixtures, or
+prints their logs on failure. It does not validate OIDC, Dex fixtures, or
 the full Copilot API; use the Compose Copilot smoke test for those paths.
 
 ### Phase 0 lifecycle smoke test
@@ -137,16 +136,17 @@ principal with an organization-level role binding, and published deterministic
 completion and cancellation agents. They are not production data or a
 substitute for the Admin publication workflow.
 
-Compose imports the `gantry-dev` Keycloak realm. The control plane validates
-issuer, expiry, signature, and the `gantry-copilot-api` audience before mapping
-the stable OIDC subject to a local principal. The `gantry-copilot-smoke` client
-uses password grant only for the disposable Compose smoke test; browser-facing
-Copilot uses the public development issuer
-`http://gantry-keycloak.localhost:8180/realms/gantry-dev` with the
-`gantry-copilot-web` PKCE client. The hostname must resolve to `127.0.0.1` in
-the browser; current Chromium-based browsers resolve `*.localhost`
-automatically. Start the frontend with `pnpm dev:copilot` after the Compose
-stack is ready and sign in with the `copilot-demo` fixture account. The
+Compose starts Dex with a SQLite-backed local password database. The control
+plane validates issuer, expiry, signature, and the `gantry-copilot-api`
+audience before mapping the stable OIDC subject to a local principal. The
+`gantry-copilot-smoke` client uses password grant only for the disposable
+Compose smoke test; browser-facing Copilot uses the public development issuer
+`http://gantry-dex.localhost:5556/dex` with the `gantry-copilot-web` PKCE
+client. The requested Dex cross-client audience scope preserves the API
+audience boundary. The hostname must resolve to `127.0.0.1` in the browser;
+current Chromium-based browsers resolve `*.localhost` automatically. Start the
+frontend with `pnpm dev:copilot` after the Compose stack is ready and sign in
+with `copilot-demo@example.test` and password `gantry_demo_password`. The
 approvals and artifacts navigation entries remain intentionally disabled until
 their APIs exist.
 
@@ -154,8 +154,9 @@ For a natively started control plane or a different browser origin, override
 the Vite settings before starting the app:
 
 ```sh
-VITE_COPILOT_OIDC_ISSUER=http://localhost:8180/realms/gantry-dev \
+VITE_COPILOT_OIDC_ISSUER=http://localhost:5556/dex \
 VITE_COPILOT_OIDC_CLIENT_ID=gantry-copilot-web \
+VITE_COPILOT_OIDC_SCOPE='openid profile email audience:server:client_id:gantry-copilot-api' \
 VITE_COPILOT_API_BASE=http://localhost:8080/api/copilot/v1 \
 pnpm dev:copilot
 ```
@@ -165,6 +166,19 @@ The browser flow uses Authorization Code + PKCE and keeps the OIDC session in
 artifacts. The workbench is desktop-first in this slice. Narrow breakpoints
 keep the component structure usable for a later mobile pass, but mobile visual
 parity is not a Phase 0 acceptance gate.
+
+### External identity providers
+
+Dex is the local development identity provider, not a production dependency.
+It can also broker LDAP, SAML, and OIDC providers when a shared development
+issuer is useful. For production, configure both Gantry API issuers and their
+corresponding API audiences to the enterprise provider. The browser clients
+must use the scopes required by that provider; remove the Dex-specific
+`audience:server:client_id:*` scope only when the external provider already
+issues the configured API audience in its access token. Dex local users are
+declared in `deploy/compose/dex/config.yaml`; use its gRPC API instead of adding
+application-level user management when development users must be changed at
+runtime.
 
 Run the full durable task flow on a Docker-capable machine with Git Bash:
 
@@ -188,7 +202,7 @@ bindings at build time from the same proto source. Generated files are never
 hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
-The persistent Copilot slice includes the development Keycloak browser login,
+The persistent Copilot slice includes the development Dex browser login,
 catalog, task submission, polling, cancellation, and retry. It intentionally
 excludes approvals, artifacts, event streaming, real models/tools, and
 sandboxing. It uses deterministic fixture agents to validate task ownership,
@@ -197,9 +211,9 @@ retry without executing external effects.
 
 ### Admin agent lifecycle
 
-The Admin API is a separate audience boundary at `/api/admin/v1`. Keycloak uses
-the same development issuer and principal mapping as Copilot, but browser and
-smoke tokens carry the `gantry-admin-api` audience. Gantry then authorizes the
+The Admin API is a separate audience boundary at `/api/admin/v1`. Dex uses the
+same development issuer and principal mapping as Copilot, but browser and smoke
+tokens request the `gantry-admin-api` audience. Gantry then authorizes the
 principal from database-backed role bindings: `organization_admin` may manage
 every workspace in its organization, while `workspace_agent_editor` is limited
 to its bound workspace. A Copilot token cannot call Admin routes, and an agent
@@ -220,13 +234,14 @@ The Admin workbench is desktop-first. Start it after Compose is ready:
 pnpm dev:admin
 ```
 
-Open `http://localhost:3001` and sign in as `admin-demo` with password
+Open `http://localhost:3001` and sign in as `admin-demo@example.test` with password
 `gantry_admin_password`. The corresponding PKCE client is `gantry-admin-web`.
 For a native control plane or different browser origin, override:
 
 ```sh
-VITE_ADMIN_OIDC_ISSUER=http://localhost:8180/realms/gantry-dev \
+VITE_ADMIN_OIDC_ISSUER=http://localhost:5556/dex \
 VITE_ADMIN_OIDC_CLIENT_ID=gantry-admin-web \
+VITE_ADMIN_OIDC_SCOPE='openid profile email audience:server:client_id:gantry-admin-api' \
 VITE_ADMIN_API_BASE=http://localhost:8080/api/admin/v1 \
 pnpm dev:admin
 ```
@@ -237,7 +252,7 @@ Run the direct API lifecycle smoke on a Docker-capable machine with Git Bash:
 moon run deploy-compose:admin-smoke
 ```
 
-It obtains real Admin and Copilot Keycloak tokens, creates a draft, verifies
+It obtains real Admin and Copilot Dex tokens, creates a draft, verifies
 revision preconditions, publishes an immutable version, observes catalog
 visibility and successful execution, then retires the agent. It prints relevant
 service logs and removes its Compose project on failure.

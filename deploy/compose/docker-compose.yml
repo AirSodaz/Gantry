@@ -1,27 +1,23 @@
 services:
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.0.7
-    container_name: gantry-keycloak
-    command: start-dev --import-realm --http-port=8080 --health-enabled=true
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: gantry_dev_admin
-      KC_HOSTNAME: gantry-keycloak.localhost:8180
-      KC_HOSTNAME_STRICT: "false"
+  dex:
+    image: ghcr.io/dexidp/dex:v2.45.1
+    container_name: gantry-dex
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
     ports:
-      - "8180:8080"
+      - "5556:5556"
     volumes:
-      - ./keycloak:/opt/keycloak/data/import:ro
+      - ./dex/config.yaml:/etc/dex/config.yaml:ro
+      - dexdata:/data
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5556/dex/.well-known/openid-configuration"]
       interval: 5s
       timeout: 5s
       retries: 20
     deploy:
       resources:
         limits:
-          memory: 768M
-          cpus: "1.0"
+          memory: 128M
+          cpus: "0.5"
 
   postgres:
     image: postgres:17-alpine
@@ -69,22 +65,6 @@ services:
           memory: 256M
           cpus: "0.5"
 
-  minio-init:
-    image: minio/mc:latest
-    container_name: gantry-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set gantry http://minio:9000 gantry gantry_dev_secret &&
-      mc mb --ignore-existing gantry/artifacts &&
-      mc mb --ignore-existing gantry/content-segments &&
-      mc mb --ignore-existing gantry/evaluation-fixtures &&
-      mc mb --ignore-existing gantry/snapshots &&
-      echo 'Buckets created successfully'
-      "
-
   control-plane:
     build:
       context: ../..
@@ -95,7 +75,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      keycloak:
+      dex:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -116,9 +96,9 @@ services:
       GANTRY_GRPC_PORT: "8081"
       GANTRY_DEVELOPMENT_MODE: "true"
       GANTRY_PHASE0_DEV_API_TOKEN: ${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
-      GANTRY_COPILOT_OIDC_ISSUER: http://gantry-keycloak.localhost:8180/realms/gantry-dev
+      GANTRY_COPILOT_OIDC_ISSUER: http://gantry-dex.localhost:5556/dex
       GANTRY_COPILOT_OIDC_AUDIENCE: gantry-copilot-api
-      GANTRY_ADMIN_OIDC_ISSUER: http://gantry-keycloak.localhost:8180/realms/gantry-dev
+      GANTRY_ADMIN_OIDC_ISSUER: http://gantry-dex.localhost:5556/dex
       GANTRY_ADMIN_OIDC_AUDIENCE: gantry-admin-api
     deploy:
       resources:
@@ -129,7 +109,7 @@ services:
       - default
       - runner-net
     extra_hosts:
-      - "gantry-keycloak.localhost:host-gateway"
+      - "gantry-dex.localhost:host-gateway"
 
   runner:
     build:
@@ -157,5 +137,6 @@ networks:
     internal: true
 
 volumes:
+  dexdata:
   pgdata:
   miniodata:

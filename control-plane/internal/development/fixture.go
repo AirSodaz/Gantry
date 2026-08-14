@@ -19,9 +19,10 @@ const (
 	DemoPrincipalID      = "prn_copilot_demo"
 	OtherPrincipalID     = "prn_copilot_other"
 	AdminPrincipalID     = "prn_admin_demo"
-	DemoSubject          = "11111111-1111-1111-1111-111111111111"
-	OtherSubject         = "22222222-2222-2222-2222-222222222222"
-	AdminSubject         = "33333333-3333-3333-3333-333333333333"
+	// Dex encodes the local user ID and connector ID into the OIDC subject.
+	DemoSubject  = "CiQxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTESBWxvY2Fs"
+	OtherSubject = "CiQyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjISBWxvY2Fs"
+	AdminSubject = "CiQzMzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMSBWxvY2Fs"
 )
 
 func Seed(ctx context.Context, pool *pgxpool.Pool) error {

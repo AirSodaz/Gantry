@@ -239,7 +239,7 @@ decision point.
 Choose the first fully supported OIDC provider and its group/claim conventions.
 
 **Default:** Standards-compliant OIDC plus documented examples for Microsoft
-Entra ID and Keycloak.
+Entra ID and Dex.
 
 **Decision gate:** Before Phase 1 identity integration is declared complete.
 

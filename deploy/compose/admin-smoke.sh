@@ -3,7 +3,7 @@ set -euo pipefail
 
 compose=(docker compose -p gantry-admin-smoke -f docker-compose.yml)
 api_url="${GANTRY_ADMIN_SMOKE_API_URL:-http://localhost:8080}"
-keycloak_url="${GANTRY_KEYCLOAK_SMOKE_URL:-http://localhost:8180}"
+dex_url="${GANTRY_DEX_SMOKE_URL:-http://localhost:5556/dex}"
 response_body=""
 response_status=""
 admin_token=""
@@ -12,7 +12,7 @@ copilot_token=""
 cleanup() {
   local status=$?
   if [[ $status -ne 0 ]]; then
-    "${compose[@]}" logs keycloak control-plane runner || true
+    "${compose[@]}" logs dex control-plane runner || true
   fi
   "${compose[@]}" down --volumes --remove-orphans || true
   exit "$status"
@@ -23,11 +23,17 @@ json_value() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body" | h
 
 token_for() {
   local client_id=$1 client_secret=$2 username=$3 password=$4 body
-  body=$(curl -sS -X POST "${keycloak_url}/realms/gantry-dev/protocol/openid-connect/token" \
+  local audience
+  case "${client_id}" in
+    gantry-admin-smoke) audience=gantry-admin-api ;;
+    gantry-copilot-smoke) audience=gantry-copilot-api ;;
+    *) echo "unsupported Dex client: ${client_id}" >&2; return 1 ;;
+  esac
+  body=$(curl -sS -X POST "${dex_url}/token" \
+    --user "${client_id}:${client_secret}" \
     --data-urlencode grant_type=password \
-    --data-urlencode "client_id=${client_id}" \
-    --data-urlencode "client_secret=${client_secret}" \
-    --data-urlencode "username=${username}" \
+    --data-urlencode "scope=openid profile email audience:server:client_id:${audience}" \
+    --data-urlencode "username=${username}@example.test" \
     --data-urlencode "password=${password}")
   sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p' <<<"$body"
 }

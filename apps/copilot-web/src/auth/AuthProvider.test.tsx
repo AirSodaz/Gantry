@@ -72,13 +72,13 @@ describe('AuthProvider', () => {
   });
 
   it('surfaces a failed sign-in redirect instead of leaving the button inert', async () => {
-    mocked.manager.signinRedirect.mockRejectedValue(new Error('Keycloak is unavailable.'));
+    mocked.manager.signinRedirect.mockRejectedValue(new Error('Dex is unavailable.'));
     const userEvents = userEvent.setup();
     render(<AuthProvider><Probe /></AuthProvider>);
     await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('signed-out'));
 
     await userEvents.click(screen.getByRole('button', { name: 'sign in' }));
 
-    expect(await screen.findByText('Keycloak is unavailable.')).toBeInTheDocument();
+    expect(await screen.findByText('Dex is unavailable.')).toBeInTheDocument();
   });
 });

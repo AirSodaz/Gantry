@@ -3,7 +3,7 @@ set -euo pipefail
 
 compose=(docker compose -p gantry-copilot-smoke -f docker-compose.yml)
 api_url="${GANTRY_COPILOT_SMOKE_API_URL:-http://localhost:8080}"
-keycloak_url="${GANTRY_KEYCLOAK_SMOKE_URL:-http://localhost:8180}"
+dex_url="${GANTRY_DEX_SMOKE_URL:-http://localhost:5556/dex}"
 response_body=""
 response_status=""
 access_token=""
@@ -11,7 +11,7 @@ access_token=""
 cleanup() {
   local status=$?
   if [[ $status -ne 0 ]]; then
-    "${compose[@]}" logs keycloak control-plane runner || true
+    "${compose[@]}" logs dex control-plane runner || true
   fi
   "${compose[@]}" down --volumes --remove-orphans || true
   exit "$status"
@@ -23,11 +23,11 @@ task_run_id() { sed -n 's/.*"current_run":{"id":"\([^"]*\)".*/\1/p' <<<"$respons
 
 token_for() {
   local username=$1 password=$2 body
-  body=$(curl -sS -X POST "${keycloak_url}/realms/gantry-dev/protocol/openid-connect/token" \
+  body=$(curl -sS -X POST "${dex_url}/token" \
+    --user gantry-copilot-smoke:gantry-smoke-secret \
     --data-urlencode grant_type=password \
-    --data-urlencode client_id=gantry-copilot-smoke \
-    --data-urlencode client_secret=gantry-smoke-secret \
-    --data-urlencode "username=${username}" \
+    --data-urlencode scope='openid profile email audience:server:client_id:gantry-copilot-api' \
+    --data-urlencode "username=${username}@example.test" \
     --data-urlencode "password=${password}")
   sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p' <<<"$body"
 }
