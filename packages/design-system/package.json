@@ -3,11 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/react": "19.1.6",
     "typescript": "5.8.3"
+  },
+  "dependencies": {
+    "react": "19.1.0"
   }
 }

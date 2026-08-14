@@ -6,18 +6,29 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@gantry/api-client": "workspace:*",
+    "@gantry/design-system": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
+    "lucide-react": "^1.31.0",
+    "oidc-client-ts": "^3.5.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.4",
     "@types/react": "19.1.6",
     "@types/react-dom": "19.1.6",
     "@vitejs/plugin-react": "4.5.2",
+    "jsdom": "^30.0.1",
     "typescript": "5.8.3",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^4.1.10"
   }
 }

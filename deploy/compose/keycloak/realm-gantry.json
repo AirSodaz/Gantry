@@ -29,6 +29,7 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": ["http://localhost:3002/*"],
+      "postLogoutRedirectUris": ["http://localhost:3002/*"],
       "webOrigins": ["http://localhost:3002"],
       "attributes": {"pkce.code.challenge.method": "S256"},
       "protocolMappers": [{"name": "copilot-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-copilot-api", "access.token.claim": "true", "id.token.claim": "false"}}]

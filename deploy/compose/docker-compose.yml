@@ -6,6 +6,8 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: gantry_dev_admin
+      KC_HOSTNAME: gantry-keycloak.localhost:8180
+      KC_HOSTNAME_STRICT: "false"
     ports:
       - "8180:8080"
     volumes:
@@ -114,7 +116,7 @@ services:
       GANTRY_GRPC_PORT: "8081"
       GANTRY_DEVELOPMENT_MODE: "true"
       GANTRY_PHASE0_DEV_API_TOKEN: ${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
-      GANTRY_COPILOT_OIDC_ISSUER: http://keycloak:8080/realms/gantry-dev
+      GANTRY_COPILOT_OIDC_ISSUER: http://gantry-keycloak.localhost:8180/realms/gantry-dev
       GANTRY_COPILOT_OIDC_AUDIENCE: gantry-copilot-api
     deploy:
       resources:
@@ -124,6 +126,8 @@ services:
     networks:
       - default
       - runner-net
+    extra_hosts:
+      - "gantry-keycloak.localhost:host-gateway"
 
   runner:
     build:

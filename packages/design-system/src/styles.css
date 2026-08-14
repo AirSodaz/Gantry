@@ -1,0 +1,85 @@
+:root {
+  --ds-bg: #f7f8fa;
+  --ds-surface: #ffffff;
+  --ds-surface-muted: #f0f2f5;
+  --ds-text: #17202a;
+  --ds-text-muted: #66717d;
+  --ds-border: #dce1e7;
+  --ds-border-strong: #c7cfd8;
+  --ds-accent: #0b8273;
+  --ds-accent-dark: #096657;
+  --ds-danger: #bd4a45;
+  --ds-warning: #a76b16;
+  --ds-success: #14764c;
+  --ds-radius: 6px;
+  --ds-shadow: 0 12px 28px rgb(22 32 42 / 8%);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.ds-button,
+.ds-icon-button,
+.ds-input {
+  font: inherit;
+}
+
+.ds-button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius);
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.ds-button:disabled,
+.ds-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ds-button-primary { background: var(--ds-accent); color: white; }
+.ds-button-primary:hover:not(:disabled) { background: var(--ds-accent-dark); }
+.ds-button-secondary { background: var(--ds-surface); border-color: var(--ds-border-strong); color: var(--ds-text); }
+.ds-button-secondary:hover:not(:disabled) { background: var(--ds-surface-muted); }
+.ds-button-quiet { background: transparent; color: var(--ds-text-muted); }
+.ds-button-quiet:hover:not(:disabled) { background: var(--ds-surface-muted); color: var(--ds-text); }
+.ds-button-danger { background: transparent; border-color: #e4b5b2; color: var(--ds-danger); }
+.ds-button-danger:hover:not(:disabled) { background: #fff3f2; }
+
+.ds-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius);
+  background: transparent;
+  color: var(--ds-text-muted);
+  cursor: pointer;
+}
+
+.ds-icon-button:hover:not(:disabled),
+.ds-icon-button:focus-visible { border-color: var(--ds-border); background: var(--ds-surface-muted); color: var(--ds-text); }
+
+.ds-field { display: grid; gap: 7px; }
+.ds-field-label { color: var(--ds-text-muted); font-size: 12px; font-weight: 650; letter-spacing: 0.02em; }
+.ds-input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  padding: 0 12px;
+}
+.ds-input:focus { border-color: var(--ds-accent); outline: 3px solid rgb(11 130 115 / 16%); }
+
+.ds-status { display: inline-flex; align-items: center; gap: 7px; color: var(--ds-text-muted); font-size: 12px; font-weight: 650; text-transform: capitalize; }
+.ds-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ds-border-strong); }
+.ds-status-running .ds-status-dot, .ds-status-queued .ds-status-dot, .ds-status-canceling .ds-status-dot { background: var(--ds-warning); }
+.ds-status-completed .ds-status-dot { background: var(--ds-success); }
+.ds-status-failed .ds-status-dot { background: var(--ds-danger); }
+.ds-status-canceled .ds-status-dot { background: var(--ds-text-muted); }

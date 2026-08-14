@@ -29,6 +29,12 @@ domain transitions, infrastructure wiring, or development-only fixtures.
 Prefer a clear replacement over a narrowly scoped patch that preserves
 avoidable complexity.
 
+Keep reusable visual primitives such as buttons, icon buttons, text fields, and
+status marks in `packages/design-system`. Keep authentication, API clients,
+catalog controls, task controls, and page composition in the owning app under
+`apps/copilot-web/src`; do not move business-specific components into the
+shared package just to shorten an import path.
+
 ## Bootstrap
 
 Install the pinned tools from `.prototools` (Moon, Node, pnpm, Go, Rust, and
@@ -64,6 +70,31 @@ SDK types outside the storage adapter. Runner mTLS variables are intentionally
 explicit (`GANTRY_RUNNER_CA_FILE`, `GANTRY_RUNNER_CERT_FILE`, and
 `GANTRY_RUNNER_KEY_FILE`) and remain unset for the local plaintext h2 smoke
 test.
+
+### Native Phase 0 smoke test
+
+For a fast non-Docker lifecycle check, run PostgreSQL and an S3-compatible
+endpoint natively on the addresses configured in `.env.example`. The object
+store only needs to accept TCP connections for this Phase 0 proof; Keycloak is
+not required. Copy the example to `.env.local`, set the database and object
+store values for those native services, then enable the developer probe:
+
+```sh
+GANTRY_DEVELOPMENT_MODE=true
+GANTRY_PHASE0_DEV_API_TOKEN=local_phase0_token
+```
+
+From Git Bash, run:
+
+```sh
+moon run deploy-local:phase0-smoke
+```
+
+The task reads `.env.local` automatically, builds temporary control-plane and
+runner binaries, waits for `/readyz`, and verifies completion, cancellation,
+and runner-process loss. It always terminates the processes it started and
+prints their logs on failure. It does not validate OIDC, Keycloak fixtures, or
+the full Copilot API; use the Compose Copilot smoke test for those paths.
 
 ### Phase 0 lifecycle smoke test
 
@@ -109,7 +140,30 @@ Compose imports the `gantry-dev` Keycloak realm. The control plane validates
 issuer, expiry, signature, and the `gantry-copilot-api` audience before mapping
 the stable OIDC subject to a local principal. The `gantry-copilot-smoke` client
 uses password grant only for the disposable Compose smoke test; browser-facing
-Copilot remains configured for PKCE and is not implemented in the frontend yet.
+Copilot uses the public development issuer
+`http://gantry-keycloak.localhost:8180/realms/gantry-dev` with the
+`gantry-copilot-web` PKCE client. The hostname must resolve to `127.0.0.1` in
+the browser; current Chromium-based browsers resolve `*.localhost`
+automatically. Start the frontend with `pnpm dev:copilot` after the Compose
+stack is ready and sign in with the `copilot-demo` fixture account. The
+approvals and artifacts navigation entries remain intentionally disabled until
+their APIs exist.
+
+For a natively started control plane or a different browser origin, override
+the Vite settings before starting the app:
+
+```sh
+VITE_COPILOT_OIDC_ISSUER=http://localhost:8180/realms/gantry-dev \
+VITE_COPILOT_OIDC_CLIENT_ID=gantry-copilot-web \
+VITE_COPILOT_API_BASE=http://localhost:8080/api/copilot/v1 \
+pnpm dev:copilot
+```
+
+The browser flow uses Authorization Code + PKCE and keeps the OIDC session in
+`sessionStorage`; it does not send placeholder requests for approvals or
+artifacts. The workbench is desktop-first in this slice. Narrow breakpoints
+keep the component structure usable for a later mobile pass, but mobile visual
+parity is not a Phase 0 acceptance gate.
 
 Run the full durable task flow on a Docker-capable machine with Git Bash:
 
@@ -133,8 +187,9 @@ bindings at build time from the same proto source. Generated files are never
 hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
-The persistent Copilot slice intentionally excludes browser login UX, Admin
-agent lifecycle, approvals, artifacts, event streaming, real models/tools, and
-sandboxing. It uses the deterministic fixture agent to validate task ownership,
+The persistent Copilot slice includes the development Keycloak browser login,
+catalog, task submission, polling, cancellation, and retry. It intentionally
+excludes Admin agent lifecycle, approvals, artifacts, event streaming, real
+models/tools, and sandboxing. It uses the deterministic fixture agent to validate task ownership,
 runner leases, low-frequency event persistence, cancellation, failure, and
 retry without executing external effects.

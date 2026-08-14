@@ -13,7 +13,7 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint --if-present",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test --if-present",
+    "test": "pnpm -r --if-present test",
     "verify": "pnpm contracts:check && pnpm typecheck && pnpm build"
   },
   "devDependencies": {
