@@ -1,0 +1,198 @@
+package copilotapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/tasks"
+)
+
+type authenticator interface {
+	Authenticate(context.Context, string) (identity.Principal, error)
+}
+
+// taskService is the Copilot application's transport-facing use-case boundary.
+// The concrete PostgreSQL service remains in the tasks package.
+type taskService interface {
+	ListAgents(context.Context, identity.Principal, string, string, int) ([]tasks.Agent, error)
+	Submit(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
+	List(context.Context, identity.Principal, string, int) ([]tasks.Task, error)
+	Get(context.Context, identity.Principal, string) (tasks.Task, error)
+	Cancel(context.Context, identity.Principal, string, string) (tasks.CancelResult, error)
+	Retry(context.Context, identity.Principal, string, bool) (tasks.Task, error)
+}
+
+type dispatcher interface {
+	Dispatch(context.Context) error
+	RequestCancel(string, uint64, string) bool
+}
+
+type Handler struct {
+	auth       authenticator
+	tasks      taskService
+	dispatcher dispatcher
+	logger     *slog.Logger
+}
+
+func New(auth authenticator, taskService taskService, dispatcher dispatcher, logger *slog.Logger) http.Handler {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	h := Handler{auth: auth, tasks: taskService, dispatcher: dispatcher, logger: logger}
+	mux := http.NewServeMux()
+	mux.Handle("GET /agents", h.withActor(h.listAgents))
+	mux.Handle("POST /tasks", h.withActor(h.submitTask))
+	mux.Handle("GET /tasks", h.withActor(h.listTasks))
+	mux.Handle("GET /tasks/{taskID}", h.withActor(h.getTask))
+	mux.Handle("POST /tasks/{taskID}/runs/{operation...}", h.withActor(h.cancelOperation))
+	mux.Handle("POST /tasks/{operation...}", h.withActor(h.retryOperation))
+	return mux
+}
+
+type actorHandler func(http.ResponseWriter, *http.Request, identity.Principal)
+
+func (h Handler) withActor(next actorHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		actor, err := h.auth.Authenticate(r.Context(), r.Header.Get("Authorization"))
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "A valid Copilot access token is required.")
+			return
+		}
+		next(w, r, actor)
+	})
+}
+
+func (h Handler) listAgents(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	agents, err := h.tasks.ListAgents(r.Context(), actor, r.URL.Query().Get("category"), r.URL.Query().Get("search"), limit(r))
+	if err != nil {
+		writeInternal(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": agents, "page_info": map[string]any{"has_more": false}})
+}
+func (h Handler) submitTask(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request tasks.SubmitRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	task, duplicate, err := h.tasks.Submit(r.Context(), actor, r.Header.Get("Idempotency-Key"), request)
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	if err := h.dispatcher.Dispatch(r.Context()); err != nil {
+		h.logger.Error("queued task dispatch failed", "error", err, "task_id", task.ID)
+	}
+	status := http.StatusCreated
+	if duplicate {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, task)
+}
+func (h Handler) listTasks(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.tasks.List(r.Context(), actor, r.URL.Query().Get("status"), limit(r))
+	if err != nil {
+		writeInternal(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+}
+func (h Handler) getTask(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	task, err := h.tasks.Get(r.Context(), actor, r.PathValue("taskID"))
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, task)
+}
+func (h Handler) cancelOperation(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	runID, ok := operationTarget(r.PathValue("operation"), ":cancel")
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	result, err := h.tasks.Cancel(r.Context(), actor, r.PathValue("taskID"), runID)
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	if result.Deliver && !h.dispatcher.RequestCancel(result.Run.ID, result.Run.LeaseEpoch, "requested by Copilot user") {
+		h.logger.Warn("cancel persisted without an active runner session", "run_id", result.Run.ID)
+	}
+	writeJSON(w, http.StatusOK, result.Run)
+}
+func (h Handler) retryOperation(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	taskID, ok := operationTarget(r.PathValue("operation"), ":retry")
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	var request struct {
+		UseLatestVersion bool `json:"use_latest_version"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil && !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion)
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	if err := h.dispatcher.Dispatch(r.Context()); err != nil {
+		h.logger.Error("retried task dispatch failed", "error", err, "task_id", task.ID)
+	}
+	writeJSON(w, http.StatusCreated, task)
+}
+
+func operationTarget(operation, suffix string) (string, bool) {
+	target, ok := strings.CutSuffix(operation, suffix)
+	return target, ok && target != "" && !strings.Contains(target, "/")
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
+	defer r.Body.Close()
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("multiple JSON values")
+	}
+	return nil
+}
+func limit(r *http.Request) int { value, _ := strconv.Atoi(r.URL.Query().Get("limit")); return value }
+func writeTaskError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, tasks.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
+	case errors.Is(err, tasks.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "Task input is not supported.")
+	case errors.Is(err, tasks.ErrInvalidState):
+		writeError(w, http.StatusConflict, "invalid_state", "The task is not in a state that permits this operation.")
+	case errors.Is(err, tasks.ErrIdempotencyConflict):
+		writeError(w, http.StatusConflict, "idempotency_key_reused", "The idempotency key was used for a different request.")
+	default:
+		writeInternal(w, err)
+	}
+}
+func writeInternal(w http.ResponseWriter, err error) {
+	writeError(w, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
+}
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]any{"error": map[string]string{"code": code, "message": message}})
+}
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
+}

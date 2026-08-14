@@ -51,7 +51,6 @@ Mutable identity and ownership record:
 - `id`, `organization_id`, `workspace_id`
 - `slug`, `display_name`, `description`, `category`
 - `owner_principal_id`, `lifecycle_status`
-- `current_published_version_id`
 - creation and update metadata
 
 ### Agent Draft
@@ -76,8 +75,10 @@ Immutable publication candidate or release:
 
 ### Publication
 
-Assigns one agent version to workspace/group audiences. It has an effective
-interval, status, reviewers, review decision, and rollback linkage.
+Assigns one agent version to workspace/group audiences. The single published
+publication for an agent and workspace is its current visible version. A
+publication has an effective interval, status, reviewers, review decision, and
+rollback linkage.
 
 ### Integration Publication
 
@@ -427,7 +428,9 @@ Retention operates by content class and workspace policy. A deletion workflow:
 
 ## 14. Schema Evolution
 
-- Database migrations are forward-only within a release.
+- Before the first released database shape, revise the bootstrap schema directly
+  instead of carrying migration code. After release, database migrations are
+  forward-only within a release.
 - Public resource schemas and events carry explicit versions.
 - Published agent specs retain their original schema plus a canonical normalized
   representation.

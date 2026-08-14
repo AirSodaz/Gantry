@@ -1,0 +1,45 @@
+{
+  "realm": "gantry-dev",
+  "enabled": true,
+  "displayName": "Gantry Development",
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "username": "copilot-demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Copilot",
+      "lastName": "Demo",
+      "credentials": [{"type": "password", "value": "gantry_demo_password", "temporary": false}]
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "username": "copilot-other",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Copilot",
+      "lastName": "Other",
+      "credentials": [{"type": "password", "value": "gantry_other_password", "temporary": false}]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "gantry-copilot-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3002/*"],
+      "webOrigins": ["http://localhost:3002"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "protocolMappers": [{"name": "copilot-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-copilot-api", "access.token.claim": "true", "id.token.claim": "false"}}]
+    },
+    {
+      "clientId": "gantry-copilot-smoke",
+      "secret": "gantry-smoke-secret",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [{"name": "copilot-api-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": {"included.client.audience": "gantry-copilot-api", "access.token.claim": "true", "id.token.claim": "false"}}]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ package runnersession
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
@@ -42,13 +43,17 @@ type runner struct {
 // does not survive a process restart and is not a public task scheduler.
 type Scheduler struct {
 	mu                   sync.Mutex
+	logger               *slog.Logger
 	runners              map[string]*runner
 	runs                 map[string]*Run
 	nextControlMessageID uint64
 }
 
-func NewScheduler() *Scheduler {
-	return &Scheduler{runners: make(map[string]*runner), runs: make(map[string]*Run)}
+func NewScheduler(logger *slog.Logger) *Scheduler {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Scheduler{logger: logger, runners: make(map[string]*runner), runs: make(map[string]*Run)}
 }
 
 func (s *Scheduler) Register(runnerID, sessionID string, messageID uint64) (<-chan *runnerv1.ControlPlaneMessage, error) {
@@ -62,6 +67,7 @@ func (s *Scheduler) Register(runnerID, sessionID string, messageID uint64) (<-ch
 	}
 	state := &runner{sessionID: sessionID, lastMessageID: messageID, outbound: make(chan *runnerv1.ControlPlaneMessage, 8)}
 	s.runners[runnerID] = state
+	s.logger.Info("runner lifecycle", "event", "registered", "runner_id", runnerID, "session_id", sessionID)
 	return state.outbound, nil
 }
 
@@ -83,6 +89,7 @@ func (s *Scheduler) SubmitDemoRun(runID string, manifest []byte, manifestDigest 
 		s.runs[runID] = run
 		state.activeRunID = runID
 		s.sendLocked(state, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_AssignRun{AssignRun: &runnerv1.AssignRun{RunId: runID, LeaseEpoch: run.LeaseEpoch, Manifest: run.Manifest, ManifestDigest: manifestDigest}}})
+		s.logger.Info("runner lifecycle", "event", "assigned", "run_id", runID, "runner_id", runnerID, "lease_epoch", run.LeaseEpoch)
 		return copyRun(run), nil
 	}
 	return nil, fmt.Errorf("no idle registered runner")
@@ -104,6 +111,7 @@ func (s *Scheduler) CancelRun(runID, reason string) error {
 	}
 	run.Status = RunStatusCanceling
 	s.sendLocked(state, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_CancelRun{CancelRun: &runnerv1.CancelRun{RunId: runID, LeaseEpoch: run.LeaseEpoch, Reason: reason}}})
+	s.logger.Info("runner lifecycle", "event", "cancel_requested", "run_id", runID, "runner_id", run.RunnerID, "lease_epoch", run.LeaseEpoch)
 	return nil
 }
 
@@ -141,6 +149,7 @@ func (s *Scheduler) Disconnect(runnerID, sessionID string) {
 	if state.activeRunID != "" {
 		if run := s.runs[state.activeRunID]; run != nil && !isTerminal(run.Status) {
 			run.Status = RunStatusFailed
+			s.logger.Warn("runner lifecycle", "event", "runner_disconnected", "run_id", run.ID, "runner_id", runnerID, "lease_epoch", run.LeaseEpoch)
 		}
 	}
 	delete(s.runners, runnerID)
@@ -182,6 +191,7 @@ func (s *Scheduler) handleAcceptedLocked(runnerID string, state *runner, accepte
 		return fmt.Errorf("invalid run acceptance")
 	}
 	run.Status = RunStatusAccepted
+	s.logger.Info("runner lifecycle", "event", "accepted", "run_id", run.ID, "runner_id", runnerID, "lease_epoch", run.LeaseEpoch)
 	return nil
 }
 
@@ -199,6 +209,7 @@ func (s *Scheduler) handleEventBatchLocked(runnerID string, state *runner, batch
 	}
 	run.LastEventSequence = sequence
 	s.sendLocked(state, &runnerv1.ControlPlaneMessage{CorrelationId: run.ID, Payload: &runnerv1.ControlPlaneMessage_AcknowledgeEvents{AcknowledgeEvents: &runnerv1.AcknowledgeEvents{RunId: run.ID, LastAcknowledgedSequence: sequence}}})
+	s.logger.Info("runner lifecycle", "event", "events_acknowledged", "run_id", run.ID, "runner_id", runnerID, "lease_epoch", run.LeaseEpoch, "last_event_sequence", sequence)
 	return nil
 }
 
@@ -224,6 +235,7 @@ func (s *Scheduler) handleFinishedLocked(runnerID string, state *runner, finishe
 		return fmt.Errorf("invalid terminal status")
 	}
 	state.activeRunID = ""
+	s.logger.Info("runner lifecycle", "event", "finished", "run_id", run.ID, "runner_id", runnerID, "lease_epoch", run.LeaseEpoch, "status", run.Status)
 	return nil
 }
 

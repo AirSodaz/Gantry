@@ -17,6 +17,17 @@ async fn main() -> Result<()> {
     let address =
         env::var("GANTRY_CONTROL_PLANE_ADDR").unwrap_or_else(|_| "http://127.0.0.1:8081".into());
     let runner_id = env::var("GANTRY_RUNNER_ID").unwrap_or_else(|_| "dev-runner-01".into());
+    loop {
+        match session(address.clone(), runner_id.clone()).await {
+            Ok(false) => return Ok(()),
+            Ok(true) => tracing::warn!("runner session closed; reconnecting"),
+            Err(error) => tracing::warn!(%error, "runner session failed; reconnecting"),
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
+
+async fn session(address: String, runner_id: String) -> Result<bool> {
     let channel = connect(address).await?;
     let mut client = RunnerSessionClient::new(channel);
     let (sender, receiver) = mpsc::channel(32);
@@ -41,15 +52,14 @@ async fn main() -> Result<()> {
                             payload => tracing::info!("control-plane message received: {:?}", payload),
                         }
                     }
-                    None => break,
+                    None => return Ok(true),
                 }
             }
             _ = tick.tick() => { for outbound in executor.tick() { sender.send(outbound).await?; } }
             _ = heartbeat.tick() => { sender.send(executor.heartbeat()).await?; }
-            _ = tokio::signal::ctrl_c() => break,
+            _ = tokio::signal::ctrl_c() => return Ok(false),
         }
     }
-    Ok(())
 }
 
 async fn connect(address: String) -> Result<Channel> {

@@ -14,10 +14,16 @@ import (
 
 type service struct {
 	logger    *slog.Logger
-	scheduler *Scheduler
+	scheduler Coordinator
 }
 
-func NewHandler(logger *slog.Logger, scheduler *Scheduler) (string, http.Handler) {
+type Coordinator interface {
+	Register(string, string, uint64) (<-chan *runnerv1.ControlPlaneMessage, error)
+	Handle(string, string, *runnerv1.RunnerMessage) error
+	Disconnect(string, string)
+}
+
+func NewHandler(logger *slog.Logger, scheduler Coordinator) (string, http.Handler) {
 	return runnerv1connect.NewRunnerSessionHandler(service{logger: logger, scheduler: scheduler})
 }
 

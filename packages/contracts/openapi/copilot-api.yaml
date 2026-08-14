@@ -46,18 +46,25 @@ paths:
       operationId: submitTask
       summary: Submit a new task
       tags: [Tasks]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/SubmitTaskRequest"
-      headers:
-        Idempotency-Key:
-          schema:
-            type: string
-          required: true
       responses:
+        "200":
+          description: Original task returned for an idempotent retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
         "201":
           description: Task accepted
           content:
@@ -280,7 +287,7 @@ components:
     # --- Tasks ---
     SubmitTaskRequest:
       type: object
-      required: [agent_id, idempotency_key]
+      required: [agent_id]
       properties:
         agent_id:
           type: string
@@ -292,8 +299,6 @@ components:
           type: array
           items:
             type: string
-        idempotency_key:
-          type: string
 
     TaskResponse:
       type: object

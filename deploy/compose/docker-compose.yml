@@ -1,4 +1,26 @@
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    container_name: gantry-keycloak
+    command: start-dev --import-realm --http-port=8080 --health-enabled=true
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: gantry_dev_admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "1.0"
+
   postgres:
     image: postgres:17-alpine
     container_name: gantry-postgres
@@ -71,6 +93,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -88,6 +112,10 @@ services:
       GANTRY_LOG_LEVEL: debug
       GANTRY_HTTP_PORT: "8080"
       GANTRY_GRPC_PORT: "8081"
+      GANTRY_DEVELOPMENT_MODE: "true"
+      GANTRY_PHASE0_DEV_API_TOKEN: ${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
+      GANTRY_COPILOT_OIDC_ISSUER: http://keycloak:8080/realms/gantry-dev
+      GANTRY_COPILOT_OIDC_AUDIENCE: gantry-copilot-api
     deploy:
       resources:
         limits:

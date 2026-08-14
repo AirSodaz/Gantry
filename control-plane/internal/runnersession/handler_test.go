@@ -13,18 +13,18 @@ import (
 )
 
 func TestRunnerSessionHandlerPath(t *testing.T) {
-	path, handler := NewHandler(slog.Default(), NewScheduler())
+	path, handler := NewHandler(slog.Default(), NewScheduler(slog.Default()))
 	if path != "/gantry.runner.v1.RunnerSession/" {
 		t.Fatalf("path = %q", path)
 	}
 	if handler == nil {
 		t.Fatal("handler is nil")
 	}
-	var _ runnerv1connect.RunnerSessionHandler = service{logger: slog.Default(), scheduler: NewScheduler()}
+	var _ runnerv1connect.RunnerSessionHandler = service{logger: slog.Default(), scheduler: NewScheduler(slog.Default())}
 }
 
 func TestRunnerSessionStreamsLifecycleMessages(t *testing.T) {
-	scheduler := NewScheduler()
+	scheduler := NewScheduler(slog.Default())
 	path, handler := NewHandler(slog.Default(), scheduler)
 	server := httptest.NewUnstartedServer(httpHandler(path, handler))
 	server.EnableHTTP2 = true

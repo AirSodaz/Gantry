@@ -16,6 +16,19 @@ Application code uses the `ObjectStore` port. MinIO is only the local
 S3-compatible adapter and can be replaced by another S3-compatible service
 without changing domain or service interfaces.
 
+## Code Structure
+
+Keep Gantry's code clean by default and continuously. Do not introduce glue
+layers, god files, transitional compatibility paths, or migration code when a
+clean current-state design is available. Organize code around stable ownership
+and use cases, retain explicit transport/domain/persistence boundaries, and
+remove superseded paths in the same change.
+
+Split a module before a new responsibility would combine transport, persistence,
+domain transitions, infrastructure wiring, or development-only fixtures.
+Prefer a clear replacement over a narrowly scoped patch that preserves
+avoidable complexity.
+
 ## Bootstrap
 
 Install the pinned tools from `.prototools` (Moon, Node, pnpm, Go, Rust, and
@@ -42,8 +55,8 @@ moon run deploy-compose:up
 ```
 
 It starts PostgreSQL on `5432`, MinIO API on `9000`, MinIO console on `9001`,
-public OpenAPI-owned HTTP on `8080`, and the private runner gRPC endpoint on
-`8081`. Admin Vite runs on `3001`; Copilot Vite runs on `3002`. Both proxy
+Keycloak on `8180`, public OpenAPI-owned HTTP on `8080`, and the private runner
+gRPC endpoint on `8081`. Admin Vite runs on `3001`; Copilot Vite runs on `3002`. Both proxy
 `/api` to `http://localhost:8080`.
 
 The `minio-init` container creates the development buckets. Do not use MinIO
@@ -51,6 +64,65 @@ SDK types outside the storage adapter. Runner mTLS variables are intentionally
 explicit (`GANTRY_RUNNER_CA_FILE`, `GANTRY_RUNNER_CERT_FILE`, and
 `GANTRY_RUNNER_KEY_FILE`) and remain unset for the local plaintext h2 smoke
 test.
+
+### Phase 0 lifecycle smoke test
+
+The Compose stack enables a token-protected, development-only lifecycle probe.
+It is not part of the public OpenAPI surface and must never be enabled in a
+production deployment. Set `GANTRY_DEVELOPMENT_MODE=true` and provide
+`GANTRY_PHASE0_DEV_API_TOKEN`; startup rejects development mode without a
+token. The local Compose default is `gantry_phase0_dev_token`, which is for
+local testing only.
+
+The probe exposes three development routes with an `Authorization: Bearer`
+token:
+
+- `POST /internal/phase0/runs` with `{"mode":"complete"}` or
+  `{"mode":"await_cancel"}` creates a deterministic run on the durable
+  development task path.
+- `GET /internal/phase0/runs/{runID}` returns its lifecycle status, lease epoch,
+  and acknowledged event sequence.
+- `POST /internal/phase0/runs/{runID}/cancel` requests asynchronous cancellation.
+
+On a machine with Docker and Git Bash, run:
+
+```sh
+moon run deploy-compose:smoke
+```
+
+The task starts a disposable stack, proves completion, cancellation, and
+runner-disconnect failure, prints relevant logs if it fails, then removes its
+containers and volumes. It proves the deterministic runner lifecycle through
+the durable development task path; it does not prove sandbox cleanup or durable
+process recovery.
+
+### Persistent Copilot slice
+
+The initial schema is embedded as a clean bootstrap schema because Gantry has
+no prior released database shape. Development fixtures are isolated in the
+development package and are only seeded when `GANTRY_DEVELOPMENT_MODE=true`.
+They create a development workspace, two local principals, and one published
+Lifecycle Demo agent. They are not production data or a substitute for the
+Admin publication workflow.
+
+Compose imports the `gantry-dev` Keycloak realm. The control plane validates
+issuer, expiry, signature, and the `gantry-copilot-api` audience before mapping
+the stable OIDC subject to a local principal. The `gantry-copilot-smoke` client
+uses password grant only for the disposable Compose smoke test; browser-facing
+Copilot remains configured for PKCE and is not implemented in the frontend yet.
+
+Run the full durable task flow on a Docker-capable machine with Git Bash:
+
+```sh
+moon run deploy-compose:copilot-smoke
+```
+
+It validates catalog visibility, OIDC authentication, header-based idempotency,
+private task reads, completion, cancellation, runner loss, control-plane restart,
+and safe retry. `POST /api/copilot/v1/tasks` requires `Idempotency-Key`; the
+first request returns `201`, an identical retry returns `200`, and a changed
+request using the same key returns `409`. Retry creates a new immutable run only
+after the current run has failed or been canceled; it cannot replace active work.
 
 ## Contracts
 
@@ -61,6 +133,8 @@ bindings at build time from the same proto source. Generated files are never
 hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
-Phase 0 intentionally excludes persistence, authentication, scheduling, task
-execution, and UI workflows. Its runner smoke path only registers, heartbeats,
-receives control-plane acknowledgements, and shuts down on cancellation.
+The persistent Copilot slice intentionally excludes browser login UX, Admin
+agent lifecycle, approvals, artifacts, event streaming, real models/tools, and
+sandboxing. It uses the deterministic fixture agent to validate task ownership,
+runner leases, low-frequency event persistence, cancellation, failure, and
+retry without executing external effects.

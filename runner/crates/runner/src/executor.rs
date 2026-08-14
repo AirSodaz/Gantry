@@ -2,6 +2,7 @@ use protocol::gantry::runner::v1::{
     AssignRun, CancelRun, RunAccepted, RunEvent, RunEventBatch, RunFinished, RunTerminalStatus,
     RunnerMessage, runner_message,
 };
+use serde::Deserialize;
 
 const PROTOCOL_VERSION: u32 = 1;
 
@@ -18,6 +19,19 @@ struct ActiveRun {
     manifest_digest: String,
     next_event_sequence: u64,
     step: u8,
+    mode: DemoMode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DemoMode {
+    Complete,
+    AwaitCancel,
+}
+
+#[derive(Deserialize)]
+struct DemoManifest {
+    kind: String,
+    mode: String,
 }
 
 impl DemoExecutor {
@@ -65,12 +79,16 @@ impl DemoExecutor {
         {
             return Vec::new();
         }
+        let Some(mode) = parse_demo_mode(&assignment.manifest) else {
+            return Vec::new();
+        };
         self.active = Some(ActiveRun {
             run_id: assignment.run_id.clone(),
             lease_epoch: assignment.lease_epoch,
             manifest_digest: assignment.manifest_digest.clone(),
             next_event_sequence: 1,
             step: 0,
+            mode,
         });
         let run = self.active.as_ref().expect("assigned run is present");
         vec![
@@ -82,8 +100,8 @@ impl DemoExecutor {
         ]
     }
 
-    // Each tick emits one deterministic progress event. The second tick emits
-    // completion, giving cancellation one observable control-plane window.
+    // Each tick emits one deterministic progress event. Complete-mode runs end
+    // on the second tick; await-cancel runs stay active until cancellation.
     pub fn tick(&mut self) -> Vec<RunnerMessage> {
         let Some(run) = self.active.as_mut() else {
             return Vec::new();
@@ -98,7 +116,7 @@ impl DemoExecutor {
         run.step += 1;
         let run_id = run.run_id.clone();
         let lease_epoch = run.lease_epoch;
-        let finish = run.step >= 2;
+        let finish = run.mode == DemoMode::Complete && run.step >= 2;
         let mut messages = vec![
             self.message(runner_message::Payload::EventBatch(RunEventBatch {
                 run_id: run_id.clone(),
@@ -153,16 +171,32 @@ impl DemoExecutor {
     }
 }
 
+fn parse_demo_mode(manifest: &[u8]) -> Option<DemoMode> {
+    let manifest: DemoManifest = serde_json::from_slice(manifest).ok()?;
+    if manifest.kind != "gantry.phase0.demo/v1" {
+        return None;
+    }
+    match manifest.mode.as_str() {
+        "complete" => Some(DemoMode::Complete),
+        "await_cancel" => Some(DemoMode::AwaitCancel),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use protocol::gantry::runner::v1::runner_message;
 
     fn assignment() -> AssignRun {
+        assignment_with_mode("complete")
+    }
+
+    fn assignment_with_mode(mode: &str) -> AssignRun {
         AssignRun {
             run_id: "run-1".into(),
             lease_epoch: 7,
-            manifest: b"demo".to_vec(),
+            manifest: format!(r#"{{"kind":"gantry.phase0.demo/v1","mode":"{mode}"}}"#).into_bytes(),
             manifest_digest: "sha256:demo".into(),
             assignment_expiry: None,
         }
@@ -234,5 +268,30 @@ mod tests {
                 .is_empty()
         );
         assert!(!executor.tick().is_empty());
+    }
+
+    #[test]
+    fn await_cancel_mode_does_not_complete_on_ticks() {
+        let mut executor = DemoExecutor::new("runner-1");
+        executor.assign(&assignment_with_mode("await_cancel"));
+        let first_tick = executor.tick();
+        let second_tick = executor.tick();
+        let third_tick = executor.tick();
+        assert_eq!(first_tick.len(), 1);
+        assert_eq!(second_tick.len(), 1);
+        assert_eq!(third_tick.len(), 1);
+        let Some(runner_message::Payload::EventBatch(event)) = &third_tick[0].payload else {
+            panic!("expected event batch")
+        };
+        assert_eq!(event.events[0].client_sequence, 3);
+    }
+
+    #[test]
+    fn malformed_demo_manifest_is_not_accepted() {
+        let mut executor = DemoExecutor::new("runner-1");
+        let mut invalid = assignment();
+        invalid.manifest = b"not-json".to_vec();
+        assert!(executor.assign(&invalid).is_empty());
+        assert!(executor.tick().is_empty());
     }
 }

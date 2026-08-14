@@ -170,7 +170,6 @@ export interface components {
             message?: string;
             structured_input?: Record<string, never>;
             attachment_ids?: string[];
-            idempotency_key: string;
         };
         TaskResponse: {
             id: string;
@@ -294,7 +293,9 @@ export interface operations {
     submitTask: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -304,6 +305,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Original task returned for an idempotent retry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
             /** @description Task accepted */
             201: {
                 headers: {

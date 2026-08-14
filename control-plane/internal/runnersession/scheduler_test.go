@@ -1,13 +1,14 @@
 package runnersession
 
 import (
+	"log/slog"
 	"testing"
 
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
 )
 
 func TestSchedulerCompletesRunAndAcknowledgesContiguousEvents(t *testing.T) {
-	scheduler := NewScheduler()
+	scheduler := NewScheduler(slog.Default())
 	outbound, err := scheduler.Register("runner-1", "session-1", 1)
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +44,7 @@ func TestSchedulerCompletesRunAndAcknowledgesContiguousEvents(t *testing.T) {
 }
 
 func TestSchedulerCancelsRunAndFailsRunOnDisconnect(t *testing.T) {
-	scheduler := NewScheduler()
+	scheduler := NewScheduler(slog.Default())
 	outbound, _ := scheduler.Register("runner-1", "session-1", 1)
 	run, _ := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
 	<-outbound
@@ -74,7 +75,7 @@ func TestSchedulerCancelsRunAndFailsRunOnDisconnect(t *testing.T) {
 }
 
 func TestSchedulerRejectsInvalidLeaseAndEventSequences(t *testing.T) {
-	scheduler := NewScheduler()
+	scheduler := NewScheduler(slog.Default())
 	outbound, _ := scheduler.Register("runner-1", "session-1", 1)
 	run, _ := scheduler.SubmitDemoRun("run-1", []byte("demo"), "sha256:demo")
 	<-outbound

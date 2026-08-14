@@ -14,8 +14,15 @@ import (
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/config"
+	"github.com/AirSodaz/gantry/internal/copilotapi"
+	"github.com/AirSodaz/gantry/internal/database"
+	"github.com/AirSodaz/gantry/internal/development"
+	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/objectstore"
+	"github.com/AirSodaz/gantry/internal/phase0dev"
 	"github.com/AirSodaz/gantry/internal/runnersession"
+	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -33,9 +40,45 @@ func main() {
 		logger.Error("invalid object storage configuration", "error", err)
 		os.Exit(1)
 	}
+	databasePool, err := database.Open(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("database is unavailable", "error", err)
+		os.Exit(1)
+	}
+	defer databasePool.Close()
+	if err := database.InitializeSchema(context.Background(), databasePool); err != nil {
+		logger.Error("database schema initialization failed", "error", err)
+		os.Exit(1)
+	}
+	if cfg.Phase0Dev.Enabled {
+		if err := development.Seed(context.Background(), databasePool); err != nil {
+			logger.Error("development fixture seed failed", "error", err)
+			os.Exit(1)
+		}
+	}
+	taskService := tasks.NewService(databasePool)
+	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while demo run was active")
+	if err != nil {
+		logger.Error("could not recover interrupted runs", "error", err)
+		os.Exit(1)
+	}
+	if failedRuns != 0 {
+		logger.Warn("marked interrupted runs as failed", "count", failedRuns)
+	}
+	developmentLifecycle := development.NewLifecycle(taskService)
+	persistentScheduler := runnersession.NewPersistentScheduler(logger, taskService)
+	var copilotAuth *identity.Authenticator
+	if cfg.CopilotOIDC.Issuer != "" {
+		verifier, err := identity.NewOIDCVerifier(context.Background(), cfg.CopilotOIDC.Issuer, cfg.CopilotOIDC.Audience)
+		if err != nil {
+			logger.Error("Copilot OIDC configuration is unavailable", "error", err)
+			os.Exit(1)
+		}
+		copilotAuth = identity.NewAuthenticator(verifier, identity.NewResolver(databasePool))
+	}
 
-	public := publicServer(cfg, store)
-	runner := runnerServer(cfg, logger, runnersession.NewScheduler())
+	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, persistentScheduler, copilotAuth, logger)
+	runner := runnerServer(cfg, logger, persistentScheduler)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -69,23 +112,33 @@ func serve(errCh chan<- error, name string, server *http.Server) {
 	}
 }
 
-func publicServer(cfg config.Config, store objectstore.ObjectStore) *http.Server {
+func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, scheduler *runnersession.PersistentScheduler, copilotAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		if err := database.Ready(r.Context(), databasePool); err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+			return
+		}
 		if err := store.Ready(r.Context()); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
-	// Public routes are OpenAPI-owned. Connect handlers are registered only below.
+	if cfg.Phase0Dev.Enabled {
+		mux.Handle("/internal/phase0/", phase0dev.NewHandler(cfg.Phase0Dev.Token, developmentLifecycle, scheduler, logger))
+	}
+	if copilotAuth != nil {
+		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, scheduler, logger)))
+	}
+	// Product routes are OpenAPI-owned. Connect handlers are registered only below.
 	return &http.Server{Addr: cfg.HTTPAddress, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 }
 
-func runnerServer(cfg config.Config, logger *slog.Logger, scheduler *runnersession.Scheduler) *http.Server {
+func runnerServer(cfg config.Config, logger *slog.Logger, scheduler runnersession.Coordinator) *http.Server {
 	mux := http.NewServeMux()
 	path, handler := runnersession.NewHandler(logger, scheduler)
 	mux.Handle(path, handler)
