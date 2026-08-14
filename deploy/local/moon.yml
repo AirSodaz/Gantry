@@ -1,11 +1,12 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
-type: 'application'
+layer: 'application'
 language: 'other'
 tags: ['infrastructure']
 
 tasks:
   phase0-smoke:
     command: 'bash phase0-smoke.sh'
-    type: 'test'
-    local: true
+    type: 'run'
+    options:
+      runInCI: false

@@ -17,7 +17,7 @@
     "verify": "pnpm contracts:check && pnpm typecheck && pnpm build"
   },
   "devDependencies": {
-    "@bufbuild/buf": "1.55.1",
+    "@bufbuild/buf": "1.72.0",
     "openapi-typescript": "7.8.0"
   }
 }

@@ -1,12 +1,13 @@
 $schema: "https://moonrepo.dev/schemas/workspace.json"
 
-versionConstraint: ">=1.39.0 <2.0.0"
+versionConstraint: ">=2.4.6, <3.0.0"
 
 projects:
   - "apps/*"
   - "packages/*"
   - "control-plane"
   - "runner"
+  - "proto"
   - "deploy/compose"
   - "deploy/local"
   - "sidecars/*"

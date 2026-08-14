@@ -1,6 +1,6 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
-type: library
+layer: library
 language: other
 
 tags:
@@ -9,17 +9,22 @@ tags:
 
 tasks:
   generate:
-    command: 'buf generate'
+    command: 'buf generate --template proto/buf.gen.yaml proto'
     type: 'run'
+    options:
+      runInCI: true
+      runFromWorkspaceRoot: true
     inputs:
       - 'gantry/**/*.proto'
       - 'buf.gen.yaml'
       - 'buf.yaml'
-    outputs:
-      - '../control-plane/gen'
   lint:
-    command: 'buf lint'
+    command: 'buf lint proto'
     type: 'test'
+    options:
+      runFromWorkspaceRoot: true
   breaking:
-    command: 'buf breaking --against ".git#branch=main"'
+    command: 'buf breaking proto --against ".git#branch=main,subdir=proto"'
     type: 'test'
+    options:
+      runFromWorkspaceRoot: true

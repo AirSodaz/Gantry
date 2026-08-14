@@ -46,8 +46,8 @@ pnpm contracts:generate
 pnpm verify
 ```
 
-The repository expects Moon `>=1.39.0 <2.0.0`, Node `22.12.0`, pnpm `11.21.0`,
-Go `1.26.5`, Rust `1.84.0`, and Buf `1.55.1`. `moon run :build` and
+The repository expects Moon `>=2.4.6, <3.0.0`, Node `22.13.0`, pnpm `11.21.0`,
+Go `1.26.6`, Rust `1.84.0`, and Buf `1.72.0`. `moon run :build` and
 `moon run :test` are the canonical workspace task entry points; package scripts
 are thin adapters for local IDE use.
 

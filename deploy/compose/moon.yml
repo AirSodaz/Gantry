@@ -1,6 +1,6 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
-type: 'application'
+layer: 'application'
 language: 'other'
 tags: ['infrastructure']
 
@@ -8,20 +8,25 @@ tasks:
   up:
     command: 'docker compose -f docker-compose.yml up --build --detach'
     type: 'run'
-    local: true
+    options:
+      runInCI: false
   down:
     command: 'docker compose -f docker-compose.yml down'
     type: 'run'
-    local: true
+    options:
+      runInCI: false
   logs:
     command: 'docker compose -f docker-compose.yml logs --follow'
     type: 'run'
-    local: true
+    options:
+      runInCI: false
   smoke:
     command: 'bash smoke.sh'
-    type: 'test'
-    local: true
+    type: 'run'
+    options:
+      runInCI: false
   copilot-smoke:
     command: 'bash copilot-smoke.sh'
-    type: 'test'
-    local: true
+    type: 'run'
+    options:
+      runInCI: false

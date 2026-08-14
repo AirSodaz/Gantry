@@ -5,6 +5,11 @@ modules:
 lint:
   use:
     - STANDARD
+  # RunnerSession exchanges shared protocol envelopes over one bidirectional RPC.
+  except:
+    - SERVICE_SUFFIX
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
 breaking:
   use:
     - FILE

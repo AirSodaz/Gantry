@@ -1,5 +1,5 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
-type: 'application'
+layer: 'application'
 language: 'rust'
 tags: ['backend', 'runner']
 tasks:
@@ -8,17 +8,17 @@ tasks:
     deps:
       - 'proto:generate'
     type: 'build'
-    platform: 'system'
+    toolchains: 'system'
   test:
     command: 'cargo test'
     deps:
       - 'proto:generate'
     type: 'test'
-    platform: 'system'
+    toolchains: 'system'
   run:
     command: 'cargo run --bin runner'
     deps:
       - 'proto:generate'
     type: 'run'
-    platform: 'system'
-    local: true
+    toolchains: 'system'
+    preset: 'server'

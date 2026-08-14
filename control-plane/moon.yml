@@ -1,5 +1,5 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
-type: 'application'
+layer: 'application'
 language: 'go'
 tags: ['backend']
 tasks:
@@ -8,17 +8,17 @@ tasks:
     deps:
       - 'proto:generate'
     type: 'build'
-    platform: 'system'
+    toolchains: 'system'
   test:
     command: 'go test ./...'
     deps:
       - 'proto:generate'
     type: 'test'
-    platform: 'system'
+    toolchains: 'system'
   run:
     command: 'go run ./cmd/gantry'
     deps:
       - 'proto:generate'
     type: 'run'
-    platform: 'system'
-    local: true
+    toolchains: 'system'
+    preset: 'server'

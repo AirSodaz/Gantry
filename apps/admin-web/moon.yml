@@ -1,5 +1,5 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
-type: 'application'
+layer: 'application'
 language: 'typescript'
 tags: ['frontend']
 tasks:
@@ -12,4 +12,4 @@ tasks:
   dev:
     command: 'vite'
     type: 'run'
-    local: true
+    preset: 'server'
