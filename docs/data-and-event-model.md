@@ -152,6 +152,13 @@ reference, response class, next attempt, and terminal delivery status.
 - risk class, policy reason, eligible approver rule
 - threshold, status, expiry, and supersession reference
 
+The approval request is for one concrete agent action. It is not a general
+business-workflow approval record: leave, expense, purchase, and similar
+decisions remain in the tool or enterprise system that owns that process. The
+first action-approval slice routes the request to the authenticated requester;
+published policy may later select a different human or automatic decision
+subject without introducing a generic workspace approver role.
+
 ### Approval Decision
 
 - request and approver

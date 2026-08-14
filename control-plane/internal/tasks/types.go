@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,11 +19,12 @@ var (
 )
 
 type Service struct {
-	pool *pgxpool.Pool
+	pool      *pgxpool.Pool
+	approvals *approvals.Service
 }
 
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+func NewService(pool *pgxpool.Pool, approvalService *approvals.Service) *Service {
+	return &Service{pool: pool, approvals: approvalService}
 }
 
 type Agent struct {

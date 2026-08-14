@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/tasks"
 )
@@ -26,6 +27,20 @@ type fakeTaskService struct {
 	get    func(context.Context, identity.Principal, string) (tasks.Task, error)
 	cancel func(context.Context, identity.Principal, string, string) (tasks.CancelResult, error)
 	retry  func(context.Context, identity.Principal, string, bool) (tasks.Task, error)
+}
+
+type fakeApprovalService struct {
+	list   func(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	decide func(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
+}
+
+func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, limit int) ([]approvals.Request, error) {
+	if s.list != nil { return s.list(ctx, actor, limit) }
+	return nil, nil
+}
+func (s fakeApprovalService) Decide(ctx context.Context, actor identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
+	if s.decide != nil { return s.decide(ctx, actor, input) }
+	return approvals.Resolution{}, approvals.ErrNotFound
 }
 
 func (s fakeTaskService) ListAgents(context.Context, identity.Principal, string, string, int) ([]tasks.Agent, error) {
@@ -80,6 +95,7 @@ func (d *fakeDispatcher) RequestCancel(runID string, epoch uint64, _ string) boo
 	d.canceledEpoch = epoch
 	return true
 }
+func (d *fakeDispatcher) ResolveApproval(string, string, string, string) bool { return true }
 
 func TestSubmitTaskUsesHeaderIdempotencyKey(t *testing.T) {
 	dispatcher := &fakeDispatcher{}
@@ -95,6 +111,7 @@ func TestSubmitTaskUsesHeaderIdempotencyKey(t *testing.T) {
 			receivedRequest = request
 			return tasks.Task{ID: "tsk_1", Status: "queued", CurrentRun: tasks.Run{ID: "run_1", Status: "queued"}}, false, nil
 		}},
+		nil,
 		dispatcher,
 		nil,
 	)
@@ -120,6 +137,7 @@ func TestSubmitTaskRejectsBodyIdempotencyKey(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
 		fakeTaskService{},
+		nil,
 		&fakeDispatcher{},
 		nil,
 	)
@@ -139,6 +157,7 @@ func TestSubmitTaskReturnsOKForIdempotentRetry(t *testing.T) {
 		fakeTaskService{submit: func(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error) {
 			return tasks.Task{ID: "tsk_1"}, true, nil
 		}},
+		nil,
 		&fakeDispatcher{},
 		nil,
 	)
@@ -159,6 +178,7 @@ func TestTaskLookupDoesNotExposeOtherUsersResources(t *testing.T) {
 		fakeTaskService{get: func(context.Context, identity.Principal, string) (tasks.Task, error) {
 			return tasks.Task{}, tasks.ErrNotFound
 		}},
+		nil,
 		&fakeDispatcher{},
 		nil,
 	)
@@ -182,6 +202,7 @@ func TestCancelOperationParsesColonSuffix(t *testing.T) {
 			}
 			return tasks.CancelResult{Run: tasks.Run{ID: runID, Status: "canceling", LeaseEpoch: 7}, Deliver: true}, nil
 		}},
+		nil,
 		dispatcher,
 		nil,
 	)
@@ -207,6 +228,7 @@ func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 			}
 			return tasks.Task{}, tasks.ErrInvalidState
 		}},
+		nil,
 		&fakeDispatcher{},
 		nil,
 	)
@@ -220,8 +242,29 @@ func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 	}
 }
 
+func TestDecideApprovalRequiresExactActionDigest(t *testing.T) {
+	dispatcher := &fakeDispatcher{}
+	var received approvals.DecisionInput
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{},
+		fakeApprovalService{decide: func(_ context.Context, _ identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
+			received = input
+			return approvals.Resolution{ApprovalID: input.ID, RunID: "run-1", Decision: "approve"}, nil
+		}},
+		dispatcher,
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/approvals/apr_1:decide", strings.NewReader(`{"decision":"approve","action_digest":"sha256:one","idempotency_key":"decision-1"}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK { t.Fatalf("status = %d, body = %s", response.Code, response.Body.String()) }
+	if received.ID != "apr_1" || received.ActionDigest != "sha256:one" || received.Idempotency != "decision-1" { t.Fatalf("input = %#v", received) }
+}
+
 func TestCopilotRoutesRequireBearerAuthentication(t *testing.T) {
-	handler := New(fakeAuthenticator{err: identity.ErrUnauthorized}, fakeTaskService{}, &fakeDispatcher{}, nil)
+	handler := New(fakeAuthenticator{err: identity.ErrUnauthorized}, fakeTaskService{}, nil, &fakeDispatcher{}, nil)
 	request := httptest.NewRequest(http.MethodGet, "/agents", nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)

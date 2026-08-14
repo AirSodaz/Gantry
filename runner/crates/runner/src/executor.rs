@@ -1,6 +1,7 @@
+use prost_types::{Struct, Value, value::Kind};
 use protocol::gantry::runner::v1::{
-    AssignRun, CancelRun, RunAccepted, RunEvent, RunEventBatch, RunFinished, RunTerminalStatus,
-    RunnerMessage, runner_message,
+    ApprovalDecisionType, ApprovalResolution, AssignRun, CancelRun, RunAccepted, RunEvent,
+    RunEventBatch, RunFinished, RunTerminalStatus, RunnerMessage, runner_message,
 };
 use serde::Deserialize;
 
@@ -20,12 +21,14 @@ struct ActiveRun {
     next_event_sequence: u64,
     step: u8,
     mode: DemoMode,
+    waiting_for_approval: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DemoMode {
     Complete,
     AwaitCancel,
+    AwaitApproval,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +92,7 @@ impl DemoExecutor {
             next_event_sequence: 1,
             step: 0,
             mode,
+            waiting_for_approval: false,
         });
         let run = self.active.as_ref().expect("assigned run is present");
         vec![
@@ -100,12 +104,34 @@ impl DemoExecutor {
         ]
     }
 
-    // Each tick emits one deterministic progress event. Complete-mode runs end
-    // on the second tick; await-cancel runs stay active until cancellation.
+    // Each tick emits one deterministic progress event. Approval-mode runs
+    // pause after proposing one write action until the control plane resolves it.
     pub fn tick(&mut self) -> Vec<RunnerMessage> {
         let Some(run) = self.active.as_mut() else {
             return Vec::new();
         };
+        if run.waiting_for_approval {
+            return Vec::new();
+        }
+        if run.mode == DemoMode::AwaitApproval && run.step == 0 {
+            run.next_event_sequence += 1;
+            run.step += 1;
+            let run_id = run.run_id.clone();
+            let lease_epoch = run.lease_epoch;
+            run.waiting_for_approval = true;
+            return vec![
+                self.message(runner_message::Payload::EventBatch(RunEventBatch {
+                    run_id,
+                    lease_epoch,
+                    events: vec![RunEvent {
+                        client_sequence: 1,
+                        event_type: "action.proposed".into(),
+                        occurred_at: None,
+                        payload: Some(action_payload()),
+                    }],
+                })),
+            ];
+        }
         let event = RunEvent {
             client_sequence: run.next_event_sequence,
             event_type: format!("demo.step.{}", run.step + 1),
@@ -136,6 +162,53 @@ impl DemoExecutor {
             );
         }
         messages
+    }
+
+    pub fn resolve_approval(&mut self, resolution: &ApprovalResolution) -> Vec<RunnerMessage> {
+        let (run_id, lease_epoch, client_sequence) = {
+            let Some(run) = self.active.as_mut() else {
+                return Vec::new();
+            };
+            if !run.waiting_for_approval || resolution.run_id != run.run_id {
+                return Vec::new();
+            }
+            run.waiting_for_approval = false;
+            (run.run_id.clone(), run.lease_epoch, run.next_event_sequence)
+        };
+        let approved = resolution.decision == ApprovalDecisionType::Approved as i32;
+        let event_type = if approved {
+            "action.approved"
+        } else {
+            "action.rejected"
+        };
+        let terminal = if approved {
+            RunTerminalStatus::Completed
+        } else {
+            RunTerminalStatus::Failed
+        };
+        let reason = if resolution.reason.is_empty() {
+            "approval resolved"
+        } else {
+            &resolution.reason
+        };
+        vec![
+            self.message(runner_message::Payload::EventBatch(RunEventBatch {
+                run_id: run_id.clone(),
+                lease_epoch,
+                events: vec![RunEvent {
+                    client_sequence,
+                    event_type: event_type.into(),
+                    occurred_at: None,
+                    payload: None,
+                }],
+            })),
+            self.message(runner_message::Payload::RunFinished(RunFinished {
+                run_id,
+                lease_epoch,
+                status: terminal as i32,
+                reason: reason.into(),
+            })),
+        ]
     }
 
     pub fn cancel(&mut self, cancel: &CancelRun) -> Vec<RunnerMessage> {
@@ -179,8 +252,29 @@ fn parse_demo_mode(manifest: &[u8]) -> Option<DemoMode> {
     match manifest.mode.as_str() {
         "complete" => Some(DemoMode::Complete),
         "await_cancel" => Some(DemoMode::AwaitCancel),
+        "await_approval" => Some(DemoMode::AwaitApproval),
         _ => None,
     }
+}
+
+fn action_payload() -> Struct {
+    let mut fields = std::collections::BTreeMap::new();
+    for (key, value) in [
+        ("tool_name", "demo.crm"),
+        ("operation", "update_record"),
+        ("target", "demo://record/1"),
+        ("effect", "write"),
+        ("credential_ref", "demo-write"),
+        ("credential_mode", "platform"),
+    ] {
+        fields.insert(
+            key.into(),
+            Value {
+                kind: Some(Kind::StringValue(value.into())),
+            },
+        );
+    }
+    Struct { fields }
 }
 
 #[cfg(test)]
@@ -200,6 +294,33 @@ mod tests {
             manifest_digest: "sha256:demo".into(),
             assignment_expiry: None,
         }
+    }
+
+    #[test]
+    fn approval_mode_proposes_once_and_waits() {
+        let mut executor = DemoExecutor::new("runner-1");
+        executor.assign(&assignment_with_mode("await_approval"));
+        let messages = executor.tick();
+        assert_eq!(messages.len(), 1);
+        assert!(executor.tick().is_empty());
+    }
+
+    #[test]
+    fn approval_resolution_finishes_with_decision() {
+        let mut executor = DemoExecutor::new("runner-1");
+        executor.assign(&assignment_with_mode("await_approval"));
+        executor.tick();
+        let messages = executor.resolve_approval(&ApprovalResolution {
+            run_id: "run-1".into(),
+            approval_request_id: "apr-1".into(),
+            decision: ApprovalDecisionType::Approved as i32,
+            reason: String::new(),
+        });
+        assert_eq!(messages.len(), 2);
+        let Some(runner_message::Payload::RunFinished(finished)) = &messages[1].payload else {
+            panic!("expected finish")
+        };
+        assert_eq!(finished.status, RunTerminalStatus::Completed as i32);
     }
 
     #[test]

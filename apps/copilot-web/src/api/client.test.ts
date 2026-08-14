@@ -21,4 +21,18 @@ describe('CopilotApi', () => {
 
     await expect(api.getTask('tsk_missing')).rejects.toEqual(expect.objectContaining({ status: 404, message: 'Resource was not found.' } satisfies Partial<CopilotApiError>));
   });
+
+  it('sends action digest and decision idempotency in the approval body', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'decision-key-1' });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'satisfied' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.decideApproval('apr_1', 'approve', 'sha256:action-1');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/approvals/apr_1:decide');
+    expect(init.body).toBe(JSON.stringify({ decision: 'approve', action_digest: 'sha256:action-1', reason: '', idempotency_key: 'decision-key-1' }));
+    expect(init.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer token-1' }));
+  });
 });

@@ -1,2 +1,2 @@
-// Package policy provides policy evaluation and enforcement.
+// Package policy provides action-time policy evaluation and enforcement.
 package policy

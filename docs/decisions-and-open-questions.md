@@ -229,6 +229,22 @@ replicas, runners, users, timers, cancellation, and failover. Database CAS plus
 gateway fencing prevents a stale runner or duplicate approval from producing a
 second effect and provides a defined unknown-outcome state.
 
+### ADR-022: Separate Agent Action Approval from Business Workflow Approval
+
+**Status:** Accepted
+
+Gantry owns action-time authorization for effect-bearing agent operations. The
+Copilot approval surface may approve the exact action digest, or a published
+policy may approve it automatically. Business approvals such as leave,
+expense, or purchase requests remain owned and presented by the tool or
+enterprise system that defines that workflow; Gantry integrates them through a
+signed external status callback rather than a universal Admin approver inbox.
+
+**Reason:** A business approver decides a domain process, while an agent action
+approver decides whether one concrete external effect may execute. Combining the
+two creates ambiguous authority, duplicates enterprise workflows, and makes
+the approval UI imply permissions it cannot safely enforce.
+
 ## 2. Deferred Questions
 
 These questions do not block the first vertical slice. Each has a required

@@ -196,9 +196,20 @@ export interface components {
         CopilotApproval: {
             id: string;
             run_id: string;
+            action_id: string;
+            action_digest: string;
+            tool_name: string;
+            operation: string;
+            target?: string;
             agent_display_name?: string;
             /** @description Human-readable action summary */
-            action_preview: Record<string, never>;
+            action_preview: {
+                tool_name?: string;
+                operation?: string;
+                target?: string;
+                effect?: string;
+                credential_mode?: string;
+            };
             risk_class?: string;
             /** @enum {string} */
             status: "pending" | "satisfied" | "rejected" | "expired";
@@ -217,7 +228,12 @@ export interface components {
             idempotency_key: string;
         };
         ApprovalDecisionResponse: {
-            status: string;
+            /** @enum {string} */
+            status: "satisfied" | "rejected";
+            approval_id: string;
+            run_id: string;
+            /** @enum {string} */
+            decision: "approve" | "reject";
         };
         ArtifactResponse: {
             id: string;
@@ -442,6 +458,34 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApprovalDecisionResponse"];
                 };
+            };
+            /** @description The current principal cannot decide this action */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Approval request was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The approval is expired or already decided */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The action digest is stale */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

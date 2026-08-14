@@ -15,7 +15,8 @@ application.
 
 The Enterprise Agent Invocation API is separate from the browser-oriented
 Copilot API. Both create the same task and run resources and use the same
-authorization, execution, approval, and audit model.
+authorization, action-time execution, and audit model. A business workflow
+approval remains owned by the enterprise tool that defines that workflow.
 
 ## 2. Integration Roles
 
@@ -304,11 +305,16 @@ An API-started task may enter `awaiting_approval`.
 - The enterprise application receives status and a safe approval reference; it
   cannot approve by possessing the application client credential unless an
   explicit machine-approval policy exists.
-- Human approval occurs in Gantry Admin, Gantry Copilot, or a future dedicated
-  approval API with its own human identity and action-bound authorization.
-- The integration publication exposes whether approval rejection and expiry use
-  `resume_with_denial` or `fail_run`; the calling application handles the
-  resulting ordinary running or failed task state.
+- Agent action approvals are decided by the authenticated user or a policy-
+  selected human identity through the Copilot approval surface or a future
+  dedicated approval API. The decision is bound to the exact action digest.
+- Business approvals such as leave, expense, or purchase approval are initiated
+  and presented by the tool's own workflow system. Gantry receives only a
+  signed, idempotent external status callback and resumes the action after
+  validating the external approval reference and bound digest.
+- The integration publication exposes whether an action-approval rejection or
+  expiry uses `resume_with_denial` or `fail_run`; the calling application
+  handles the resulting ordinary running or failed task state.
 
 ## 13. Artifacts
 

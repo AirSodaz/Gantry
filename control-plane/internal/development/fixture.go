@@ -10,15 +10,17 @@ import (
 )
 
 const (
-	OrganizationID       = "org_development"
-	WorkspaceID          = "wsp_development"
-	DemoAgentID          = "agt_lifecycle_demo"
-	DemoVersionID        = "agtv_lifecycle_demo_1"
-	AwaitCancelAgentID   = "agt_lifecycle_await_cancel"
-	AwaitCancelVersionID = "agtv_lifecycle_await_cancel_1"
-	DemoPrincipalID      = "prn_copilot_demo"
-	OtherPrincipalID     = "prn_copilot_other"
-	AdminPrincipalID     = "prn_admin_demo"
+	OrganizationID         = "org_development"
+	WorkspaceID            = "wsp_development"
+	DemoAgentID            = "agt_lifecycle_demo"
+	DemoVersionID          = "agtv_lifecycle_demo_1"
+	AwaitCancelAgentID     = "agt_lifecycle_await_cancel"
+	AwaitCancelVersionID   = "agtv_lifecycle_await_cancel_1"
+	AwaitApprovalAgentID   = "agt_lifecycle_await_approval"
+	AwaitApprovalVersionID = "agtv_lifecycle_await_approval_1"
+	DemoPrincipalID        = "prn_copilot_demo"
+	OtherPrincipalID       = "prn_copilot_other"
+	AdminPrincipalID       = "prn_admin_demo"
 	// Dex encodes the local user ID and connector ID into the OIDC subject.
 	DemoSubject  = "CiQxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTESBWxvY2Fs"
 	OtherSubject = "CiQyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjISBWxvY2Fs"
@@ -28,8 +30,10 @@ const (
 func Seed(ctx context.Context, pool *pgxpool.Pool) error {
 	completeSpec := `{"kind":"gantry.phase0.demo/v1","mode":"complete"}`
 	awaitCancelSpec := `{"kind":"gantry.phase0.demo/v1","mode":"await_cancel"}`
+	awaitApprovalSpec := `{"kind":"gantry.phase0.demo/v1","mode":"await_approval"}`
 	completeDigest := sha256.Sum256([]byte(completeSpec))
 	awaitCancelDigest := sha256.Sum256([]byte(awaitCancelSpec))
+	awaitApprovalDigest := sha256.Sum256([]byte(awaitApprovalSpec))
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -56,6 +60,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool) error {
 		{`INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3) ON CONFLICT (agent_id) DO NOTHING`, []any{AwaitCancelAgentID, awaitCancelSpec, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, 1, 1, $3::jsonb, $4, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelVersionID, AwaitCancelAgentID, awaitCancelSpec, "sha256:" + hex.EncodeToString(awaitCancelDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ('pub_lifecycle_await_cancel', $1, $2, $3, 'published', $4) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelAgentID, AwaitCancelVersionID, WorkspaceID, AdminPrincipalID}},
+		{`INSERT INTO gantry.agents (id, organization_id, workspace_id, owner_principal_id, slug, display_name, description, category) VALUES ($1, $2, $3, $4, 'lifecycle-await-approval', 'Lifecycle Await Approval', 'Deterministic action approval lifecycle agent.', 'Development') ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalAgentID, OrganizationID, WorkspaceID, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3) ON CONFLICT (agent_id) DO NOTHING`, []any{AwaitApprovalAgentID, awaitApprovalSpec, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, 1, 1, $3::jsonb, $4, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalVersionID, AwaitApprovalAgentID, awaitApprovalSpec, "sha256:" + hex.EncodeToString(awaitApprovalDigest[:]), AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ('pub_lifecycle_await_approval', $1, $2, $3, 'published', $4) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalAgentID, AwaitApprovalVersionID, WorkspaceID, AdminPrincipalID}},
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(ctx, statement.query, statement.args...); err != nil {

@@ -28,11 +28,11 @@ export function AppShell() {
               <span>{label}</span>
             </NavLink>
           ))}
-          <span className="nav-section-label nav-section-spaced">Soon</span>
-          <span className="nav-link nav-link-disabled" title="Not available in this release" aria-disabled="true">
+          <span className="nav-section-label nav-section-spaced">Governance</span>
+          <NavLink to="/approvals" className={({ isActive }) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>
             <FileCheck2 size={17} aria-hidden="true" />
             <span>Approvals</span>
-          </span>
+          </NavLink>
           <span className="nav-link nav-link-disabled" title="Not available in this release" aria-disabled="true">
             <PackageOpen size={17} aria-hidden="true" />
             <span>Artifacts</span>

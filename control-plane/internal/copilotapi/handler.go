@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/tasks"
 )
@@ -32,25 +33,34 @@ type taskService interface {
 type dispatcher interface {
 	Dispatch(context.Context) error
 	RequestCancel(string, uint64, string) bool
+	ResolveApproval(string, string, string, string) bool
+}
+
+type approvalService interface {
+	List(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	Decide(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
 }
 
 type Handler struct {
 	auth       authenticator
 	tasks      taskService
+	approvals  approvalService
 	dispatcher dispatcher
 	logger     *slog.Logger
 }
 
-func New(auth authenticator, taskService taskService, dispatcher dispatcher, logger *slog.Logger) http.Handler {
+func New(auth authenticator, taskService taskService, approvalService approvalService, dispatcher dispatcher, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, tasks: taskService, dispatcher: dispatcher, logger: logger}
+	h := Handler{auth: auth, tasks: taskService, approvals: approvalService, dispatcher: dispatcher, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /tasks", h.withActor(h.submitTask))
 	mux.Handle("GET /tasks", h.withActor(h.listTasks))
 	mux.Handle("GET /tasks/{taskID}", h.withActor(h.getTask))
+	mux.Handle("GET /approvals", h.withActor(h.listApprovals))
+	mux.Handle("POST /approvals/{operation...}", h.withActor(h.decideApproval))
 	mux.Handle("POST /tasks/{taskID}/runs/{operation...}", h.withActor(h.cancelOperation))
 	mux.Handle("POST /tasks/{operation...}", h.withActor(h.retryOperation))
 	return mux
@@ -112,6 +122,49 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request, actor identity.
 		return
 	}
 	writeJSON(w, http.StatusOK, task)
+}
+func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	if h.approvals == nil {
+		writeInternal(w, errors.New("approval service is unavailable"))
+		return
+	}
+	items, err := h.approvals.List(r.Context(), actor, limit(r))
+	if err != nil {
+		writeInternal(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+}
+func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	if h.approvals == nil {
+		writeInternal(w, errors.New("approval service is unavailable"))
+		return
+	}
+	var request struct {
+		Decision     string `json:"decision"`
+		Reason       string `json:"reason"`
+		ActionDigest string `json:"action_digest"`
+		Idempotency  string `json:"idempotency_key"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	approvalID, ok := operationTarget(r.PathValue("operation"), ":decide")
+	if !ok { http.NotFound(w, r); return }
+	resolution, err := h.approvals.Decide(r.Context(), actor, approvals.DecisionInput{ID: approvalID, Decision: request.Decision, Reason: request.Reason, ActionDigest: request.ActionDigest, Idempotency: request.Idempotency})
+	if err != nil {
+		writeApprovalError(w, err)
+		return
+	}
+	if !h.dispatcher.ResolveApproval(resolution.RunID, resolution.ApprovalID, resolution.Decision, resolution.Reason) {
+		h.logger.Warn("approval persisted without an active runner session", "approval_id", resolution.ApprovalID, "run_id", resolution.RunID)
+	}
+	status := "rejected"
+	if resolution.Decision == "approve" {
+		status = "satisfied"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": status, "approval_id": resolution.ApprovalID, "run_id": resolution.RunID, "decision": resolution.Decision})
 }
 func (h Handler) cancelOperation(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	runID, ok := operationTarget(r.PathValue("operation"), ":cancel")
@@ -181,6 +234,26 @@ func writeTaskError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "invalid_state", "The task is not in a state that permits this operation.")
 	case errors.Is(err, tasks.ErrIdempotencyConflict):
 		writeError(w, http.StatusConflict, "idempotency_key_reused", "The idempotency key was used for a different request.")
+	default:
+		writeInternal(w, err)
+	}
+}
+func writeApprovalError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, approvals.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Approval request was not found.")
+	case errors.Is(err, approvals.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The approval decision is not valid.")
+	case errors.Is(err, approvals.ErrInvalidDigest):
+		writeError(w, http.StatusPreconditionFailed, "stale_action", "The action changed and requires a new approval.")
+	case errors.Is(err, approvals.ErrNotEligible):
+		writeError(w, http.StatusForbidden, "forbidden", "You are not eligible to decide this approval.")
+	case errors.Is(err, approvals.ErrAlreadyDecided):
+		writeError(w, http.StatusConflict, "already_decided", "The approval has already been decided.")
+	case errors.Is(err, approvals.ErrExpired):
+		writeError(w, http.StatusConflict, "approval_expired", "The approval request has expired.")
+	case errors.Is(err, approvals.ErrIdempotency):
+		writeError(w, http.StatusConflict, "idempotency_key_reused", "The idempotency key was used for another decision.")
 	default:
 		writeInternal(w, err)
 	}

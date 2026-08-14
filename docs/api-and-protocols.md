@@ -37,7 +37,7 @@ Representative resources:
 - `/api/admin/v1/agents/{id}/versions`
 - `/api/admin/v1/publications`
 - `/api/admin/v1/runs`
-- `/api/admin/v1/approvals`
+- `/api/admin/v1/approval-policies`
 - `/api/admin/v1/evaluation-suites`
 - `/api/admin/v1/tools`
 - `/api/admin/v1/policies`
@@ -143,12 +143,13 @@ already terminal state.
 The server determines whether to reuse the original agent version or current
 published version according to an explicit request field and permission.
 
-### Record an Approval Decision
+### Record an Agent Action Approval Decision
 
-`POST /api/copilot/v1/approvals/{id}:decide` or the equivalent Admin route.
+`POST /api/copilot/v1/approvals/{id}:decide`
 
 The request includes decision, reason, action digest, and idempotency key. A
-stale action digest is rejected.
+stale action digest is rejected. This route is only for a concrete agent action;
+it is not a general enterprise business-approval endpoint.
 
 ### Publish an Agent Version
 

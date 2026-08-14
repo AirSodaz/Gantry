@@ -1,4 +1,4 @@
-import type { Agent, RunStatus, SubmitTaskInput, Task } from './types';
+import type { Agent, Approval, ApprovalDecisionResponse, RunStatus, SubmitTaskInput, Task } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
@@ -25,6 +25,17 @@ export class CopilotApi {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     return this.request<{ items: Task[] }>(`/tasks?${params.toString()}`);
+  }
+
+  listApprovals() {
+    return this.request<{ items: Approval[] }>(`/approvals`);
+  }
+
+  decideApproval(approvalId: string, decision: 'approve' | 'reject', actionDigest: string, reason = '', idempotencyKey: string = crypto.randomUUID()) {
+    return this.request<ApprovalDecisionResponse>(`/approvals/${encodeURIComponent(approvalId)}:decide`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, action_digest: actionDigest, reason, idempotency_key: idempotencyKey }),
+    });
   }
 
   getTask(taskId: string) {

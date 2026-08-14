@@ -7,6 +7,7 @@ import { AgentsPage } from './features/catalog/AgentsPage';
 import { NewTaskPage } from './features/tasks/NewTaskPage';
 import { MyTasksPage } from './features/tasks/MyTasksPage';
 import { TaskPage } from './features/tasks/TaskPage';
+import { ApprovalsPage } from './features/approvals/ApprovalsPage';
 
 function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -19,6 +20,7 @@ function App() {
         <Route path="agents" element={<AgentsPage />} />
         <Route path="tasks" element={<MyTasksPage />} />
         <Route path="tasks/:taskId" element={<TaskPage />} />
+        <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="*" element={<NewTaskPage />} />
       </Route>
     </Routes>

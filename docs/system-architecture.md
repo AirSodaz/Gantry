@@ -102,10 +102,11 @@ the need.
 
 ### Approval Service
 
-Creates durable approval requests, resolves eligible approvers, enforces
-separation of duties, expiry, and single-use decisions, and appends the result
-to the run event stream. It revalidates the action and approver authorization
-immediately before execution resumes.
+Creates durable approval requests for concrete agent actions, resolves the
+policy-selected decision subject, enforces expiry and single-use decisions, and
+appends the result to the run event stream. It revalidates the action digest and
+decision authorization immediately before execution resumes. It does not own
+business workflow approvals defined by tools or enterprise systems.
 
 Concurrent approver decisions are appended with a uniqueness constraint on
 request and approver. Each append locks or compare-and-swaps the approval

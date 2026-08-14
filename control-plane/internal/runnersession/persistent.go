@@ -164,6 +164,23 @@ func (s *PersistentScheduler) RequestCancel(runID string, epoch uint64, reason s
 	return false
 }
 
+func (s *PersistentScheduler) ResolveApproval(runID, approvalID, decision, reason string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, runner := range s.runners {
+		if runner.activeRunID != runID {
+			continue
+		}
+		controlDecision := runnerv1.ApprovalDecisionType_APPROVAL_DECISION_TYPE_REJECTED
+		if decision == "approve" {
+			controlDecision = runnerv1.ApprovalDecisionType_APPROVAL_DECISION_TYPE_APPROVED
+		}
+		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_ApprovalResolution{ApprovalResolution: &runnerv1.ApprovalResolution{RunId: runID, ApprovalRequestId: approvalID, Decision: controlDecision, Reason: reason}}})
+		return true
+	}
+	return false
+}
+
 func (s *PersistentScheduler) Disconnect(runnerID, sessionID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

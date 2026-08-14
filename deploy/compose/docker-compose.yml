@@ -16,6 +16,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      default:
+        aliases:
+          - gantry-dex.localhost
     deploy:
       resources:
         limits:
@@ -99,6 +103,8 @@ services:
       GANTRY_GRPC_PORT: "8081"
       GANTRY_DEVELOPMENT_MODE: "true"
       GANTRY_PHASE0_DEV_API_TOKEN: ${GANTRY_PHASE0_DEV_API_TOKEN:-gantry_phase0_dev_token}
+      GANTRY_DEV_CREDENTIAL_FILE: /tmp/gantry-dev-credentials.enc
+      GANTRY_DEV_CREDENTIAL_KEY: ${GANTRY_DEV_CREDENTIAL_KEY:-MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=}
       GANTRY_COPILOT_OIDC_ISSUER: http://gantry-dex.localhost:5556/dex
       GANTRY_COPILOT_OIDC_AUDIENCE: gantry-copilot-api
       GANTRY_ADMIN_OIDC_ISSUER: http://gantry-dex.localhost:5556/dex
@@ -111,8 +117,6 @@ services:
     networks:
       - default
       - runner-net
-    extra_hosts:
-      - "gantry-dex.localhost:host-gateway"
 
   runner:
     build:

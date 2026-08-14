@@ -83,8 +83,8 @@ func ValidateSpec(spec json.RawMessage) (json.RawMessage, []Finding) {
 	if manifest.Kind != ManifestKind {
 		findings = append(findings, Finding{Path: "/kind", Message: "Unsupported manifest kind."})
 	}
-	if manifest.Mode != "complete" && manifest.Mode != "await_cancel" {
-		findings = append(findings, Finding{Path: "/mode", Message: "Mode must be complete or await_cancel."})
+	if manifest.Mode != "complete" && manifest.Mode != "await_cancel" && manifest.Mode != "await_approval" {
+		findings = append(findings, Finding{Path: "/mode", Message: "Mode must be complete, await_cancel, or await_approval."})
 	}
 	if len(findings) != 0 {
 		return nil, findings

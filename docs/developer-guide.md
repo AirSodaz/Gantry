@@ -147,8 +147,8 @@ audience boundary. The hostname must resolve to `127.0.0.1` in the browser;
 current Chromium-based browsers resolve `*.localhost` automatically. Start the
 frontend with `pnpm dev:copilot` after the Compose stack is ready and sign in
 with `copilot-demo@example.test` and password `gantry_demo_password`. The
-approvals and artifacts navigation entries remain intentionally disabled until
-their APIs exist.
+Approvals page is available for action-time approvals; artifacts remain disabled
+until their API exists.
 
 For a natively started control plane or a different browser origin, override
 the Vite settings before starting the app:
@@ -162,8 +162,9 @@ pnpm dev:copilot
 ```
 
 The browser flow uses Authorization Code + PKCE and keeps the OIDC session in
-`sessionStorage`; it does not send placeholder requests for approvals or
-artifacts. The workbench is desktop-first in this slice. Narrow breakpoints
+`sessionStorage`. Approval requests are bound to an action digest and are
+decided by the authenticated Copilot user; the page never receives credentials
+or raw agent specs. The workbench is desktop-first in this slice. Narrow breakpoints
 keep the component structure usable for a later mobile pass, but mobile visual
 parity is not a Phase 0 acceptance gate.
 
@@ -187,8 +188,8 @@ moon run deploy-compose:copilot-smoke
 ```
 
 It validates catalog visibility, OIDC authentication, header-based idempotency,
-private task reads, completion, cancellation, runner loss, control-plane restart,
-and safe retry. `POST /api/copilot/v1/tasks` requires `Idempotency-Key`; the
+private task reads, completion, cancellation, action-time approval, runner loss,
+control-plane restart, and safe retry. `POST /api/copilot/v1/tasks` requires `Idempotency-Key`; the
 first request returns `201`, an identical retry returns `200`, and a changed
 request using the same key returns `409`. Retry creates a new immutable run only
 after the current run has failed or been canceled; it cannot replace active work.
@@ -203,11 +204,22 @@ hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
 The persistent Copilot slice includes the development Dex browser login,
-catalog, task submission, polling, cancellation, and retry. It intentionally
-excludes approvals, artifacts, event streaming, real models/tools, and
-sandboxing. It uses deterministic fixture agents to validate task ownership,
-runner leases, low-frequency event persistence, cancellation, failure, and
-retry without executing external effects.
+catalog, task submission, polling, cancellation, retry, and action-time
+approval. The `lifecycle-await-approval` fixture proposes a deterministic write
+action, pauses in `awaiting_approval`, and resumes only after a matching action
+digest is approved or rejected. It intentionally excludes artifacts, event
+streaming, real models/tools, and sandboxing. Business workflow approvals such
+as leave or expense approval remain owned by the external tool and are not
+represented by the Copilot approval list.
+
+Development mode also validates `GANTRY_DEV_CREDENTIAL_FILE` and
+`GANTRY_DEV_CREDENTIAL_KEY` for the encrypted local credential broker. The
+broker is a trusted-gateway adapter: it never puts credential values in a run
+manifest, runner message, event payload, or browser response. The sample key
+in `.env.example` is disposable and must be replaced outside local testing.
+Actual enterprise tool-gateway vending is intentionally not part of this
+deterministic slice; this adapter is the development seam for that later
+integration.
 
 ### Admin agent lifecycle
 

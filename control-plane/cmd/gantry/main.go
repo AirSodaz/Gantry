@@ -15,9 +15,11 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/adminapi"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
+	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/config"
 	"github.com/AirSodaz/gantry/internal/copilotapi"
+	"github.com/AirSodaz/gantry/internal/credentials"
 	"github.com/AirSodaz/gantry/internal/database"
 	"github.com/AirSodaz/gantry/internal/development"
 	"github.com/AirSodaz/gantry/internal/identity"
@@ -58,8 +60,13 @@ func main() {
 			logger.Error("development fixture seed failed", "error", err)
 			os.Exit(1)
 		}
+		if _, err := credentials.NewFileBroker(cfg.DevCredential.File, cfg.DevCredential.Key); err != nil {
+			logger.Error("development credential broker configuration is invalid", "error", err)
+			os.Exit(1)
+		}
 	}
-	taskService := tasks.NewService(databasePool)
+	approvalService := approvals.NewService(databasePool)
+	taskService := tasks.NewService(databasePool, approvalService)
 	authorizer := authorization.NewService(databasePool)
 	agentService := agentlifecycle.NewService(databasePool, authorizer)
 	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while demo run was active")
@@ -91,7 +98,7 @@ func main() {
 		adminAuth = identity.NewAuthenticator(verifier, identity.NewResolver(databasePool))
 	}
 
-	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, agentService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
+	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, approvalService, agentService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
 	runner := runnerServer(cfg, logger, persistentScheduler)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -126,7 +133,7 @@ func serve(errCh chan<- error, name string, server *http.Server) {
 	}
 }
 
-func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, agentService *agentlifecycle.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
+func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, approvalService *approvals.Service, agentService *agentlifecycle.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -146,7 +153,7 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 		mux.Handle("/internal/phase0/", phase0dev.NewHandler(cfg.Phase0Dev.Token, developmentLifecycle, scheduler, logger))
 	}
 	if copilotAuth != nil {
-		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, scheduler, logger)))
+		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, approvalService, scheduler, logger)))
 	}
 	if adminAuth != nil {
 		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.New(adminAuth, authorizer, agentService, logger)))

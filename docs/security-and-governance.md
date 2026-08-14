@@ -184,7 +184,8 @@ Command controls are defense in depth, not a complete sandbox boundary.
 
 ## 10. Human Approval
 
-An approval binds to an immutable action digest containing the run, tool,
+The approval model distinguishes agent action approval from business workflow
+approval. An agent action approval binds to an immutable action digest containing the run, tool,
 operation, canonical arguments, target, credential mode, policy version, and
 expiry. Changing any bound field invalidates the approval.
 
@@ -196,6 +197,11 @@ Approval rules support:
 - Risk-based expiry.
 - Mandatory reason capture.
 - Escalation and notification without automatic approval.
+
+Business workflow approvals remain in the tool or enterprise system that owns
+the business process. Gantry stores an external approval reference and accepts
+only a signed, idempotent callback that is bound to the same action digest; the
+Gantry Admin application is not a universal business-approval inbox.
 
 Before executing an approved action, Gantry verifies that the run is still at
 the same pending action, the approval is unused and unexpired, the approver

@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/AirSodaz/gantry/internal/credentials"
 )
 
 type ObjectStorageConfig struct {
@@ -26,6 +28,7 @@ type Config struct {
 	ObjectStorage ObjectStorageConfig
 	RunnerTLS     RunnerTLSConfig
 	Phase0Dev     Phase0DevConfig
+	DevCredential DevCredentialConfig
 	CopilotOIDC   CopilotOIDCConfig
 	AdminOIDC     AdminOIDCConfig
 }
@@ -35,6 +38,11 @@ type RunnerTLSConfig struct{ CertificateFile, KeyFile, ClientCAFile string }
 type Phase0DevConfig struct {
 	Enabled bool
 	Token   string
+}
+
+type DevCredentialConfig struct {
+	File string
+	Key  []byte
 }
 
 type CopilotOIDCConfig struct {
@@ -72,6 +80,11 @@ func Load() (Config, error) {
 	if developmentMode && phase0Token == "" {
 		return Config{}, fmt.Errorf("GANTRY_PHASE0_DEV_API_TOKEN is required when GANTRY_DEVELOPMENT_MODE is true")
 	}
+	devCredentialFile := value("GANTRY_DEV_CREDENTIAL_FILE", "/tmp/gantry-dev-credentials.enc")
+	devCredentialKey, err := credentials.DecodeKey(value("GANTRY_DEV_CREDENTIAL_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="))
+	if err != nil {
+		return Config{}, fmt.Errorf("GANTRY_DEV_CREDENTIAL_KEY: %w", err)
+	}
 	databaseURL := value("GANTRY_DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", value("GANTRY_DB_USER", "gantry"), value("GANTRY_DB_PASSWORD", "gantry_dev"), value("GANTRY_DB_HOST", "localhost"), value("GANTRY_DB_PORT", "5432"), value("GANTRY_DB_NAME", "gantry"))
@@ -97,6 +110,7 @@ func Load() (Config, error) {
 		ObjectStorage: ObjectStorageConfig{Endpoint: value("GANTRY_S3_ENDPOINT", "http://localhost:9000"), AccessKey: value("GANTRY_S3_ACCESS_KEY", "gantry"), SecretKey: value("GANTRY_S3_SECRET_KEY", "gantry_dev_secret"), Region: value("GANTRY_S3_REGION", "us-east-1"), UsePathStyle: pathStyle},
 		RunnerTLS:     RunnerTLSConfig{CertificateFile: value("GANTRY_RUNNER_SERVER_CERT_FILE", ""), KeyFile: value("GANTRY_RUNNER_SERVER_KEY_FILE", ""), ClientCAFile: value("GANTRY_RUNNER_CLIENT_CA_FILE", "")},
 		Phase0Dev:     Phase0DevConfig{Enabled: developmentMode, Token: phase0Token},
+		DevCredential: DevCredentialConfig{File: devCredentialFile, Key: devCredentialKey},
 		CopilotOIDC:   CopilotOIDCConfig{Issuer: copilotIssuer, Audience: copilotAudience},
 		AdminOIDC:     AdminOIDCConfig{Issuer: adminIssuer, Audience: adminAudience},
 	}

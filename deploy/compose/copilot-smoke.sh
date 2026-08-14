@@ -24,7 +24,7 @@ task_run_id() { sed -n 's/.*"current_run":{"id":"\([^"]*\)".*/\1/p' <<<"$respons
 
 token_for() {
   local username=$1 password=$2 body
-  body=$(curl -sS -X POST "${dex_url}/token" \
+  body=$(curl --noproxy '*' -sS -X POST "${dex_url}/token" \
     --user gantry-copilot-smoke:gantry-smoke-secret \
     --data-urlencode grant_type=password \
     --data-urlencode scope='openid profile email audience:server:client_id:gantry-copilot-api' \
@@ -38,7 +38,7 @@ request() {
   output=$(mktemp)
   local args=(-sS -o "$output" -w '%{http_code}' -X "$method" -H "Authorization: Bearer ${access_token}")
   if [[ -n $payload ]]; then args+=(-H 'Content-Type: application/json' --data "$payload"); fi
-  response_status=$(curl "${args[@]}" "${api_url}${path}")
+  response_status=$(curl --noproxy '*' "${args[@]}" "${api_url}${path}")
   response_body=$(<"$output")
   rm -f "$output"
 }
@@ -57,7 +57,7 @@ wait_task_status() {
 submit() {
   local key=$1 payload=$2 output
   output=$(mktemp)
-  response_status=$(curl -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/tasks" \
+  response_status=$(curl --noproxy '*' -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/tasks" \
     -H "Authorization: Bearer ${access_token}" -H "Content-Type: application/json" -H "Idempotency-Key: ${key}" --data "$payload")
   response_body=$(<"$output")
   rm -f "$output"
@@ -77,6 +77,7 @@ request GET /api/copilot/v1/agents
 agent_id=$(json_value id)
 [[ $agent_id == agt_lifecycle_demo ]]
 await_cancel_agent_id=agt_lifecycle_await_cancel
+await_approval_agent_id=agt_lifecycle_await_approval
 
 complete_key="complete-${RANDOM}-${RANDOM}"
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
@@ -86,6 +87,20 @@ complete_task=$(task_id)
 wait_task_status "$complete_task" completed
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
 [[ $response_status == 200 && $(task_id) == "$complete_task" ]]
+
+approval_key="approval-${RANDOM}-${RANDOM}"
+submit "$approval_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
+[[ $response_status == 201 ]]
+approval_task=$(task_id)
+wait_task_status "$approval_task" awaiting_approval
+request GET /api/copilot/v1/approvals
+[[ $response_status == 200 ]]
+approval_id=$(json_value id)
+approval_digest=$(json_value action_digest)
+[[ -n $approval_id && -n $approval_digest ]]
+request POST "/api/copilot/v1/approvals/${approval_id}:decide" "{\"decision\":\"approve\",\"action_digest\":\"${approval_digest}\",\"idempotency_key\":\"${approval_key}\"}"
+[[ $response_status == 200 ]]
+wait_task_status "$approval_task" completed
 
 other_token=$(token_for copilot-other gantry_other_password)
 access_token=$other_token

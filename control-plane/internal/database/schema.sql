@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS gantry.tasks (
   agent_id text NOT NULL REFERENCES gantry.agents(id),
   input_json jsonb NOT NULL,
   current_run_id text,
-  status text NOT NULL CHECK (status IN ('queued', 'running', 'canceling', 'completed', 'failed', 'canceled')),
+  status text NOT NULL CHECK (status IN ('queued', 'running', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   task_id text NOT NULL REFERENCES gantry.tasks(id),
   agent_version_id text NOT NULL REFERENCES gantry.agent_versions(id),
   attempt_number integer NOT NULL,
-  status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'canceling', 'completed', 'failed', 'canceled')),
+  status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
   status_reason text NOT NULL DEFAULT '',
   runner_id text,
   lease_epoch bigint NOT NULL DEFAULT 0,
@@ -149,3 +149,51 @@ CREATE TABLE IF NOT EXISTS gantry.idempotency_tombstones (
 
 CREATE INDEX IF NOT EXISTS tasks_requester_created_idx ON gantry.tasks (requester_principal_id, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS runs_queue_idx ON gantry.runs (status, created_at);
+
+CREATE TABLE IF NOT EXISTS gantry.actions (
+  id text PRIMARY KEY,
+  run_id text NOT NULL REFERENCES gantry.runs(id),
+  tool_name text NOT NULL,
+  operation text NOT NULL,
+  arguments_json jsonb NOT NULL,
+  target text NOT NULL DEFAULT '',
+  effect text NOT NULL CHECK (effect IN ('read', 'write', 'destructive')),
+  credential_ref text NOT NULL DEFAULT '',
+  credential_mode text NOT NULL DEFAULT '',
+  policy_version text NOT NULL,
+  action_digest text NOT NULL UNIQUE,
+  state text NOT NULL CHECK (state IN ('proposed', 'awaiting_approval', 'ready', 'executing', 'succeeded', 'rejected', 'unknown_outcome')),
+  revision integer NOT NULL CHECK (revision > 0),
+  requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS gantry.approval_requests (
+  id text PRIMARY KEY,
+  action_id text NOT NULL UNIQUE REFERENCES gantry.actions(id),
+  run_id text NOT NULL REFERENCES gantry.runs(id),
+  action_digest text NOT NULL,
+  action_preview jsonb NOT NULL,
+  risk_class text NOT NULL,
+  status text NOT NULL CHECK (status IN ('pending', 'satisfied', 'rejected', 'expired', 'superseded')),
+  requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  assigned_principal_id text REFERENCES gantry.principals(id),
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS gantry.approval_decisions (
+  approval_id text NOT NULL REFERENCES gantry.approval_requests(id),
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  decision text NOT NULL CHECK (decision IN ('approve', 'reject')),
+  reason text NOT NULL DEFAULT '',
+  action_digest text NOT NULL,
+  idempotency_key text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (approval_id, principal_id),
+  UNIQUE (approval_id, principal_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS approval_requests_assignee_idx ON gantry.approval_requests (assigned_principal_id, status, created_at);

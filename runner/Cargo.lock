@@ -868,6 +868,7 @@ dependencies = [
  "anyhow",
  "mcp-client",
  "policy-enforcement",
+ "prost-types",
  "protocol",
  "pty-handler",
  "serde",

@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	DemoManifestKind    = "gantry.phase0.demo/v1"
-	DemoModeComplete    = "complete"
-	DemoModeAwaitCancel = "await_cancel"
+	DemoManifestKind      = "gantry.phase0.demo/v1"
+	DemoModeComplete      = "complete"
+	DemoModeAwaitCancel   = "await_cancel"
+	DemoModeAwaitApproval = "await_approval"
 )
 
 type DemoManifest struct {
@@ -19,7 +20,7 @@ type DemoManifest struct {
 }
 
 func NewDemoManifest(mode string) ([]byte, string, error) {
-	if mode != DemoModeComplete && mode != DemoModeAwaitCancel {
+	if mode != DemoModeComplete && mode != DemoModeAwaitCancel && mode != DemoModeAwaitApproval {
 		return nil, "", fmt.Errorf("unsupported demo mode %q", mode)
 	}
 	manifest, err := json.Marshal(DemoManifest{Kind: DemoManifestKind, Mode: mode})

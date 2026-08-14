@@ -49,6 +49,9 @@ async fn session(address: String, runner_id: String) -> Result<bool> {
                             Some(control_plane_message::Payload::CancelRun(cancel)) => {
                                 for outbound in executor.cancel(&cancel) { sender.send(outbound).await?; }
                             }
+                            Some(control_plane_message::Payload::ApprovalResolution(resolution)) => {
+                                for outbound in executor.resolve_approval(&resolution) { sender.send(outbound).await?; }
+                            }
                             payload => tracing::info!("control-plane message received: {:?}", payload),
                         }
                     }

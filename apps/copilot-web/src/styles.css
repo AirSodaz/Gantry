@@ -125,6 +125,15 @@ a { color: inherit; text-decoration: none; }
 .state-empty strong { font-size: 14px; }
 .state-empty p { margin: 7px 0 0; color: var(--ds-text-muted); font-size: 13px; }
 .inline-error { margin: 14px 0 0; color: var(--ds-danger); font-size: 12px; line-height: 1.45; }
+.approval-list { display: grid; border-top: 1px solid var(--ds-border); }
+.approval-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--ds-border); padding: 22px 0; }
+.approval-copy { display: grid; min-width: 0; gap: 6px; }
+.approval-title { display: flex; align-items: center; gap: 10px; }
+.approval-title strong { font-size: 14px; }
+.approval-copy p, .approval-copy span { margin: 0; color: var(--ds-text-muted); font-size: 12px; }
+.approval-copy code { overflow: hidden; color: var(--ds-text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.approval-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.approval-actions .ds-button { display: inline-flex; align-items: center; gap: 6px; }
 .spin { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -156,6 +165,9 @@ a { color: inherit; text-decoration: none; }
   .conversation-heading { display: grid; }
   .task-actions { align-items: stretch; flex-direction: column; }
   .task-actions .ds-button { justify-content: center; width: 100%; }
+  .approval-row { align-items: stretch; flex-direction: column; }
+  .approval-actions { flex-direction: column; }
+  .approval-actions .ds-button { justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

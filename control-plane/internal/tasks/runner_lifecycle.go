@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
+	"github.com/AirSodaz/gantry/internal/policy"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -85,9 +87,9 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		return 0, err
 	}
 	defer tx.Rollback(ctx)
-	var status string
+	var status, requesterID string
 	var current uint64
-	err = tx.QueryRow(ctx, `SELECT status, runner_event_sequence FROM gantry.runs WHERE id=$1 AND runner_id=$2 AND lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status, &current)
+	err = tx.QueryRow(ctx, `SELECT r.status, r.runner_event_sequence, t.requester_principal_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status, &current, &requesterID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrNotFound
 	}
@@ -107,6 +109,33 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		}
 		if err := appendEventPayload(ctx, tx, runID, event.Type, event.Payload); err != nil {
 			return 0, err
+		}
+		if event.Type == "action.proposed" {
+			if s.approvals == nil {
+				return 0, ErrInvalidInput
+			}
+			var action policy.Action
+			if err := json.Unmarshal([]byte(event.Payload), &action); err != nil {
+				return 0, ErrInvalidInput
+			}
+			action.RunID = runID
+			action.RequestedBy = requesterID
+			request, evaluation, err := s.approvals.Propose(ctx, tx, action, time.Now().UTC().Add(15*time.Minute))
+			if err != nil {
+				return 0, err
+			}
+			if evaluation.Decision == policy.RequireApproval {
+				if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='awaiting_approval' WHERE id=$1`, runID); err != nil {
+					return 0, err
+				}
+				if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_approval' WHERE current_run_id=$1`, runID); err != nil {
+					return 0, err
+				}
+				payload, _ := json.Marshal(map[string]any{"approval_id": request.ID, "action_digest": request.ActionDigest})
+				if err := appendEventPayload(ctx, tx, runID, "approval.requested", string(payload)); err != nil {
+					return 0, err
+				}
+			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

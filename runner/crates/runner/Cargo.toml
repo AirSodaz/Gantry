@@ -9,6 +9,7 @@ name = "runner"
 path = "src/main.rs"
 
 [dependencies]
+prost-types = "0.13"
 protocol = { path = "../protocol" }
 pty-handler = { path = "../pty-handler" }
 mcp-client = { path = "../mcp-client" }

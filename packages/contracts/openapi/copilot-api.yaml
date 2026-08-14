@@ -185,6 +185,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApprovalDecisionResponse"
+        "403":
+          description: The current principal cannot decide this action
+        "404":
+          description: Approval request was not found
+        "409":
+          description: The approval is expired or already decided
+        "412":
+          description: The action digest is stale
 
   /artifacts/{artifact_id}:
     get:
@@ -350,17 +358,38 @@ components:
     # --- Approvals ---
     CopilotApproval:
       type: object
-      required: [id, run_id, action_preview, status]
+      required: [id, run_id, action_id, action_digest, tool_name, operation, action_preview, status]
       properties:
         id:
           type: string
         run_id:
+          type: string
+        action_id:
+          type: string
+        action_digest:
+          type: string
+        tool_name:
+          type: string
+        operation:
+          type: string
+        target:
           type: string
         agent_display_name:
           type: string
         action_preview:
           type: object
           description: Human-readable action summary
+          properties:
+            tool_name:
+              type: string
+            operation:
+              type: string
+            target:
+              type: string
+            effect:
+              type: string
+            credential_mode:
+              type: string
         risk_class:
           type: string
         status:
@@ -398,10 +427,18 @@ components:
 
     ApprovalDecisionResponse:
       type: object
-      required: [status]
+      required: [status, approval_id, run_id, decision]
       properties:
         status:
           type: string
+          enum: [satisfied, rejected]
+        approval_id:
+          type: string
+        run_id:
+          type: string
+        decision:
+          type: string
+          enum: [approve, reject]
 
     # --- Artifacts ---
     ArtifactResponse:
