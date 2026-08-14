@@ -126,6 +126,19 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/review:
+    get:
+      operationId: getAgentReview
+      summary: Get the current draft review and semantic diff
+      tags: [Reviews]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200":
+          description: Current review state
+          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /agents/{agent_id}:publish:
     post:
       operationId: publishAgentDraft
@@ -150,6 +163,43 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/InvalidState"}
         "412": {$ref: "#/components/responses/RevisionConflict"}
+  /agents/{agent_id}:review:
+    post:
+      operationId: submitAgentReview
+      summary: Submit the current draft for review
+      tags: [Reviews]
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/SubmitReviewRequest"}}}
+      responses:
+        "201":
+          description: Review submitted
+          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+        "412": {$ref: "#/components/responses/RevisionConflict"}
+  /agents/{agent_id}:review-decision:
+    post:
+      operationId: decideAgentReview
+      summary: Approve or reject the current draft review
+      tags: [Reviews]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ReviewDecisionRequest"}}}
+      responses:
+        "200":
+          description: Review decision recorded
+          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
   /agents/{agent_id}:retire:
     post:
       operationId: retireAgent
@@ -158,6 +208,21 @@ paths:
       parameters: [{$ref: "#/components/parameters/AgentId"}]
       responses:
         "204": {description: Agent retired}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+  /agents/{agent_id}:rollback:
+    post:
+      operationId: rollbackAgent
+      summary: Roll back to an immutable published version
+      tags: [Publications]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/RollbackRequest"}}}
+      responses:
+        "204": {description: Agent rolled back}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -298,3 +363,56 @@ components:
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/AgentVersion"}}
         page_info: {$ref: "#/components/schemas/PageInfo"}
+    SubmitReviewRequest:
+      type: object
+      required: [release_notes]
+      properties:
+        release_notes: {type: string, maxLength: 4000}
+    ReviewDecisionRequest:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: {type: string, enum: [approve, reject]}
+        reason: {type: string, maxLength: 4000}
+    RollbackRequest:
+      type: object
+      required: [version_id]
+      properties:
+        version_id: {type: string}
+    DiffEntry:
+      type: object
+      required: [path, change, category, risk]
+      properties:
+        path: {type: string}
+        change: {type: string, enum: [added, removed, changed]}
+        category: {type: string, enum: [metadata, behavior, security]}
+        risk: {type: string, enum: [low, medium, high]}
+        before: {}
+        after: {}
+    RiskSummary:
+      type: object
+      required: [total, high, medium, low]
+      properties:
+        total: {type: integer}
+        high: {type: integer}
+        medium: {type: integer}
+        low: {type: integer}
+    AgentReview:
+      type: object
+      required: [agent_id, draft_revision, draft_digest, release_notes, diff, risk_summary, status]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        draft_revision: {type: integer}
+        draft_digest: {type: string}
+        base_version_id: {type: string}
+        base_version: {type: integer}
+        release_notes: {type: string}
+        diff: {type: array, items: {$ref: "#/components/schemas/DiffEntry"}}
+        risk_summary: {$ref: "#/components/schemas/RiskSummary"}
+        status: {type: string, enum: [not_submitted, pending, approved, rejected, superseded]}
+        submitted_by: {type: string}
+        reviewed_by: {type: string}
+        review_reason: {type: string}
+        submitted_at: {type: string, format: date-time}
+        reviewed_at: {type: string, format: date-time}

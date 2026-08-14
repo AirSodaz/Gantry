@@ -99,6 +99,37 @@ CREATE TABLE IF NOT EXISTS gantry.agent_publications (
 CREATE UNIQUE INDEX IF NOT EXISTS agent_publications_one_current_idx
   ON gantry.agent_publications (agent_id, workspace_id) WHERE status = 'published';
 
+CREATE TABLE IF NOT EXISTS gantry.agent_reviews (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  draft_revision integer NOT NULL CHECK (draft_revision > 0),
+  draft_digest text NOT NULL,
+  base_version_id text REFERENCES gantry.agent_versions(id),
+  release_notes text NOT NULL DEFAULT '',
+  diff_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+  risk_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL CHECK (status IN ('pending', 'approved', 'rejected', 'superseded')),
+  submitted_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  reviewed_by_principal_id text REFERENCES gantry.principals(id),
+  review_reason text NOT NULL DEFAULT '',
+  submitted_at timestamptz NOT NULL DEFAULT now(),
+  reviewed_at timestamptz,
+  UNIQUE (agent_id, draft_revision)
+);
+CREATE INDEX IF NOT EXISTS agent_reviews_current_idx ON gantry.agent_reviews (agent_id, status, draft_revision DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.audit_events (
+  id bigserial PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  actor_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  resource_type text NOT NULL,
+  resource_id text NOT NULL,
+  event_type text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS audit_events_resource_idx ON gantry.audit_events (resource_type, resource_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS gantry.tasks (
   id text PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),

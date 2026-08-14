@@ -32,8 +32,12 @@ type lifecycleService interface {
 	GetDraft(context.Context, identity.Principal, string) (agentlifecycle.Draft, error)
 	UpdateDraft(context.Context, identity.Principal, string, int, json.RawMessage) (agentlifecycle.Draft, error)
 	ListVersions(context.Context, identity.Principal, string) ([]agentlifecycle.Version, error)
+	GetReview(context.Context, identity.Principal, string) (agentlifecycle.Review, error)
+	SubmitReview(context.Context, identity.Principal, string, int, string) (agentlifecycle.Review, error)
+	DecideReview(context.Context, identity.Principal, string, string, string) (agentlifecycle.Review, error)
 	Publish(context.Context, identity.Principal, string, int) (agentlifecycle.Version, bool, error)
 	Retire(context.Context, identity.Principal, string) error
+	Rollback(context.Context, identity.Principal, string, string) error
 }
 
 type Handler struct {
@@ -56,6 +60,7 @@ func New(auth authenticator, authorize authorizer, service lifecycleService, log
 	mux.Handle("GET /agents/{agentID}/draft", h.withActor(h.getDraft))
 	mux.Handle("PUT /agents/{agentID}/draft", h.withActor(h.updateDraft))
 	mux.Handle("GET /agents/{agentID}/versions", h.withActor(h.listVersions))
+	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
 	mux.Handle("POST /agents/{operation...}", h.withActor(h.command))
 	return mux
 }
@@ -161,6 +166,15 @@ func (h Handler) listVersions(w http.ResponseWriter, r *http.Request, actor iden
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
 }
 
+func (h Handler) getReview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	review, err := h.service.GetReview(r.Context(), actor, r.PathValue("agentID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, review)
+}
+
 func (h Handler) command(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	agentID, operation, ok := strings.Cut(r.PathValue("operation"), ":")
 	if !ok || agentID == "" {
@@ -168,6 +182,37 @@ func (h Handler) command(w http.ResponseWriter, r *http.Request, actor identity.
 		return
 	}
 	switch operation {
+	case "review":
+		revision, err := revisionHeader(r)
+		if err != nil {
+			writeError(w, http.StatusPreconditionRequired, "revision_required", "If-Match must contain the current draft revision.")
+			return
+		}
+		var request struct {
+			ReleaseNotes string `json:"release_notes"`
+		}
+		if err := decodeJSON(w, r, &request); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+			return
+		}
+		review, err := h.service.SubmitReview(r.Context(), actor, agentID, revision, request.ReleaseNotes)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, review)
+	case "review-decision":
+		var request agentlifecycle.ReviewDecisionRequest
+		if err := decodeJSON(w, r, &request); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+			return
+		}
+		review, err := h.service.DecideReview(r.Context(), actor, agentID, request.Decision, request.Reason)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, review)
 	case "publish":
 		revision, err := revisionHeader(r)
 		if err != nil {
@@ -186,6 +231,17 @@ func (h Handler) command(w http.ResponseWriter, r *http.Request, actor identity.
 		writeJSON(w, status, version)
 	case "retire":
 		if err := h.service.Retire(r.Context(), actor, agentID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	case "rollback":
+		var request agentlifecycle.RollbackRequest
+		if err := decodeJSON(w, r, &request); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+			return
+		}
+		if err := h.service.Rollback(r.Context(), actor, agentID, request.VersionID); err != nil {
 			h.writeServiceError(w, err)
 			return
 		}
@@ -227,6 +283,8 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")
 	case errors.Is(err, agentlifecycle.ErrInvalidState):
 		writeError(w, http.StatusConflict, "invalid_state", "The agent is not in a state that permits this operation.")
+	case errors.Is(err, agentlifecycle.ErrReviewRequired):
+		writeError(w, http.StatusConflict, "review_required", "An approved review for the current draft is required before publication.")
 	case errors.Is(err, authorization.ErrForbidden):
 		writeError(w, http.StatusForbidden, "forbidden", "Administrative access is required.")
 	default:

@@ -105,6 +105,15 @@ rm -f "$output"
 revision=$(sed -n 's/.*"revision":\([0-9]*\).*/\1/p' <<<"$response_body")
 
 output=$(mktemp)
+response_status=$(curl -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/admin/v1/agents/${agent_id}:review" -H "Authorization: Bearer ${admin_token}" -H 'Content-Type: application/json' -H "If-Match: ${revision}" --data '{"release_notes":"Admin smoke review."}')
+response_body=$(<$output)
+rm -f "$output"
+[[ $response_status == 201 ]]
+
+request "$admin_token" POST "/api/admin/v1/agents/${agent_id}:review-decision" '{"decision":"approve","reason":"Verified by the Admin smoke test."}'
+[[ $response_status == 200 ]]
+
+output=$(mktemp)
 response_status=$(curl -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/admin/v1/agents/${agent_id}:publish" -H "Authorization: Bearer ${admin_token}" -H "If-Match: ${revision}" --data '{}')
 response_body=$(<"$output")
 rm -f "$output"

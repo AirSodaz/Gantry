@@ -6,5 +6,7 @@ export type Agent = Components['schemas']['Agent'];
 export type Draft = Components['schemas']['AgentDraft'];
 export type AgentVersion = Components['schemas']['AgentVersion'];
 export type CreateAgentInput = Components['schemas']['CreateAgentRequest'];
+export type AgentReview = Components['schemas']['AgentReview'];
+export type DiffEntry = Components['schemas']['DiffEntry'];
 
-export type DemoSpec = { kind: 'gantry.phase0.demo/v1'; mode: 'complete' | 'await_cancel' };
+export type DemoSpec = { kind: 'gantry.phase0.demo/v1'; mode: 'complete' | 'await_cancel' | 'await_approval' };

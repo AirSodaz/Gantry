@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/identity"
@@ -141,6 +142,12 @@ func (s *Service) UpdateDraft(ctx context.Context, actor identity.Principal, age
 	if _, err := tx.Exec(ctx, `UPDATE gantry.agents SET updated_at=now() WHERE id=$1`, agent.ID); err != nil {
 		return Draft{}, err
 	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.agent_reviews SET status='superseded', reviewed_at=now(), review_reason='draft revision changed' WHERE agent_id=$1 AND status IN ('pending','approved')`, agent.ID); err != nil {
+		return Draft{}, err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent", agent.ID, "agent.draft_updated", map[string]any{"revision": expectedRevision + 1}); err != nil {
+		return Draft{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Draft{}, err
 	}
@@ -168,6 +175,147 @@ func (s *Service) ListVersions(ctx context.Context, actor identity.Principal, ag
 	return items, rows.Err()
 }
 
+func (s *Service) GetReview(ctx context.Context, actor identity.Principal, agentID string) (Review, error) {
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return Review{}, err
+	}
+	draft, err := loadDraft(ctx, s.pool, agent.ID)
+	if err != nil {
+		return Review{}, err
+	}
+	canonical, digestValue, err := canonicalDigest(draft.Spec)
+	if err != nil {
+		canonical = draft.Spec
+		digestValue = digest(draft.Spec)
+	}
+	base, err := loadCurrentVersion(ctx, s.pool, agent.ID)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return Review{}, err
+	}
+	var baseSpec json.RawMessage
+	if err == nil {
+		baseSpec = base.Spec
+	}
+	diff, summary, err := buildDiff(baseSpec, canonical)
+	if err != nil {
+		return Review{}, err
+	}
+	review, err := loadReview(ctx, s.pool, agent.ID, draft.Revision)
+	if errors.Is(err, ErrNotFound) {
+		return Review{AgentID: agent.ID, DraftRevision: draft.Revision, DraftDigest: digestValue, BaseVersionID: base.ID, BaseVersion: base.Version, Diff: diff, RiskSummary: summary, Status: "not_submitted"}, nil
+	}
+	if err != nil {
+		return Review{}, err
+	}
+	review.DraftDigest = digestValue
+	review.BaseVersionID, review.BaseVersion = base.ID, base.Version
+	review.Diff, review.RiskSummary = diff, summary
+	return review, nil
+}
+
+func (s *Service) SubmitReview(ctx context.Context, actor identity.Principal, agentID string, expectedRevision int, releaseNotes string) (Review, error) {
+	if expectedRevision < 1 {
+		return Review{}, ErrInvalidInput
+	}
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return Review{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Review{}, err
+	}
+	defer tx.Rollback(ctx)
+	draft, err := loadDraft(ctx, tx, agent.ID)
+	if err != nil {
+		return Review{}, err
+	}
+	if draft.Revision != expectedRevision {
+		return Review{}, ErrRevisionConflict
+	}
+	canonical, digestValue, err := canonicalDigest(draft.Spec)
+	if err != nil {
+		return Review{}, err
+	}
+	base, err := loadCurrentVersion(ctx, tx, agent.ID)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return Review{}, err
+	}
+	if errors.Is(err, ErrNotFound) {
+		base = Version{}
+	}
+	var baseSpec json.RawMessage
+	if base.ID != "" {
+		baseSpec = base.Spec
+	}
+	diff, summary, err := buildDiff(baseSpec, canonical)
+	if err != nil {
+		return Review{}, err
+	}
+	var existingStatus string
+	err = tx.QueryRow(ctx, `SELECT status FROM gantry.agent_reviews WHERE agent_id=$1 AND draft_revision=$2`, agent.ID, draft.Revision).Scan(&existingStatus)
+	if err == nil && existingStatus == "approved" {
+		return Review{}, ErrInvalidState
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return Review{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.agent_reviews SET status='superseded', reviewed_at=now(), review_reason='new review submitted' WHERE agent_id=$1 AND status IN ('pending','approved')`, agent.ID); err != nil {
+		return Review{}, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.agent_reviews (id, agent_id, draft_revision, draft_digest, base_version_id, release_notes, diff_json, risk_summary, status, submitted_by_principal_id) VALUES ($1,$2,$3,$4,NULLIF($5,''),$6,$7::jsonb,$8::jsonb,'pending',$9) ON CONFLICT (agent_id,draft_revision) DO UPDATE SET draft_digest=EXCLUDED.draft_digest, base_version_id=EXCLUDED.base_version_id, release_notes=EXCLUDED.release_notes, diff_json=EXCLUDED.diff_json, risk_summary=EXCLUDED.risk_summary, status='pending', submitted_by_principal_id=EXCLUDED.submitted_by_principal_id, reviewed_by_principal_id=NULL, review_reason='', submitted_at=now(), reviewed_at=NULL`, newID("rev"), agent.ID, draft.Revision, digestValue, base.ID, strings.TrimSpace(releaseNotes), string(mustJSON(diff)), string(mustJSON(summary)), actor.ID); err != nil {
+		return Review{}, err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent", agent.ID, "agent.review_submitted", map[string]any{"draft_revision": draft.Revision, "draft_digest": digestValue}); err != nil {
+		return Review{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Review{}, err
+	}
+	return s.GetReview(ctx, actor, agent.ID)
+}
+
+func (s *Service) DecideReview(ctx context.Context, actor identity.Principal, agentID, decision, reason string) (Review, error) {
+	if decision != "approve" && decision != "reject" {
+		return Review{}, ErrInvalidInput
+	}
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return Review{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Review{}, err
+	}
+	defer tx.Rollback(ctx)
+	draft, err := loadDraft(ctx, tx, agent.ID)
+	if err != nil {
+		return Review{}, err
+	}
+	var reviewID, status string
+	err = tx.QueryRow(ctx, `SELECT id, status FROM gantry.agent_reviews WHERE agent_id=$1 AND draft_revision=$2 FOR UPDATE`, agent.ID, draft.Revision).Scan(&reviewID, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Review{}, ErrReviewRequired
+	}
+	if err != nil {
+		return Review{}, err
+	}
+	if status != "pending" {
+		return Review{}, ErrInvalidState
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.agent_reviews SET status=$2, reviewed_by_principal_id=$3, review_reason=$4, reviewed_at=now() WHERE id=$1`, reviewID, decision+"d", actor.ID, strings.TrimSpace(reason)); err != nil {
+		return Review{}, err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent_review", reviewID, "agent.review_"+decision+"d", map[string]any{"agent_id": agent.ID, "draft_revision": draft.Revision, "reason": strings.TrimSpace(reason)}); err != nil {
+		return Review{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Review{}, err
+	}
+	return s.GetReview(ctx, actor, agent.ID)
+}
+
 func (s *Service) Publish(ctx context.Context, actor identity.Principal, agentID string, expectedRevision int) (Version, bool, error) {
 	if expectedRevision < 1 {
 		return Version{}, false, ErrInvalidInput
@@ -191,16 +339,25 @@ func (s *Service) Publish(ctx context.Context, actor identity.Principal, agentID
 	if draft.ValidationStatus != "valid" {
 		return Version{}, false, ErrInvalidState
 	}
+	var reviewStatus, reviewDigest string
+	err = tx.QueryRow(ctx, `SELECT status, draft_digest FROM gantry.agent_reviews WHERE agent_id=$1 AND draft_revision=$2`, agent.ID, draft.Revision).Scan(&reviewStatus, &reviewDigest)
+	if errors.Is(err, pgx.ErrNoRows) || reviewStatus != "approved" {
+		return Version{}, false, ErrReviewRequired
+	}
+	if err != nil {
+		return Version{}, false, err
+	}
+	canonicalDraft, currentDigest, err := canonicalDigest(draft.Spec)
+	if err != nil || currentDigest != reviewDigest {
+		return Version{}, false, ErrReviewRequired
+	}
 	if existing, found, err := loadVersionForDraft(ctx, tx, agent.ID, draft.Revision); err != nil || found {
 		if err != nil {
 			return Version{}, false, err
 		}
 		return existing, true, tx.Commit(ctx)
 	}
-	canonical, findings := ValidateSpec(draft.Spec)
-	if len(findings) != 0 {
-		return Version{}, false, ErrInvalidState
-	}
+	canonical := canonicalDraft
 	var nextVersion int
 	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0)+1 FROM gantry.agent_versions WHERE agent_id=$1`, agent.ID).Scan(&nextVersion); err != nil {
 		return Version{}, false, err
@@ -217,6 +374,9 @@ func (s *Service) Publish(ctx context.Context, actor identity.Principal, agentID
 		return Version{}, false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.agents SET updated_at=now() WHERE id=$1`, agent.ID); err != nil {
+		return Version{}, false, err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent", agent.ID, "agent.published", map[string]any{"version_id": version.ID, "draft_revision": draft.Revision}); err != nil {
 		return Version{}, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -245,6 +405,54 @@ func (s *Service) Retire(ctx context.Context, actor identity.Principal, agentID 
 	if _, err := tx.Exec(ctx, `UPDATE gantry.agents SET updated_at=now() WHERE id=$1`, agent.ID); err != nil {
 		return err
 	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent", agent.ID, "agent.retired", nil); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Service) Rollback(ctx context.Context, actor identity.Principal, agentID, versionID string) error {
+	if strings.TrimSpace(versionID) == "" {
+		return ErrInvalidInput
+	}
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var workspaceID, currentVersionID string
+	err = tx.QueryRow(ctx, `SELECT workspace_id, agent_version_id FROM gantry.agent_publications WHERE agent_id=$1 AND status='published' FOR UPDATE`, agent.ID).Scan(&workspaceID, &currentVersionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrInvalidState
+	}
+	if err != nil {
+		return err
+	}
+	if currentVersionID == versionID {
+		return ErrInvalidState
+	}
+	var targetAgentID string
+	if err := tx.QueryRow(ctx, `SELECT agent_id FROM gantry.agent_versions WHERE id=$1`, versionID).Scan(&targetAgentID); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if targetAgentID != agent.ID {
+		return ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.agent_publications SET status='retired', retired_at=now() WHERE agent_id=$1 AND workspace_id=$2 AND status='published'`, agent.ID, workspaceID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ($1,$2,$3,$4,'published',$5)`, newID("pub"), agent.ID, versionID, workspaceID, actor.ID); err != nil {
+		return err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "agent", agent.ID, "agent.rolled_back", map[string]any{"from_version_id": currentVersionID, "to_version_id": versionID}); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 
@@ -264,6 +472,66 @@ func (s *Service) loadAgent(ctx context.Context, querier interface {
 		return Agent{}, ErrNotFound
 	}
 	return agent, err
+}
+
+func loadCurrentVersion(ctx context.Context, querier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, agentID string) (Version, error) {
+	var version Version
+	err := querier.QueryRow(ctx, `SELECT v.id, v.agent_id, v.version, v.source_draft_revision, v.spec_json, v.spec_digest FROM gantry.agent_publications p JOIN gantry.agent_versions v ON v.id=p.agent_version_id WHERE p.agent_id=$1 AND p.status='published'`, agentID).Scan(&version.ID, &version.AgentID, &version.Version, &version.SourceDraftRevision, &version.Spec, &version.SpecDigest)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Version{}, ErrNotFound
+	}
+	return version, err
+}
+
+func loadReview(ctx context.Context, querier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, agentID string, revision int) (Review, error) {
+	var review Review
+	var baseVersionID *string
+	var diffJSON, summaryJSON []byte
+	var submittedAt, reviewedAt *time.Time
+	err := querier.QueryRow(ctx, `SELECT id, agent_id, draft_revision, draft_digest, base_version_id, release_notes, diff_json, risk_summary, status, submitted_by_principal_id, COALESCE(reviewed_by_principal_id,''), review_reason, submitted_at, reviewed_at FROM gantry.agent_reviews WHERE agent_id=$1 AND draft_revision=$2`, agentID, revision).Scan(&review.ID, &review.AgentID, &review.DraftRevision, &review.DraftDigest, &baseVersionID, &review.ReleaseNotes, &diffJSON, &summaryJSON, &review.Status, &review.SubmittedBy, &review.ReviewedBy, &review.ReviewReason, &submittedAt, &reviewedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Review{}, ErrNotFound
+	}
+	if err != nil {
+		return Review{}, err
+	}
+	if baseVersionID != nil {
+		review.BaseVersionID = *baseVersionID
+	}
+	if err := json.Unmarshal(diffJSON, &review.Diff); err != nil {
+		return Review{}, err
+	}
+	if err := json.Unmarshal(summaryJSON, &review.RiskSummary); err != nil {
+		return Review{}, err
+	}
+	if submittedAt != nil {
+		review.SubmittedAt = submittedAt.UTC().Format(time.RFC3339)
+	}
+	if reviewedAt != nil {
+		review.ReviewedAt = reviewedAt.UTC().Format(time.RFC3339)
+	}
+	return review, nil
+}
+
+func mustJSON(value any) []byte {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func appendAudit(ctx context.Context, tx pgx.Tx, organizationID, actorID, resourceType, resourceID, eventType string, payload any) error {
+	data := mustJSON(map[string]any{})
+	if payload != nil {
+		data = mustJSON(payload)
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO gantry.audit_events (organization_id, actor_principal_id, resource_type, resource_id, event_type, payload) VALUES ($1,$2,$3,$4,$5,$6::jsonb)`, organizationID, actorID, resourceType, resourceID, eventType, string(data))
+	return err
 }
 
 func loadDraft(ctx context.Context, querier interface {

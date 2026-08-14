@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, FileClock, Send, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileClock, RotateCcw, Send, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
 import { Button, StatusMark } from '@gantry/design-system';
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -16,32 +16,42 @@ export function AgentDetailPage() {
   const agent = useQuery({ queryKey: ['admin-agent', agentId], queryFn: () => api.getAgent(agentId) });
   const draft = useQuery({ queryKey: ['admin-draft', agentId], queryFn: () => api.getDraft(agentId) });
   const versions = useQuery({ queryKey: ['admin-versions', agentId], queryFn: () => api.listVersions(agentId) });
+  const review = useQuery({ queryKey: ['admin-review', agentId], queryFn: () => api.getReview(agentId) });
   const [spec, setSpec] = useState<DemoSpec>(defaultSpec);
+  const [releaseNotes, setReleaseNotes] = useState('');
   useEffect(() => { if (draft.data?.spec) setSpec(draft.data.spec as unknown as DemoSpec); }, [draft.data?.spec]);
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['admin-agent', agentId] }),
     queryClient.invalidateQueries({ queryKey: ['admin-draft', agentId] }),
     queryClient.invalidateQueries({ queryKey: ['admin-versions', agentId] }),
+    queryClient.invalidateQueries({ queryKey: ['admin-review', agentId] }),
     queryClient.invalidateQueries({ queryKey: ['admin-agents'] }),
   ]);
   const save = useMutation({ mutationFn: () => api.updateDraft(agentId, draft.data!.revision, spec), onSuccess: refresh });
   const publish = useMutation({ mutationFn: () => api.publish(agentId, draft.data!.revision), onSuccess: refresh });
   const retire = useMutation({ mutationFn: () => api.retire(agentId), onSuccess: refresh });
-  if (agent.isLoading || draft.isLoading || versions.isLoading) return <LoadingState label="Loading agent" />;
-  if (agent.error || draft.error || versions.error || !agent.data || !draft.data) return <div className="admin-page"><ErrorState message="This agent is unavailable in your administrative scope." /></div>;
+  const submitReview = useMutation({ mutationFn: () => api.submitReview(agentId, draft.data!.revision, releaseNotes), onSuccess: refresh });
+  const decideReview = useMutation({ mutationFn: (decision: 'approve' | 'reject') => api.decideReview(agentId, decision, releaseNotes), onSuccess: refresh });
+  const rollback = useMutation({ mutationFn: (versionId: string) => api.rollback(agentId, versionId), onSuccess: refresh });
+  if (agent.isLoading || draft.isLoading || versions.isLoading || review.isLoading) return <LoadingState label="Loading agent" />;
+  if (agent.error || draft.error || versions.error || review.error || !agent.data || !draft.data || !review.data) return <div className="admin-page"><ErrorState message="This agent is unavailable in your administrative scope." /></div>;
   const isDirty = spec.mode !== (draft.data.spec as unknown as DemoSpec).mode;
-  const busy = save.isPending || publish.isPending || retire.isPending;
+  const busy = save.isPending || publish.isPending || retire.isPending || submitReview.isPending || decideReview.isPending || rollback.isPending;
+  const reviewApproved = review.data.status === 'approved' && review.data.draft_revision === draft.data.revision;
+  const reviewPending = review.data.status === 'pending' && review.data.draft_revision === draft.data.revision;
+  const mutationError = save.error ?? publish.error ?? retire.error ?? submitReview.error ?? decideReview.error ?? rollback.error;
   return <section className="admin-page admin-detail-page">
     <Link className="admin-back-link" to="/"><ArrowLeft size={16} />Agents</Link>
-    <header className="admin-detail-heading"><div><div className="admin-detail-title"><h1>{agent.data.display_name}</h1><StatusMark status={agent.data.lifecycle_status} /></div><p>{agent.data.description}</p></div><div className="admin-command-row"><Button variant="secondary" onClick={() => save.mutate()} disabled={!isDirty || busy}>Save revision</Button><Button onClick={() => publish.mutate()} disabled={draft.data.validation_status !== 'valid' || isDirty || busy}><Send size={16} />Publish</Button>{agent.data.lifecycle_status === 'published' ? <Button variant="danger" onClick={() => retire.mutate()} disabled={busy}>Retire</Button> : null}</div></header>
-    {(save.error || publish.error || retire.error) ? <ErrorState message={(save.error ?? publish.error ?? retire.error)!.message} /> : null}
+    <header className="admin-detail-heading"><div><div className="admin-detail-title"><h1>{agent.data.display_name}</h1><StatusMark status={agent.data.lifecycle_status} /></div><p>{agent.data.description}</p></div><div className="admin-command-row"><Button variant="secondary" onClick={() => save.mutate()} disabled={!isDirty || busy}>Save revision</Button><Button onClick={() => publish.mutate()} disabled={draft.data.validation_status !== 'valid' || isDirty || !reviewApproved || busy}><Send size={16} />Publish</Button>{agent.data.lifecycle_status === 'published' ? <Button variant="danger" onClick={() => retire.mutate()} disabled={busy}>Retire</Button> : null}</div></header>
+    {mutationError ? <ErrorState message={mutationError.message} /> : null}
     <div className="admin-detail-grid">
       <section className="admin-editor"><div className="admin-section-heading"><div><span>Draft revision {draft.data.revision}</span><h2>Execution configuration</h2></div><FileClock size={19} /></div>
-        <label className="admin-field"><span>Lifecycle mode</span><select value={spec.mode} onChange={(event) => setSpec({ ...spec, mode: event.target.value as DemoSpec['mode'] })} disabled={busy}><option value="complete">Complete</option><option value="await_cancel">Await cancel</option></select></label>
+        <label className="admin-field"><span>Lifecycle mode</span><select value={spec.mode} onChange={(event) => setSpec({ ...spec, mode: event.target.value as DemoSpec['mode'] })} disabled={busy}><option value="complete">Complete</option><option value="await_cancel">Await cancel</option><option value="await_approval">Await approval</option></select></label>
         <div className={`admin-validation ${draft.data.validation_status === 'valid' ? 'admin-validation-valid' : 'admin-validation-invalid'}`}>{draft.data.validation_status === 'valid' ? <CheckCircle2 size={17} /> : <TriangleAlert size={17} />}<div><strong>{draft.data.validation_status === 'valid' ? 'Draft is valid' : 'Draft needs attention'}</strong>{draft.data.validation_findings.map((finding) => <span key={`${finding.path}-${finding.message}`}>{finding.path || 'Specification'}: {finding.message}</span>)}</div></div>
         <dl className="admin-spec-summary"><div><dt>Manifest kind</dt><dd>{spec.kind}</dd></div><div><dt>Mode</dt><dd>{spec.mode}</dd></div></dl>
       </section>
-      <aside className="admin-version-panel"><div className="admin-section-heading"><div><span>Immutable</span><h2>Version history</h2></div></div>{versions.data?.items.length === 0 ? <p className="admin-muted">No version has been published.</p> : <ol className="admin-version-list">{versions.data?.items.map((version) => <li key={version.id}><strong>Version {version.version}</strong><span>Draft revision {version.source_draft_revision}</span><code>{version.spec_digest.slice(0, 19)}...</code></li>)}</ol>}</aside>
+      <aside className="admin-version-panel"><div className="admin-section-heading"><div><span>Immutable</span><h2>Version history</h2></div></div>{versions.data?.items.length === 0 ? <p className="admin-muted">No version has been published.</p> : <ol className="admin-version-list">{versions.data?.items.map((version) => <li key={version.id}><div className="admin-version-title"><strong>Version {version.version}</strong>{agent.data.current_published_version_id === version.id ? <StatusMark status="published" /> : null}</div><span>Draft revision {version.source_draft_revision}</span><code>{version.spec_digest.slice(0, 19)}...</code>{agent.data.current_published_version_id !== version.id ? <Button variant="secondary" onClick={() => { if (window.confirm(`Roll back to version ${version.version}?`)) rollback.mutate(version.id); }} disabled={busy}><RotateCcw size={14} />Rollback</Button> : null}</li>)}</ol>}</aside>
     </div>
+    <section className="admin-review-panel"><div className="admin-section-heading"><div><span>Governance</span><h2>Review current draft</h2></div><ShieldCheck size={19} /></div><div className="admin-review-status"><StatusMark status={review.data.status} /><strong>{review.data.status === 'not_submitted' ? 'Not submitted for review' : `Review ${review.data.status}`}</strong><span>Draft revision {review.data.draft_revision} · {review.data.risk_summary.total} changes · {review.data.risk_summary.high} high risk</span></div><label className="admin-field"><span>Release notes or decision reason</span><textarea value={releaseNotes} onChange={(event) => setReleaseNotes(event.target.value)} disabled={busy} placeholder="Summarize the behavior and risk of this revision." /></label><div className="admin-review-actions">{reviewPending ? <><Button onClick={() => decideReview.mutate('approve')} disabled={busy}><CheckCircle2 size={15} />Approve</Button><Button variant="danger" onClick={() => decideReview.mutate('reject')} disabled={busy}><XCircle size={15} />Reject</Button></> : <Button variant="secondary" onClick={() => submitReview.mutate()} disabled={busy || draft.data.validation_status !== 'valid' || isDirty || reviewApproved}><ShieldCheck size={15} />Submit for review</Button>}</div><div className="admin-diff-list">{review.data.diff.length === 0 ? <p className="admin-muted">No changes compared with the current published version.</p> : review.data.diff.map((entry) => <div className="admin-diff-row" key={`${entry.path}-${entry.change}`}><code>{entry.path}</code><span>{entry.change}</span><StatusMark status={entry.risk} /><small>{entry.category}</small></div>)}</div>{review.data.review_reason ? <p className="admin-review-reason">{review.data.review_reason}</p> : null}</section>
   </section>;
 }

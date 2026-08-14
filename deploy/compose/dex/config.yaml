@@ -29,12 +29,16 @@ staticClients:
     redirectURIs:
       - http://localhost:3002/
       - http://localhost:3002
+      - http://127.0.0.1:3002/
+      - http://127.0.0.1:3002
   - id: gantry-admin-web
     name: Gantry Admin
     public: true
     redirectURIs:
       - http://localhost:3001/
       - http://localhost:3001
+      - http://127.0.0.1:3001/
+      - http://127.0.0.1:3001
   - id: gantry-copilot-api
     name: Gantry Copilot API
     public: true

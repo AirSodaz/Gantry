@@ -141,10 +141,10 @@ plane validates issuer, expiry, signature, and the `gantry-copilot-api`
 audience before mapping the stable OIDC subject to a local principal. The
 `gantry-copilot-smoke` client uses password grant only for the disposable
 Compose smoke test; browser-facing Copilot uses the public development issuer
-`http://gantry-dex.localhost:5556/dex` with the `gantry-copilot-web` PKCE
-client. The requested Dex cross-client audience scope preserves the API
-audience boundary. The hostname must resolve to `127.0.0.1` in the browser;
-current Chromium-based browsers resolve `*.localhost` automatically. Start the
+`http://gantry-dex.localhost:5556/dex` with the `gantry-copilot-web` PKCE client.
+The Vite development server proxies OIDC endpoints through the frontend origin
+so browser login does not depend on cross-origin discovery. The requested Dex
+cross-client audience scope preserves the API audience boundary. Start the
 frontend with `pnpm dev:copilot` after the Compose stack is ready and sign in
 with `copilot-demo@example.test` and password `gantry_demo_password`. The
 Approvals page is available for action-time approvals; artifacts remain disabled
@@ -232,9 +232,10 @@ to its bound workspace. A Copilot token cannot call Admin routes, and an agent
 outside an administrator's managed workspace is returned as `404`.
 
 The implemented Admin contract is intentionally limited to workspace listing,
-agent creation, draft read/update, version history, direct publication, and
-retirement. Draft updates and publication require an `If-Match` draft revision.
-Publication validates, freezes, and digests the canonical
+agent creation, draft read/update, review and semantic diff, version history,
+publication, rollback, and retirement. Draft updates and publication require
+an `If-Match` draft revision; publication also requires an approved review for
+that exact revision. Publication validates, freezes, and digests the canonical
 `gantry.phase0.demo/v1` manifest before it becomes visible to Copilot. The
 manifest mode belongs to the immutable version, never to task input. Retirement
 hides the agent from the catalog without deleting historical versions, tasks, or

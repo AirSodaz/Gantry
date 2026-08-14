@@ -7,6 +7,8 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': 'http://localhost:8080',
+      '/oidc': { target: 'http://localhost:5556', rewrite: (path) => path.replace(/^\/oidc/, '/dex') },
+      '/dex': 'http://localhost:5556',
     },
   },
   test: {

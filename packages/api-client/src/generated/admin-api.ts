@@ -91,6 +91,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/{agent_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current draft review and semantic diff */
+        get: operations["getAgentReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}:publish": {
         parameters: {
             query?: never;
@@ -108,6 +125,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/{agent_id}:review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit the current draft for review */
+        post: operations["submitAgentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}:review-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject the current draft review */
+        post: operations["decideAgentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}:retire": {
         parameters: {
             query?: never;
@@ -119,6 +170,23 @@ export interface paths {
         put?: never;
         /** Retire the currently published agent */
         post: operations["retireAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}:rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll back to an immutable published version */
+        post: operations["rollbackAgent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -197,6 +265,54 @@ export interface components {
         AgentVersionList: {
             items: components["schemas"]["AgentVersion"][];
             page_info: components["schemas"]["PageInfo"];
+        };
+        SubmitReviewRequest: {
+            release_notes: string;
+        };
+        ReviewDecisionRequest: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            reason: string;
+        };
+        RollbackRequest: {
+            version_id: string;
+        };
+        DiffEntry: {
+            path: string;
+            /** @enum {string} */
+            change: "added" | "removed" | "changed";
+            /** @enum {string} */
+            category: "metadata" | "behavior" | "security";
+            /** @enum {string} */
+            risk: "low" | "medium" | "high";
+            before?: unknown;
+            after?: unknown;
+        };
+        RiskSummary: {
+            total: number;
+            high: number;
+            medium: number;
+            low: number;
+        };
+        AgentReview: {
+            id?: string;
+            agent_id: string;
+            draft_revision: number;
+            draft_digest: string;
+            base_version_id?: string;
+            base_version?: number;
+            release_notes: string;
+            diff: components["schemas"]["DiffEntry"][];
+            risk_summary: components["schemas"]["RiskSummary"];
+            /** @enum {string} */
+            status: "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
+            submitted_by?: string;
+            reviewed_by?: string;
+            review_reason?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            reviewed_at?: string;
         };
     };
     responses: {
@@ -450,6 +566,31 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getAgentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current review state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     publishAgentDraft: {
         parameters: {
             query?: never;
@@ -489,6 +630,70 @@ export interface operations {
             412: components["responses"]["RevisionConflict"];
         };
     };
+    submitAgentReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current draft revision. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Review submitted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+            412: components["responses"]["RevisionConflict"];
+        };
+    };
+    decideAgentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Review decision recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
     retireAgent: {
         parameters: {
             query?: never;
@@ -501,6 +706,34 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Agent retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    rollbackAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Agent rolled back */
             204: {
                 headers: {
                     [name: string]: unknown;

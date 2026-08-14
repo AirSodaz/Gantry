@@ -1,4 +1,4 @@
-import type { Agent, AgentVersion, CreateAgentInput, Draft, Workspace } from './types';
+import type { Agent, AgentReview, AgentVersion, CreateAgentInput, Draft, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -28,10 +28,18 @@ export class AdminApi {
     });
   }
   listVersions(agentId: string) { return this.request<{ items: AgentVersion[] }>(`/agents/${encodeURIComponent(agentId)}/versions`); }
+  getReview(agentId: string) { return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}/review`); }
+  submitReview(agentId: string, revision: number, releaseNotes: string) {
+    return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}:review`, { method: 'POST', headers: { 'If-Match': String(revision) }, body: JSON.stringify({ release_notes: releaseNotes }) });
+  }
+  decideReview(agentId: string, decision: 'approve' | 'reject', reason: string) {
+    return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}:review-decision`, { method: 'POST', body: JSON.stringify({ decision, reason }) });
+  }
   publish(agentId: string, revision: number) {
     return this.request<AgentVersion>(`/agents/${encodeURIComponent(agentId)}:publish`, { method: 'POST', headers: { 'If-Match': String(revision) }, body: '{}' });
   }
   retire(agentId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:retire`, { method: 'POST', body: '{}' }); }
+  rollback(agentId: string, versionId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:rollback`, { method: 'POST', body: JSON.stringify({ version_id: versionId }) }); }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const token = this.tokenProvider();

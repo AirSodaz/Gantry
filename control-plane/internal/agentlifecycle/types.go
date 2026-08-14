@@ -19,6 +19,7 @@ var (
 	ErrInvalidInput     = errors.New("invalid input")
 	ErrInvalidState     = errors.New("invalid state")
 	ErrRevisionConflict = errors.New("draft revision conflict")
+	ErrReviewRequired   = errors.New("an approved review is required")
 )
 
 type Manifest struct {
