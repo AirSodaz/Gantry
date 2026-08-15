@@ -4,8 +4,9 @@
 
 Gantry is a pnpm workspace coordinated by Moon. `apps/*` contains the separate
 Admin and Copilot Vite applications; `control-plane` is the Go modular monolith;
-`runner` is the Rust workspace; `packages/contracts` owns OpenAPI and protobuf
-source schemas; `packages/api-client` owns generated TypeScript clients.
+`runner` is the Rust workspace; `packages/contracts/openapi` owns public HTTP
+schemas; top-level `proto` owns the private runner protocol; and
+`packages/api-client` owns generated TypeScript clients.
 
 OpenAPI 3.1 is the primary contract for every public HTTP API. Protobuf is
 reserved for the runner session. Connect Go is used only to serve that runner
@@ -15,6 +16,12 @@ endpoint.
 Application code uses the `ObjectStore` port. MinIO is only the local
 S3-compatible adapter and can be replaced by another S3-compatible service
 without changing domain or service interfaces.
+
+[Implementation Status](implementation-status.md) is the capability truth for a
+named repository baseline. Target behavior lives in the product and engineering
+design documents; accepted ADRs constrain implementation. The configuration
+ownership and compilation model is defined in
+[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
 
 ## Code Structure
 

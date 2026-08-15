@@ -95,25 +95,85 @@ identifiers.
 ### Agent
 
 A named enterprise capability visible to employees, such as "Procurement
-Analyst" or "Incident Triage". An agent has descriptive metadata and a sequence
-of immutable versions.
+Analyst" or "Incident Triage". An Agent has stable descriptive metadata, named
+Drafts, immutable Revisions, and environment Deployments.
 
-### Agent Version
+### Agent Draft
 
-An immutable published snapshot containing instructions, model policy, tools,
-command policy, input schema, output contract, runtime limits, and approval
-rules. Drafts are editable; published versions are not.
+A named mutable editing space used for design and debugging. Each Draft has one
+optimistically locked working copy, an optional source Revision, and a latest
+Revision reference. An Agent has a Main Draft and may create multiple additional
+Drafts from the content of any Revision. Drafts and Revisions do not form a
+branch tree.
+
+### Agent Revision
+
+An immutable configuration snapshot identified by a cryptographic hash,
+required message, author, time, and a separate canonical content digest. It
+contains the Agent Prompt Snapshot and exact Skill artifact, Plugin, Tool
+Descriptor, Tool Binding, model-policy, command-policy, input/output-contract,
+runtime, artifact, approval, and evaluation references.
+
+### Agent Deployment
+
+A named environment pointer to one exact Agent Revision. Multiple test
+Deployments may coexist; one workspace-owned Agent has one default Production
+Deployment. Publication and rollback move deployment pointers without changing
+Revision history.
+
+### Agent Access
+
+Every Agent has an explicit ACL whose capabilities independently control
+metadata discovery, configuration read, Draft editing, review decisions, test
+Deployment management, Production publication, run inspection, execution, and
+ACL management. Configuration read never implies execution, and execution never
+implies access to Prompts or internal Tools. Effective access remains the
+intersection of organization/workspace authorization, Agent ACL, resource state,
+Deployment, integration publication, and action-time policy.
+
+### Agent Prompt
+
+Agent-owned system instructions edited inside a Draft. Committing a Revision
+freezes the text, variables, ordering, provenance, compiler version, and digest
+as an immutable Prompt Snapshot. Reusable guidance belongs in Skills rather than
+a separate Prompt catalog.
+
+### Skill
+
+A reusable system-prompt package imported from an external skills source or
+added as a complete package/local directory. The source package declares its
+own version; Gantry only displays that value and records the source reference
+and content digest. If the package does not declare a version, the UI shows
+`未声明` and Gantry does not invent one. Multiple imported artifacts of the
+same Skill may coexist so test Agents can compare package versions. Imported
+content is not edited inline in Gantry. A Skill helps an Agent use governed
+capabilities consistently but cannot grant tool authority by itself.
+
+### Plugin
+
+An installable, versioned container for one or more business Skills plus
+optional MCP servers, Tool Descriptors, configuration schemas, binding
+templates, and presentation metadata. Plugins are installed at organization
+scope, enabled per workspace, and selectively bound by an Agent. They never
+grant all contained tools automatically.
+
+### Tool Server and Tool Descriptor
+
+A Tool Server registers a built-in, MCP, or governed CLI provider. Immutable
+Tool Descriptor Versions define names, schemas, effects, idempotency, data
+classification, credential capabilities, destinations, and execution limits.
 
 ### Task and Run
 
 A task represents user intent and durable ownership. A run is one execution
-attempt of a task against a specific agent version and policy snapshot. Retrying
+attempt of a task against a specific Agent Revision and policy snapshot. Retrying
 a task creates a new run rather than rewriting history.
 
 ### Tool Binding
 
-A versioned reference to a built-in or MCP tool namespace, its allowed actions,
-input constraints, credential binding, approval policy, and network policy.
+An Agent-owned, versioned reference to one immutable Tool Descriptor. It narrows
+allowed operations, inputs, credentials, destinations, approval policy, and
+runtime limits. It never broadens the registered descriptor.
 
 ### Approval
 
@@ -133,13 +193,20 @@ expected policy decisions, and provenance.
 
 - Create agents from templates or a blank draft.
 - Edit instructions with variables and structured input/output schemas.
+- Edit the Agent Prompt, select imported Skill artifacts and Plugins, and inspect their
+  effective compiled instruction order.
 - Select a model policy rather than embedding a provider-specific model ID.
-- Bind namespaced tools and constrain operations and argument patterns.
+- Register or select built-in, MCP, and governed CLI descriptors; bind
+  namespaced tools and constrain operations and argument patterns.
 - Configure command allowlists, denied patterns, filesystem mounts, egress
   destinations, resource limits, TTL, and approval rules.
 - Validate a draft statically before any execution.
-- Run draft versions only in designated development workspaces.
-- Compare versions and require review for security-relevant changes.
+- Create multiple named Drafts from any Revision without changing Production.
+- Commit immutable Revisions with a hash and message before execution.
+- Manage Agent-specific access for configuration readers, editors, reviewers,
+  publishers, operators, and executors.
+- Run Revisions only through designated test Deployments and credentials.
+- Compare Revisions and require review for security-relevant changes.
 
 The initial designer is form-led. React Flow is used where a graph clarifies
 the execution policy or later orchestration, not as a mandatory canvas for
@@ -147,12 +214,12 @@ simple agents.
 
 ### Publication
 
-- Submit a draft for review with release notes.
+- Submit an exact Revision for review with release notes.
 - Show a semantic diff of prompts, tools, permissions, policies, and schemas.
 - Require designated reviewers based on risk classification.
-- Publish an immutable version to selected workspaces or employee groups.
-- Roll back catalog assignment to a prior version without deleting history.
-- Deprecate and retire versions while preserving historical runs.
+- Move the default Production Deployment to an approved Revision.
+- Roll back Production to a prior approved Revision without deleting history.
+- Deprecate, quarantine, and retire Revisions while preserving historical runs.
 
 ### Operations
 
@@ -168,10 +235,10 @@ simple agents.
 
 - Author golden cases and export eligible production trajectories after
   redaction.
-- Run suites against a draft or published version.
+- Run suites against an exact test or Production Revision.
 - Inspect deterministic assertions, rubric scores, policy violations, state
   deltas, latency, tokens, and estimated cost.
-- Compare candidate and baseline versions before publication.
+- Compare candidate and baseline Revisions before publication.
 
 ## 8. Gantry Copilot Capabilities
 
@@ -219,7 +286,7 @@ invoking a domain agent while keeping its own user interface and workflow.
 - Business context such as an employee or case reference improves traceability
   but never grants authority by itself.
 - The caller cannot select unapproved tools, credentials, model providers,
-  runtime images, or draft agent versions.
+  runtime images, or mutable Drafts.
 
 The complete contract is defined in
 [Enterprise Agent Invocation API](enterprise-integration-api.md).
@@ -228,7 +295,7 @@ The complete contract is defined in
 
 | ID | Requirement |
 | --- | --- |
-| FR-01 | Every run references immutable agent, policy, and tool-binding versions. |
+| FR-01 | Every run references an immutable Agent Revision plus immutable policy and tool-binding versions. |
 | FR-02 | Admin and Copilot enforce distinct API audiences and permission sets. |
 | FR-03 | All action authorization is re-evaluated at execution time. |
 | FR-04 | Live views reconnect without loss within the declared retention window; an expired cursor returns a replacement snapshot and earliest available cursor rather than silently skipping content. |
@@ -244,6 +311,12 @@ The complete contract is defined in
 | FR-14 | Stale runner assignments are fenced at every effect-capable gateway by a monotonic lease epoch. |
 | FR-15 | Model and PTY streams remain durably replayable without requiring one PostgreSQL transaction per token or output fragment. |
 | FR-16 | Approval, cancellation, expiry, policy change, lease loss, and execution claims resolve through one atomic action state machine with at most one consumed execution permit. |
+| FR-17 | Every Agent Revision pins an immutable Prompt Snapshot plus the exact Skill artifact, Plugin, Tool Descriptor, and Tool Binding digests. |
+| FR-18 | Multiple named Drafts and test Deployments may coexist while one workspace-owned Agent retains one unambiguous default Production Deployment. |
+| FR-19 | Skill requirements cannot grant or broaden tool authority; all required tools must be satisfied by explicit Agent Tool Bindings. |
+| FR-20 | MCP discovery and CLI registration cannot silently change a deployed Agent Revision. |
+| FR-21 | Installing or enabling a Plugin never grants an Agent all contained Skills or Tools; Agent bindings remain explicit. |
+| FR-22 | Agent metadata read, configuration read, Draft edit, and execution permissions are independently grantable and revocable. |
 
 ## 11. Quality Attributes
 
@@ -291,3 +364,14 @@ The first production pilot should measure:
 
 Initial targets should be set after an internal baseline pilot rather than
 invented before representative agents and workloads exist.
+
+## 13. Frontend Design Boundary
+
+This document defines product capabilities, not the final page inventory. The
+Admin page structure is defined in
+[Gantry Admin Site Design](admin-site-design.md). The next design work will
+continue to refine every Admin page and then decide every Copilot page, route, function,
+permission state, field set, interaction, responsive behavior, and acceptance
+criterion. Until that pass is approved, page descriptions in
+[Frontend UX Design](frontend-ux-design.md) are directional information
+architecture rather than implementation-complete specifications.

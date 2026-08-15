@@ -53,46 +53,140 @@ Mutable identity and ownership record:
 - `owner_principal_id`, `lifecycle_status`
 - creation and update metadata
 
+### Agent Access Grant
+
+An explicit Agent-scoped capability grant:
+
+- `id`, `agent_id`, subject type and subject ID
+- capability: `metadata.read`, `configuration.read`, `draft.edit`,
+  `review.decide`, `deployment.test`, `deployment.production`, `runs.read`,
+  `execute`, or `access.manage`
+- `grant_batch_id` and optional informational `source_preset`
+- grant status, issuer, reason, effective interval, and timestamps
+
+The effective permission is the intersection of organization/workspace
+authorization, Agent Access Grants, resource state, and action-time policy.
+Grants do not contain credentials and do not broaden Tool Binding authority.
+Access changes and denied decisions are append-only audit events.
+Preset names are not evaluated at authorization time. A preset creates explicit
+capability grants, and later preset-definition changes never rewrite them.
+The initial model stores no Deny grants: absent or revoked Allow grants are
+denied, while an outer constraint is recorded as the reason for an ineffective
+grant.
+
 ### Agent Draft
 
-Editable specification with optimistic concurrency:
+Named mutable work line:
 
-- `id`, `agent_id`, `revision`
-- `spec_json`, `schema_version`
+- `id`, `agent_id`, `name`, `status`
+- optional `derived_from_revision_hash`, `latest_revision_hash`
+- working `spec_json`, `schema_version`, and `working_copy_etag`
 - `validation_status`, `validation_findings`
-- `updated_by`, `updated_at`
+- `created_by`, `updated_by`, creation and update timestamps
 
-### Agent Version
+Every Agent has one Main Draft and may have multiple named Drafts. Archiving a
+Draft removes it from active editing without deleting its Revisions.
 
-Immutable publication candidate or release:
+### Agent Revision
 
-- `id`, `agent_id`, semantic or monotonic `version`
+Immutable configuration commit:
+
+- `id`, `agent_id`, full `revision_hash`
+- required `message`, author, committed timestamp, and source Draft
 - canonical `spec_json` and `spec_digest`
 - `runtime_image_digest`
-- model-policy, tool-descriptor, command-policy, network-policy, approval-policy,
-  and evaluation-gate version references
-- `created_from_draft_revision`, author, release notes, and timestamps
+- prompt-snapshot digest, skill-artifact identity and content digest,
+  plugin-version, model-policy,
+  tool-descriptor, tool-binding,
+  command-profile, network-policy, approval-policy, and evaluation-gate version
+  references
 
-### Publication
+The revision hash covers the canonical revision envelope and commit metadata.
+The separate specification digest covers executable configuration content, so
+two history commits may be behaviorally identical without sharing a revision
+hash.
 
-Assigns one agent version to workspace/group audiences. The single published
-publication for an agent and workspace is its current visible version. A
-publication has an effective interval, status, reviewers, review decision, and
-rollback linkage.
+### Agent Deployment
+
+Assigns one Agent Revision to a named environment or audience:
+
+- `id`, `agent_id`, `name`, `environment_kind`
+- exact `revision_hash` and `spec_digest`
+- status, owner, purpose, optional expiry, and environment policy
+- effective interval, changed-by actor, review/evaluation evidence, and rollback
+  linkage
+
+An Agent may have multiple test Deployments but one default Production
+Deployment in its workspace. Publication and rollback create deployment events
+and move the pointer without creating or rewriting a Revision.
 
 ### Integration Publication
 
-Binds an immutable agent version or controlled release channel to registered
+Binds an immutable Agent Revision or controlled release channel to registered
 integration clients. It pins input/output contract versions, workspace,
 authority modes, visible artifacts and events, webhook policy, quotas, budgets,
 retention, reviewers, and effective interval.
 
-### Tool Server and Tool Descriptor
+### Agent Prompt Snapshot
 
-A tool server record describes ownership, transport, trust, and credential
-capabilities. Immutable descriptors contain namespaced tool names, input and
-output schemas, effect classification, idempotency classification, version, and
-content digest.
+The editable system prompt is stored in an Agent Draft working copy. Committing
+a Revision embeds an immutable Prompt Snapshot containing instruction text,
+declared variables, instruction ordering, classification, provenance, compiler
+version, and content digest. It has no independent catalog lifecycle.
+
+### Skill and Imported Skill Artifact
+
+A Skill is a workspace-owned reusable capability identity backed by packages
+from an external skills source. Gantry does not create or manage Skill versions.
+An imported Skill Artifact records the source type and source reference, package
+identity, version declared by the package, prompt fragment, input/output constraints,
+preconditions, required Tool Binding constraints, optional rule fragments,
+artifact expectations, risk metadata, provenance, validation state, and content
+digest. Multiple artifacts of one Skill may coexist for testing. The declared
+package version is display metadata; when it is absent, the UI shows `未声明`
+and Gantry does not synthesize one. The source reference and content digest
+identify the exact artifact used by an Agent Revision.
+
+### Plugin Installation, Enablement, and Version
+
+A Plugin Version is an immutable organization-installable package containing
+Skill package references, optional Tool Server and Tool Descriptor references,
+configuration schemas, default binding templates, publisher/provenance,
+compatibility, risk metadata, and content digest.
+
+Plugin Installation records organization review and operational status.
+Workspace Plugin Enablement records which exact Plugin Version is available to a
+workspace. Agent Revisions separately pin only the contained Skill artifacts and Tool
+Bindings selected by the designer; enablement does not imply authorization.
+
+### Tool Server
+
+An organization-owned Tool Server describes provider type (`builtin`, `mcp`, or
+`cli`), owner, environment, operational status, transport, endpoint reference,
+trust tier, credential capabilities, data classifications, destination class,
+discovery policy, and health metadata. Secret connection material remains in a
+trusted identity or secret adapter.
+
+### Tool Descriptor Version
+
+An immutable descriptor contains fully qualified tool name, input/output
+schemas, effect and idempotency classifications, credential capability, data
+classifications, destination class, execution limits, compatibility metadata,
+version, lifecycle state, and content digest.
+
+### CLI Command Profile
+
+A versioned command descriptor contains executable identity, structured argument
+schema/rendering, working-directory and filesystem constraints, environment
+allowlist, runtime-image requirements, timeout/output/process limits, artifact
+rules, effect/idempotency classification, and content digest.
+
+### Tool Binding
+
+An Agent-owned binding references one immutable Tool Descriptor Version and
+narrows allowed operations, arguments, credential mode/reference, destination,
+data classification, approval policy, timeout, output, concurrency, and budget
+limits. Agent Revisions pin the binding and descriptor digests.
 
 ## 4. Task and Run Entities
 
@@ -226,7 +320,7 @@ gates.
 
 ### Evaluation Run
 
-References one candidate agent version, optional baseline version, immutable
+References one candidate Agent Revision, optional baseline Revision, immutable
 suite manifest, execution environment, aggregate state, and results.
 
 ### Assertion Result

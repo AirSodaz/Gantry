@@ -1,5 +1,10 @@
 # API and Protocols
 
+This document defines both checked-in and target contracts. The current OpenAPI
+files are authoritative for implemented public HTTP routes. Resources labeled
+**planned** below are design commitments, not callable endpoints. See
+[Implementation Status](implementation-status.md).
+
 ## 1. Protocol Strategy
 
 - OpenAPI 3.1 is the source contract for browser-facing and enterprise HTTPS
@@ -29,20 +34,32 @@ it does not impersonate the Gantry Copilot frontend or reuse its browser token.
 
 Audience: `gantry-admin-api`.
 
-Representative resources:
+Current and planned resources:
 
-- `/api/admin/v1/workspaces`
-- `/api/admin/v1/agents`
-- `/api/admin/v1/agents/{id}/draft`
-- `/api/admin/v1/agents/{id}/versions`
-- `/api/admin/v1/publications`
-- `/api/admin/v1/runs`
-- `/api/admin/v1/approval-policies`
-- `/api/admin/v1/evaluation-suites`
-- `/api/admin/v1/tools`
-- `/api/admin/v1/policies`
-- `/api/admin/v1/audit-events`
-- `/api/admin/v1/platform/runner-pools`
+- Implemented: `/api/admin/v1/workspaces`
+- Implemented: `/api/admin/v1/agents`
+- Implemented: `/api/admin/v1/agents/{id}/draft`
+- Implemented: `/api/admin/v1/agents/{id}/versions`
+- Implemented: `/api/admin/v1/agents/{id}/review`
+- Implemented commands: review submission/decision, publication, retirement,
+  and rollback under the agent resource.
+- Designed target: named Agent Drafts, immutable hash-identified Revisions, and
+  test/Production Deployment resources. The current single integer-revision
+  Draft and published-version endpoints remain an implementation limitation,
+  not the target domain model.
+- Planned: per-Agent access-grant resources that independently authorize safe
+  metadata, configuration read, Draft edit, Review, deployment, run inspection,
+  execution, and ACL management.
+- Planned: `/api/admin/v1/skills` for marketplace/direct-locator, complete
+  package upload, or local-directory import, artifact activation/deprecation,
+  exact-artifact inspection, and Agent usage; it does not mint Skill versions
+  or release pointers.
+- Planned: `/api/admin/v1/plugins` and workspace Plugin enablement resources
+- Planned: `/api/admin/v1/tool-servers`
+- Planned: `/api/admin/v1/tool-descriptors`
+- Planned: `/api/admin/v1/cli-command-profiles`
+- Planned: `/api/admin/v1/runs`, `/approval-policies`, `/evaluation-suites`,
+  `/integrations`, `/policies`, `/audit-events`, and `/platform/runner-pools`.
 
 ### Copilot API
 
@@ -93,7 +110,8 @@ idempotency contract is defined in
 - If the key and request digest match but the original resource has been deleted,
   the server returns `410 idempotency_resource_expired` with the original opaque
   resource ID; it never recreates the command implicitly.
-- Mutable drafts use ETags and `If-Match` for optimistic concurrency.
+- Mutable Draft working copies use ETags and `If-Match` for optimistic
+  concurrency. Immutable Revisions use their full hash as identity evidence.
 - Lists use cursor pagination and stable, documented sort orders.
 - Timestamps use UTC RFC 3339.
 - Errors use a stable code, human-readable message, correlation ID, and optional
@@ -122,8 +140,8 @@ Example error:
 `POST /api/copilot/v1/tasks`
 
 The request includes the agent ID, structured input or message, attachment IDs,
-and client-generated idempotency key. The response binds the task to the
-effective published agent version and returns the first run.
+and client-generated idempotency key. The response binds the task to the exact
+Agent Revision selected by the effective Deployment and returns the first run.
 
 Enterprise applications submit through `POST /api/agent/v1/tasks`. That route
 requires an integration publication and a separate API audience; it is not a
@@ -140,8 +158,9 @@ already terminal state.
 
 `POST /api/copilot/v1/tasks/{task_id}:retry`
 
-The server determines whether to reuse the original agent version or current
-published version according to an explicit request field and permission.
+The server determines whether to reuse the original Agent Revision or the
+current Production Revision according to an explicit request field and
+permission.
 
 ### Record an Agent Action Approval Decision
 
@@ -151,13 +170,15 @@ The request includes decision, reason, action digest, and idempotency key. A
 stale action digest is rejected. This route is only for a concrete agent action;
 it is not a general enterprise business-approval endpoint.
 
-### Publish an Agent Version
+### Publish an Agent Revision
 
-`POST /api/admin/v1/agents/{id}/draft:publish`
+`POST /api/admin/v1/agents/{id}:publish`
 
-The command includes the expected draft revision, release notes, publication
-targets, and acknowledged warnings. Policy determines required reviews and
-evaluation gates.
+The target command includes the full Agent Revision hash, content digest,
+release notes, expected current Production Revision, deployment targets, and
+acknowledged warnings. Policy determines required reviews and evaluation gates.
+The current implementation still accepts an expected integer Draft revision;
+the target contract replaces that ambiguity with an exact immutable Revision.
 
 ## 5. Browser Event Stream
 
@@ -216,7 +237,14 @@ certificate before the Connect handler is reachable.
 - `RunEventBatch`
 - `TerminalOutput`
 - `ArtifactDeclaration`
+- `ArtifactUploadCompleted`
 - `CheckpointAvailable`
+- `CheckpointMetadata`
+- `ModelDelta`
+- `ModelUsage`
+- `ToolLifecycle`
+- `SecurityEvent`
+- `CompactionEvent`
 - `RunFinished`
 
 ### Control Plane to Runner
@@ -229,6 +257,7 @@ certificate before the Connect handler is reachable.
 - `ResumeAction`
 - `RotateSession`
 - `DrainRunner`
+- `ArtifactUploadGrant`
 
 Every message includes protocol version, runner session, message ID, correlation
 identifiers, and the run's `lease_epoch` where applicable. Run assignments are
@@ -312,7 +341,12 @@ arguments.
   protocol version.
 - Control plane and runner advertise minimum and maximum protocol versions.
 - Deployment prevents scheduling to an incompatible runner.
-- Agent, tool, policy, and evaluation schemas have independent versions.
+- Agent, Plugin, tool, policy, and evaluation schemas have independent
+  versions. Imported Skill packages expose the version declared by their source;
+  an absent declaration is returned as `未声明`. Gantry records source
+  references and content digests rather than minting a Skill version. Agent
+  Prompt Snapshots are versioned through their owning Agent
+  Revision rather than a standalone public resource.
 - A compatibility test suite runs against the oldest supported runner and web
   client contracts before release.
 

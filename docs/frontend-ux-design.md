@@ -1,5 +1,10 @@
 # Frontend UX Design
 
+This document fixes the shared experience principles and directional
+information architecture. It does not yet approve the complete page inventory,
+route map, field-level functions, interactions, or page acceptance criteria.
+Those Admin and Copilot decisions are the next product-design work package.
+
 ## 1. Experience Boundary
 
 Gantry Admin and Gantry Copilot are separate React applications. They may share
@@ -117,18 +122,29 @@ the component's module header when overriding this default.
 
 ## 4. Gantry Admin Information Architecture
 
-Primary navigation:
+The authoritative Admin page inventory, routes, roles, delivery status, and
+page-level specifications are maintained in
+[Gantry Admin Site Design](admin-site-design.md). This section summarizes the
+experience direction.
+
+Primary navigation uses labeled groups with direct page entries. The labels are
+not empty landing pages.
 
 1. Overview
-2. Agents
-3. Runs
-4. Approvals
-5. Evaluations
-6. Tools and Connections
-7. Integrations
-8. Policies
-9. Audit
-10. Platform
+2. Build: Agents, Skills, Plugins, Tools
+3. Operate: Runs, Approvals, Evaluations
+4. Govern: Integrations, Policies, Audit
+5. Platform: Runners, Model Providers, Credentials, Settings
+
+Prompts are configured inside an Agent and do not have a standalone page.
+Standalone Skills contain lightweight reusable instructions. Plugins package
+business Skills with optional MCP tools and configuration, while Tools remains
+the independent inventory for runtime descriptors, health, risk, and policy.
+Skills are imported from external package sources or added manually as complete
+package artifacts or local directories; the UI displays each package's declared
+version and exact content digest. Multiple imported artifacts of one Skill may
+coexist for test bindings, without a Gantry-owned version editor or inline
+content editing workflow.
 
 Workspace selection is persistent and visible in the application header.
 Organization-wide pages are clearly labeled and never silently mixed with a
@@ -136,7 +152,9 @@ workspace-scoped list.
 
 ### Overview
 
-The first viewport is an operational summary rather than a welcome page. It
+The first viewport is an operational summary rather than a welcome page. The
+default scope is the selected workspace; organization administrators may choose
+`All workspaces`. It
 contains active runs, approval backlog, failure rate, runner capacity, recent
 policy denials, quarantined agents, and evaluation regressions. Each metric
 links to a filtered working view.
@@ -167,10 +185,10 @@ the published production configuration.
 The designer uses a stable left section index and a central form workspace:
 
 1. Identity and catalog metadata
-2. Instructions and variables
+2. Agent prompt, instructions, and variables
 3. Input and output schemas
 4. Model policy
-5. Tools and MCP bindings
+5. Skills, Plugins, and explicit Tool Bindings
 6. Shell and filesystem permissions
 7. Network and credential policy
 8. Approval rules
@@ -252,7 +270,7 @@ Client credentials and private keys are never displayed after provisioning.
 The Admin UI shows identifiers, fingerprints, expiry, and rotation state. Test
 invocation uses non-production data and an explicit development publication.
 
-## 5. Gantry Copilot Information Architecture
+## 5. Directional Gantry Copilot Information Architecture
 
 Primary navigation:
 
@@ -381,3 +399,21 @@ mobile widths where relevant:
 
 Gantry Admin is desktop-first but must remain usable on a tablet. Gantry
 Copilot is fully responsive for desktop and mobile use.
+
+## 11. Next Page and Function Design Package
+
+The next design pass must produce, for both applications:
+
+- approved sitemap, route inventory, navigation ownership, and permission map;
+- one specification per page covering purpose, actors, entry points, data,
+  commands, filters, states, validation, errors, destructive actions, and
+  responsive behavior;
+- cross-page workflows for Agent configuration/publication, task execution,
+  approvals, artifacts, operations, and recovery;
+- capability-to-page and API-to-page traceability;
+- desktop, tablet, and mobile requirements appropriate to each application;
+- accessibility, localization, empty/loading/error, realtime, and browser-test
+  acceptance criteria.
+
+Existing page descriptions above are inputs to that pass and may be merged,
+renamed, split, or removed before implementation commitments are made.

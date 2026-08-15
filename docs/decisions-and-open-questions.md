@@ -245,6 +245,75 @@ approver decides whether one concrete external effect may execute. Combining the
 two creates ambiguous authority, duplicates enterprise workflows, and makes
 the approval UI imply permissions it cannot safely enforce.
 
+### ADR-023: Development Runner Model Routing
+
+**Status:** Accepted for development deployments
+
+Runner V1 may call OpenAI-compatible or Anthropic endpoints directly only when
+the process explicitly enables development direct-provider mode. Production
+must use a trusted LLM gateway and must not place provider credentials in Agent
+specs, manifests, checkpoints, events, or logs.
+
+**Reason:** Deterministic and local provider testing should exercise the real
+agent loop without weakening the production credential and routing boundary.
+See [ADR-023](adr-023-runner-model-routing.md).
+
+### ADR-024: Versioned Agent Configuration Assets
+
+**Status:** Accepted
+
+Agent-owned Prompt Snapshots, externally sourced Skill artifacts, installable
+Plugins, Tool Servers, Tool Descriptor Versions, CLI Command Profiles, and
+Agent Tool Bindings form the governed configuration model. Agent Revisions pin
+immutable content digests and Skill source identities. Gantry displays the
+version declared by an imported Skill package (or `未声明` when absent) but does
+not create a separate Skill version history; multiple artifacts of one Skill
+may coexist for testing.
+Plugins are installed by the organization, enabled per workspace, and
+selectively bound by Agents. Skills and Plugins cannot grant tool authority,
+bindings may only narrow descriptors, and dynamic discovery cannot mutate
+published Agents.
+
+**Reason:** Reproducibility and review require stable configuration ownership
+instead of one mutable specification blob or runtime discovery. See
+[ADR-024](adr-024-agent-configuration-assets.md).
+
+### ADR-025: Flat Agent Revisions and Deployment Pointers
+
+**Status:** Accepted
+
+Agents support multiple independent named Drafts and immutable hash-identified
+Revisions with required messages. Revision history is flat: optional
+`derived from` metadata records provenance without parent, branch, fork, merge,
+or rebase semantics. Multiple test Deployments may coexist, while one default
+Production Deployment points to the active Revision.
+
+**Reason:** Parallel Drafts and test pointers support debugging without imposing
+a source-control graph or unsafe configuration merge expectations. Reviews,
+runs, evaluations, publication, and rollback remain bound to exact immutable
+Revisions. See [ADR-025](adr-025-flat-agent-revisions.md).
+
+### ADR-026: Agent-Scoped Independent Permissions
+
+**Status:** Accepted
+
+Every Agent has an explicit ACL that independently controls metadata discovery,
+configuration read, Draft editing, Review decisions, test Deployment
+management, Production publication, run inspection, execution, and ACL
+management. `execute` does not imply configuration read, and configuration read
+does not imply execution. Effective access is the intersection of organization
+and workspace authorization, Agent ACL, resource state, Deployment or
+integration publication, and action-time policy.
+
+**Reason:** Different teams and service identities need to use the same Agent
+with different visibility and authority. Agent-level grants provide that control
+without weakening the existing default-deny and action-time authorization
+boundaries. See [ADR-026](adr-026-agent-scoped-permissions.md).
+
+The initial ACL implementation is Allow-only. Unset or revoked capabilities are
+denied; outer policy or resource constraints explain ineffective grants rather
+than creating explicit Deny entries.
+
 ## 2. Deferred Questions
 
 These questions do not block the first vertical slice. Each has a required
@@ -261,13 +330,17 @@ Entra ID and Dex.
 
 ### DQ-002: First Model Providers
 
-Choose providers based on enterprise data terms, regions, tool-calling behavior,
-streaming, and customer demand.
+Choose the first production-supported provider routes based on enterprise data
+terms, regions, tool-calling behavior, streaming, reliability, and customer
+demand. ADR-023 resolves only development adapters and does not select the
+production provider set.
 
-**Default:** Implement one provider adapter and one OpenAI-compatible adapter,
-without treating compatibility as identical semantics.
+**Default:** Keep the normalized OpenAI-compatible and Anthropic adapter
+contracts, then enable only routes approved behind the production LLM gateway;
+do not treat compatibility as identical semantics.
 
-**Decision gate:** Phase 1 planning.
+**Decision gate:** Before production model traffic or a Phase 1 completion
+claim.
 
 ### DQ-003: Secret Store Integration
 

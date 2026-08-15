@@ -4,6 +4,9 @@
 
 Accepted for Agent Runner V1 development deployments.
 
+This ADR does not select the production-supported provider set. That decision
+remains DQ-002 in [Decisions and Open Questions](decisions-and-open-questions.md).
+
 ## Decision
 
 The Linux runner may call OpenAI-compatible Chat/Responses SSE endpoints or

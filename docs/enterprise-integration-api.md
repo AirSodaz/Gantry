@@ -44,7 +44,7 @@ identity.
 
 ### Agent Principal
 
-The runtime identity of the immutable published agent version. Its maximum tool,
+The runtime identity of the immutable deployed Agent Revision. Its maximum tool,
 credential, data, and network authority remains independent of the calling
 application.
 
@@ -60,7 +60,7 @@ Effective authority is the intersection of:
 
 1. The integration client's grants.
 2. The integration publication's agent and workspace assignment.
-3. The published agent version's maximum permissions.
+3. The deployed Agent Revision's maximum permissions.
 4. Organization and workspace policy.
 5. Tool, credential, data, and network policy at action time.
 
@@ -84,7 +84,7 @@ wide authority.
 An agent is not callable through this API merely because it appears in Gantry
 Copilot. Administrators create an **integration publication** that binds:
 
-- One immutable agent version or a controlled release channel.
+- One immutable Agent Revision or a controlled release channel.
 - One or more registered integration clients.
 - Workspace and environment.
 - Allowed authority modes.
@@ -220,7 +220,7 @@ authority.
 - Sensitive inputs are classified, encrypted, redacted from infrastructure
   logs, and retained according to the publication policy.
 - Caller-supplied prompt fragments cannot replace system instructions, enable
-  tools, select credentials, broaden egress, or choose a draft agent version.
+  tools, select credentials, broaden egress, or choose a mutable Draft.
 - Large input documents use the governed attachment upload flow rather than
   inline base64 payloads.
 
@@ -361,10 +361,10 @@ An API-started task may enter `awaiting_approval`.
 - Each invocation is authorized against the current integration publication.
 - Agent and tool authorization is re-evaluated at action time.
 - The caller cannot request arbitrary model providers, tools, credentials,
-  network destinations, runtime images, or agent versions.
+  network destinations, runtime images, or Agent Revisions.
 - Input, output, webhook, attachment, and artifact sizes are bounded.
 - Audit records identify the integration client, subject user when present,
-  source correlation, immutable agent version, policy decisions, and outcome.
+  source correlation, immutable Agent Revision, policy decisions, and outcome.
 
 ## 16. HR System Example
 

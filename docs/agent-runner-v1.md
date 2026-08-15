@@ -5,6 +5,26 @@ adapter, workspace root, enabled tools, execution limits, checkpoint policy and
 local command policy. The control plane still owns assignment, lease fencing,
 approval state and durable semantic events.
 
+This document describes the checked-in Runner V1 development boundary. The
+target production configuration model is defined in
+[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
+
+## Manifest compilation
+
+The run manifest is an execution artifact, not the Admin authoring model. The
+target control-plane compiler resolves an immutable Agent Revision, its Prompt
+Snapshot, imported Skill artifact identities and content digests, Plugin
+Versions, Tool Descriptor Versions, Tool Bindings, policies, and runtime image
+before assignment. Agent Prompt and Skill content becomes ordered,
+provenance-labeled instruction/rule snapshots; tool assets become pinned runtime
+descriptors and policy references.
+
+The current manifest still carries an inline system prompt and tool names. This
+is an implementation-status boundary, not permission for published Agents to
+float to mutable catalog content. The configuration slice will replace Admin
+authoring with explicit immutable asset references while preserving a compact signed
+runner manifest.
+
 ## Model providers
 
 `scripted` is the deterministic local adapter used by smoke tests. OpenAI

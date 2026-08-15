@@ -1,5 +1,10 @@
 # Construction Roadmap
 
+Roadmap phases describe dependency and exit gates, not a claim that work happens
+strictly in one phase at a time. Narrow governance and Runner V1 slices were
+built early to retire cross-process risk. Current evidence is tracked in
+[Implementation Status](implementation-status.md).
+
 ## 1. Roadmap Strategy
 
 Build Gantry through vertical slices. Each milestone must produce a usable flow
@@ -30,6 +35,29 @@ Recommended core ownership:
 
 One technical lead owns contracts and cross-component decisions. Every module
 still has a named operational owner.
+
+### Current Assessment
+
+| Phase | Status | Interpretation |
+| --- | --- | --- |
+| Phase 0 | Partial | Core repository, contract, Compose, runner-session, and lifecycle prototypes exist; isolation, egress, telemetry, load, and artifact-signing gates remain. |
+| Phase 1 | Partial | Core Copilot, persistence, live events, artifacts, and Runner V1 exist; production gateway, sandbox, enterprise API, and complete authorization remain. |
+| Phase 2 | Partial | Admin agent lifecycle exists; configuration catalogs, operations, audit, evaluations, integrations, and platform management remain. |
+| Phase 3 | Partial prototype | One durable requester approval loop exists; credential mediation, general tool execution, thresholds, suspension, and audit integrity remain. |
+| Phase 4 | Designed | Evaluation is documented but has no complete product slice. |
+| Phase 5 | Not started | Pilot hardening has not begun. |
+| Phase 6 | Not started | General-availability gates have not begun. |
+
+No phase is complete until every exit-gate item has evidence on the relevant
+commit and environment.
+
+### Immediate Design Work Package
+
+Before expanding frontend implementation, complete the page and function design
+for both Admin and Copilot. This work consumes the platform documents and must
+produce an approved sitemap, route/permission matrix, page specifications,
+cross-page workflows, responsive requirements, and acceptance criteria. It does
+not change the phase dependency rules below.
 
 ## 3. Phase 0: Inception and Risk Prototypes
 
@@ -94,9 +122,9 @@ administrative agent editor yet.
 
 ### Deliverables
 
-- Organization, workspace, principal, role-binding, agent, version, publication,
+- Organization, workspace, principal, role-binding, Agent Revision, Deployment,
   task, run, and event schemas.
-- Seeded immutable agent versions managed through migration fixtures or an
+- Seeded immutable Agent Revisions managed through migration fixtures or an
   internal bootstrap command.
 - Copilot agent catalog, new-task composer, task view, history, cancellation,
   and artifact download.
@@ -149,8 +177,14 @@ creation, review, publication, and operations.
   retirement.
 - Versioned schemas for model, tool, command, network, resource, approval, and
   evaluation policy references.
+- Agent-owned Prompt settings with immutable publication snapshots; standalone
+  external Skill package import and artifact catalogs with test coexistence;
+  Plugin installation and workspace enablement; explicit Agent
+  bindings; static validation, semantic diff, and publication pinning.
 - MCP server registry, descriptor ingestion, namespace collision prevention,
   and schema pinning.
+- Governed CLI Command Profiles with structured arguments and explicit command,
+  filesystem, environment, image, effect, and idempotency policy.
 - Admin run explorer with timeline, configuration references, artifacts,
   policy decisions, resource use, and authorized read-only Xterm.js view.
 - Operator cancellation, safe retry, agent quarantine, and runner-pool drain.
@@ -385,7 +419,7 @@ The first engineering backlog should begin in this order:
 2. Development environment and observability spine.
 3. Runner session, lease, ordered events, cancellation, and cleanup.
 4. Identity audiences and resource authorization skeleton.
-5. Immutable agent version bootstrap and task persistence.
+5. Immutable Agent Revision bootstrap and task persistence.
 6. LLM gateway and one read-only tool.
 7. Copilot catalog and end-to-end task view.
 8. Admin agent lifecycle.

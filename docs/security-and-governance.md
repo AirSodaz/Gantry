@@ -83,7 +83,7 @@ action is evaluated again immediately before execution.
 Effective authority is the intersection of:
 
 1. The actor's current permissions.
-2. The published agent version's maximum permissions.
+2. The deployed Agent Revision's maximum permissions.
 3. The workspace and organization policy.
 4. The tool server's own authorization decision.
 5. The runtime and network constraints.
@@ -98,15 +98,60 @@ rather than replace, the subject user's current authorization intersection.
 
 Agent specs are untrusted configuration until validated and published.
 
-- Draft execution is restricted to development workspaces and test credentials.
-- Published versions are immutable and content-addressed.
+- Mutable Draft working copies cannot execute. Committed Revisions may execute
+  through test Deployments restricted to development policies and credentials.
+- Agent Revisions are immutable, hash-identified, and content-addressed.
 - Permission expansion, new credential classes, broader egress, weaker approval
   rules, or new write-capable tools require security review.
-- Publication records the exact reviewer set and evaluation evidence.
+- Review and publication bind the full Revision hash, content digest, exact
+  reviewer set, comparison base, and evaluation evidence.
 - Emergency quarantine prevents new runs and may cancel active runs according
   to incident policy.
-- Rollback changes the assigned catalog version; it does not delete the faulty
-  version or its history.
+- Rollback moves the Production Deployment pointer to an earlier approved
+  Revision; it does not delete or rewrite the faulty Revision or its history.
+- Agent Prompt Snapshots, imported Skill Artifacts, Plugin Versions, Tool
+  Descriptor Versions, CLI Command Profiles, and Tool Bindings are immutable once
+  referenced by an Agent Revision.
+- A Skill may require an explicitly bound tool but cannot grant a permission,
+  credential, destination, or operation by itself.
+
+### Agent-Scoped Authorization
+
+Agent access is default-deny and separately controls:
+
+- safe metadata discovery;
+- raw configuration and Prompt/Skill/Plugin/Tool visibility;
+- Draft editing and Revision commits;
+- Review decisions;
+- test Deployment management;
+- Production publication and rollback;
+- run and artifact inspection;
+- Copilot or integration execution;
+- Agent ACL management.
+
+The initial Agent ACL is Allow-only. No explicit Deny grant is stored or
+evaluated. Absence of a capability is denial; revocation removes the Allow
+grant. When a granted capability is blocked by organization/workspace
+membership, Deployment, integration publication, quarantine, or Policy, the
+decision explains that outer constraint instead of adding a conflicting Deny
+record. Emergency execution stops use quarantine or a Deployment state.
+
+An Agent ACL grant never replaces organization or workspace authorization. The
+effective permission is the intersection of the current principal, organization
+and workspace roles, Agent ACL, resource state, Deployment, integration
+publication, and action-time policy. `execute` does not grant configuration
+read, and configuration read does not grant execute.
+
+Execution additionally requires an active authorized Deployment and the current
+policy, credential, destination, model, approval, and data-classification
+checks. Removing an execute grant blocks new work while preserving historical
+run and audit evidence. Configuration responses are redacted or denied when
+`configuration.read` is absent.
+
+Agent ACL changes, effective-permission decisions, denied reads or executions,
+and emergency revocations are attributable audit events. An access manager
+cannot remove the last organization-authorized recovery path without a
+break-glass or owner-transfer procedure.
 
 ## 6. Credentials
 
@@ -143,7 +188,7 @@ persisted. Redaction is a defense layer, not justification to log secrets first.
 
 - MCP servers are registered with owner, transport, version, schema digest,
   trust level, data classification, supported auth modes, and effect metadata.
-- Published agent versions pin the server and tool descriptor digest.
+- Agent Revisions pin the server and tool descriptor digest.
 - Tool input is schema-validated and canonicalized before policy evaluation.
 - Tool output has size, type, and content limits and is treated as untrusted
   model input.
@@ -151,6 +196,48 @@ persisted. Redaction is a defense layer, not justification to log secrets first.
   remains authoritative and tool output is labeled by provenance.
 - Remote MCP servers are reached through controlled gateways where possible.
 - Dynamic tool discovery cannot silently add tools to a published agent.
+- Discovery creates a proposed immutable descriptor version that requires
+  review and activation before it can be selected by a draft.
+- An Agent Tool Binding may narrow a descriptor's operations, schemas,
+  credentials, destinations, classifications, approvals, and limits, but cannot
+  broaden any of them.
+- Tool Server connection secrets remain behind trusted adapters and are never
+  returned by Admin APIs.
+
+### Skill Security
+
+- Skill prompt fragments are content-addressed, provenance-labeled, and treated
+  as configuration requiring review.
+- Imported or generated Skill content is untrusted until validated and
+  activated.
+- A Skill cannot override system policy, sandbox rules, Tool Bindings,
+  credentials, network policy, approval requirements, or runtime limits.
+- Agent Revisions pin the exact Skill source reference, package-declared version,
+  and content digest; importing another artifact or updating the external
+  package never changes existing Agents.
+
+### Plugin Security
+
+- Organization installation requires publisher, provenance, dependency,
+  descriptor, permission, and compatibility review.
+- Workspaces enable one exact Plugin Version explicitly; upgrades create a new
+  reviewable enablement choice.
+- Agents select contained Skills and Tools individually. Install, enablement, or
+  upgrade never auto-binds a newly introduced capability.
+- Plugin configuration and MCP connection secrets remain behind trusted
+  adapters and are not included in Agent prompts or browser responses.
+
+### CLI Security
+
+- Production CLI access uses registered Command Profiles with executable
+  identity, structured argument schemas, filesystem scope, environment
+  allowlists, image requirements, and execution limits.
+- Model-generated free-form shell text is not a production Tool Descriptor.
+- Structured arguments are rendered without shell concatenation. When a shell
+  grammar is explicitly required, the profile names the shell and policy parses
+  that grammar before execution.
+- Development shell access remains an explicit Runner capability and does not
+  imply that a production Agent may bind arbitrary commands.
 
 ## 8. Shell and Filesystem Security
 
@@ -286,7 +373,7 @@ fallback order.
 
 ## 14. Operational Security Controls
 
-- Quarantine an agent version, tool server, credential binding, provider, or
+- Quarantine an Agent Revision, tool server, credential binding, provider, or
   runner pool.
 - Revoke workload identities and rotate signing keys.
 - Set global and workspace concurrency and budget limits.

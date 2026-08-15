@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Gantry evaluation determines whether an agent version completes representative
+Gantry evaluation determines whether an Agent Revision completes representative
 tasks correctly, remains within policy, and avoids unintended external effects.
 It combines deterministic environment checks with carefully labeled
 probabilistic quality scoring.
@@ -215,7 +215,7 @@ not originate in the sandbox. Replay evidence identifies the adapter, matched
 fixture, request digest, and the fact that no production credential or route was
 resolved.
 
-Runner, proxy, fixture database, runtime image, agent version, model policy, and
+Runner, proxy, fixture database, runtime image, Agent Revision, model policy, and
 evaluator versions are recorded so a result can be interpreted later.
 
 ## 14. First Implementation Slice

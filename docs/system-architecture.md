@@ -1,5 +1,9 @@
 # System Architecture
 
+This document defines the target architecture. See
+[Implementation Status](implementation-status.md) for the checked-in subset and
+remaining production boundaries.
+
 ## 1. Architectural Style
 
 Gantry begins as a modular control-plane monolith in Go, a separately deployed
@@ -26,6 +30,7 @@ Enterprise Systems -- OAuth/HTTPS/Webhooks
         |                        |
         | Identity Context       |
         | Agent Registry         |
+        | Configuration Registry |
         | Task Service           |
         | Policy Decision Point  |
         | Approval Service       |
@@ -68,9 +73,26 @@ does not persist external identity-provider passwords or sessions.
 
 ### Agent Registry
 
-Owns agents, drafts, immutable versions, publication assignments, tool bindings,
-schemas, policy references, and release metadata. It performs static validation
-and computes change-risk summaries.
+Owns Agents, independent named Drafts and their optimistic working copies,
+immutable hash-identified Revisions, test and Production Deployment pointers, input/output
+contracts, Agent Access Grants, policy references, reviews, and release metadata. It coordinates
+static validation and computes change-risk summaries without owning provider
+connections or runtime execution state.
+
+### Configuration Registry and Compiler
+
+Owns Skill, Plugin, Tool Server, Tool Descriptor, CLI Command Profile, and Agent
+Tool Binding lifecycles. Agent Registry owns the editable Agent Prompt and its
+Revision Prompt Snapshot. The configuration registry records immutable versions and digests, validates
+namespace and schema compatibility, and computes the effective authority of a
+draft.
+
+When an Agent Revision is committed it resolves and freezes every configuration
+reference. At run assignment it compiles the Deployment-selected Agent Revision
+plus authorized runtime context into a signed, expiring manifest. The runner
+never discovers or fetches
+mutable Admin configuration during execution. The complete model is defined in
+[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
 
 ### Task Service
 
@@ -216,6 +238,11 @@ Runner responsibilities:
 The control plane remains authoritative for policy. Runner-side checks prevent
 obvious bypasses and fail closed during control-plane disconnection.
 
+The Agent Prompt Snapshot and selected Skill artifacts are compiled into
+provenance-labeled instruction and rule snapshots before assignment. Tool Bindings are compiled into pinned
+runtime descriptors and policy references. No catalog lookup may broaden a run
+after its Agent Revision has been committed.
+
 ## 6. Tool Namespace and Resolution
 
 Every tool has a stable fully qualified name:
@@ -226,7 +253,7 @@ Every tool has a stable fully qualified name:
 Agent specs reference fully qualified names. Short aliases may be displayed in
 the UI only when unambiguous. A new tool may not silently shadow or replace an
 existing binding. Tool descriptors and schemas are content-addressed and pinned
-in published agent versions.
+in Agent Revisions.
 
 ## 7. Sandbox Model
 
@@ -396,9 +423,11 @@ control-plane/
 runner/
   crates/runner/
   crates/protocol/
-  crates/pty/
-  crates/mcp/
+  crates/pty-handler/
+  crates/mcp-client/
   crates/policy-enforcement/
+proto/
+  gantry/runner/v1/
 sidecars/
   vcr-proxy/
 packages/
@@ -407,12 +436,16 @@ packages/
   contracts/
 deploy/
   compose/
-  helm/
 docs/
 ```
 
 Contract schemas are generated into language-specific clients. Generated code
 is not edited manually.
+
+Directories for Helm, operators, evaluation corpora, or additional images are
+added only when their owning functionality is implemented. `control-plane/`,
+`runner/`, and `proto/` remain top-level language, runtime, protocol, and trust
+boundaries rather than being folded into `apps/` or `packages/`.
 
 ## 12.1 Development Topology
 
