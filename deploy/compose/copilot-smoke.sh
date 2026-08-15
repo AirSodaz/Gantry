@@ -63,6 +63,12 @@ submit() {
   rm -f "$output"
 }
 
+assert_action_projection() {
+  local run_id=$1 expected=$2 projection
+  projection=$("${compose[@]}" exec -T postgres psql -U gantry -d gantry -Atqc "SELECT a.state || '|' || (a.runner_call_id <> '')::text || '|' || COALESCE(a.arguments_json->>'command','') || '|' || (SELECT count(*) FROM gantry.run_events e WHERE e.run_id=a.run_id AND e.event_type IN ('tool.call.completed','tool.call.failed')) FROM gantry.actions a WHERE a.run_id='${run_id}'")
+  [[ $projection == "$expected" ]] || { echo "unexpected action projection for ${run_id}: ${projection}" >&2; return 1; }
+}
+
 "${compose[@]}" up --build --detach
 
 for _ in $(seq 1 80); do
@@ -75,7 +81,7 @@ done
 request GET /api/copilot/v1/agents
 [[ $response_status == 200 ]]
 agent_id=$(json_value id)
-[[ $agent_id == agt_lifecycle_demo ]]
+[[ $agent_id == agt_lifecycle_complete ]]
 await_cancel_agent_id=agt_lifecycle_await_cancel
 await_approval_agent_id=agt_lifecycle_await_approval
 
@@ -93,6 +99,10 @@ submit "$approval_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\"
 [[ $response_status == 201 ]]
 approval_task=$(task_id)
 wait_task_status "$approval_task" awaiting_approval
+request GET "/api/copilot/v1/tasks/${approval_task}"
+[[ $response_status == 200 ]]
+approval_run=$(task_run_id)
+[[ -n $approval_run ]]
 request GET /api/copilot/v1/approvals
 [[ $response_status == 200 ]]
 approval_id=$(json_value id)
@@ -101,6 +111,26 @@ approval_digest=$(json_value action_digest)
 request POST "/api/copilot/v1/approvals/${approval_id}:decide" "{\"decision\":\"approve\",\"action_digest\":\"${approval_digest}\",\"idempotency_key\":\"${approval_key}\"}"
 [[ $response_status == 200 ]]
 wait_task_status "$approval_task" completed
+assert_action_projection "$approval_run" "succeeded|true|printf approval|1"
+
+rejection_key="rejection-${RANDOM}-${RANDOM}"
+submit "$rejection_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
+[[ $response_status == 201 ]]
+rejection_task=$(task_id)
+wait_task_status "$rejection_task" awaiting_approval
+request GET "/api/copilot/v1/tasks/${rejection_task}"
+[[ $response_status == 200 ]]
+rejection_run=$(task_run_id)
+[[ -n $rejection_run ]]
+request GET /api/copilot/v1/approvals
+[[ $response_status == 200 ]]
+rejection_id=$(json_value id)
+rejection_digest=$(json_value action_digest)
+[[ -n $rejection_id && -n $rejection_digest ]]
+request POST "/api/copilot/v1/approvals/${rejection_id}:decide" "{\"decision\":\"reject\",\"action_digest\":\"${rejection_digest}\",\"idempotency_key\":\"${rejection_key}\"}"
+[[ $response_status == 200 ]]
+wait_task_status "$rejection_task" failed
+assert_action_projection "$rejection_run" "rejected|true|printf approval|0"
 
 other_token=$(token_for copilot-other gantry_other_password)
 access_token=$other_token

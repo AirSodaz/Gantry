@@ -127,10 +127,14 @@ impl RunManifest {
         serde_json::to_vec(self).map_err(|error| error.to_string())
     }
 
-    pub fn digest(&self) -> Result<String, String> {
+    pub fn digest_bytes(bytes: &[u8]) -> String {
         let mut digest = Sha256::new();
-        digest.update(self.canonical_bytes()?);
-        Ok(format!("sha256:{}", hex::encode(digest.finalize())))
+        digest.update(bytes);
+        format!("sha256:{}", hex::encode(digest.finalize()))
+    }
+
+    pub fn digest(&self) -> Result<String, String> {
+        Ok(Self::digest_bytes(&self.canonical_bytes()?))
     }
 }
 

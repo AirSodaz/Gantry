@@ -114,16 +114,15 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		if err := appendEventPayload(ctx, tx, runID, event.Type, event.Payload); err != nil {
 			return 0, err
 		}
-		if event.Type == "action.proposed" {
+		switch event.Type {
+		case "action.proposed":
 			if s.approvals == nil {
 				return 0, ErrInvalidInput
 			}
-			var action policy.Action
-			if err := json.Unmarshal([]byte(event.Payload), &action); err != nil {
-				return 0, ErrInvalidInput
+			action, err := decodeObservedAction(event.Payload, runID, requesterID)
+			if err != nil {
+				return 0, err
 			}
-			action.RunID = runID
-			action.RequestedBy = requesterID
 			request, evaluation, err := s.approvals.Propose(ctx, tx, action, time.Now().UTC().Add(15*time.Minute))
 			if err != nil {
 				return 0, err
@@ -140,12 +139,86 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 					return 0, err
 				}
 			}
+		case "tool.call.completed", "tool.call.failed":
+			callID, err := decodeObservedCallID(event.Payload)
+			if err != nil {
+				return 0, err
+			}
+			terminalState := "succeeded"
+			if event.Type == "tool.call.failed" {
+				terminalState = "failed"
+			}
+			if err := transitionObservedAction(ctx, tx, runID, callID, terminalState); err != nil {
+				return 0, err
+			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
 	return current, nil
+}
+
+func decodeObservedAction(payload, runID, requesterID string) (policy.Action, error) {
+	var action policy.Action
+	if err := json.Unmarshal([]byte(payload), &action); err != nil {
+		return policy.Action{}, ErrInvalidInput
+	}
+	action.RunID = strings.TrimSpace(runID)
+	action.RequestedBy = strings.TrimSpace(requesterID)
+	action.CallID = strings.TrimSpace(action.CallID)
+	if action.CallID == "" || len(action.Arguments) == 0 || string(action.Arguments) == "null" {
+		return policy.Action{}, ErrInvalidInput
+	}
+	var arguments map[string]json.RawMessage
+	if err := json.Unmarshal(action.Arguments, &arguments); err != nil || arguments == nil {
+		return policy.Action{}, ErrInvalidInput
+	}
+	return action, nil
+}
+
+func decodeObservedCallID(payload string) (string, error) {
+	var event struct {
+		CallID string `json:"call_id"`
+	}
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		return "", ErrInvalidInput
+	}
+	event.CallID = strings.TrimSpace(event.CallID)
+	if event.CallID == "" {
+		return "", ErrInvalidInput
+	}
+	return event.CallID, nil
+}
+
+func transitionObservedAction(ctx context.Context, tx pgx.Tx, runID, callID, terminalState string) error {
+	runID = strings.TrimSpace(runID)
+	callID = strings.TrimSpace(callID)
+	if runID == "" || callID == "" || (terminalState != "succeeded" && terminalState != "failed") {
+		return ErrInvalidInput
+	}
+	var actionID string
+	if err := tx.QueryRow(ctx, `SELECT id FROM gantry.actions WHERE run_id=$1 AND runner_call_id=$2 AND state='ready' FOR UPDATE`, runID, callID).Scan(&actionID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInvalidInput
+		}
+		return err
+	}
+	result, err := tx.Exec(ctx, `UPDATE gantry.actions SET state='executing', revision=revision+1, updated_at=now() WHERE id=$1 AND state='ready'`, actionID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return ErrInvalidInput
+	}
+	result, err = tx.Exec(ctx, `UPDATE gantry.actions SET state=$2, revision=revision+1, updated_at=now() WHERE id=$1 AND state='executing'`, actionID, terminalState)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return ErrInvalidInput
+	}
+	return nil
 }
 
 func validateRunnerEvent(event RunnerEvent) error {

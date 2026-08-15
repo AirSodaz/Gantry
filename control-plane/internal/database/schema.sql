@@ -184,6 +184,7 @@ CREATE INDEX IF NOT EXISTS runs_queue_idx ON gantry.runs (status, created_at);
 CREATE TABLE IF NOT EXISTS gantry.actions (
   id text PRIMARY KEY,
   run_id text NOT NULL REFERENCES gantry.runs(id),
+  runner_call_id text NOT NULL DEFAULT '',
   tool_name text NOT NULL,
   operation text NOT NULL,
   arguments_json jsonb NOT NULL,
@@ -193,12 +194,14 @@ CREATE TABLE IF NOT EXISTS gantry.actions (
   credential_mode text NOT NULL DEFAULT '',
   policy_version text NOT NULL,
   action_digest text NOT NULL UNIQUE,
-  state text NOT NULL CHECK (state IN ('proposed', 'awaiting_approval', 'ready', 'executing', 'succeeded', 'rejected', 'unknown_outcome')),
+  state text NOT NULL CHECK (state IN ('proposed', 'awaiting_approval', 'ready', 'executing', 'succeeded', 'failed', 'rejected', 'unknown_outcome')),
   revision integer NOT NULL CHECK (revision > 0),
   requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS actions_run_call_idx ON gantry.actions (run_id, runner_call_id);
+
 
 CREATE TABLE IF NOT EXISTS gantry.approval_requests (
   id text PRIMARY KEY,

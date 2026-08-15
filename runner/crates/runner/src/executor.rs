@@ -100,9 +100,7 @@ impl AgentExecutor {
         if manifest.kind != RUNNER_MANIFEST_KIND || manifest.validate().is_err() {
             return Vec::new();
         }
-        let Ok(digest) = manifest.digest() else {
-            return Vec::new();
-        };
+        let digest = RunManifest::digest_bytes(&assignment.manifest);
         if !assignment.manifest_digest.is_empty() && digest != assignment.manifest_digest {
             return Vec::new();
         }
@@ -372,11 +370,13 @@ impl AgentExecutor {
                         outbound.push(self.event(
                             &mut run,
                             "action.proposed",
-                            payload(&[
-                                ("tool_name", "shell"),
-                                ("operation", "execute"),
-                                ("effect", "write"),
-                            ]),
+                            action_proposal_payload(
+                                &id,
+                                &name,
+                                "execute",
+                                "write",
+                                &arguments,
+                            ),
                         ));
                         continue;
                     }
@@ -756,6 +756,43 @@ fn payload(values: &[(&str, &str)]) -> Struct {
     Struct { fields }
 }
 
+fn action_proposal_payload(
+    call_id: &str,
+    tool_name: &str,
+    operation: &str,
+    effect: &str,
+    arguments: &JsonValue,
+) -> Struct {
+    let mut fields = payload(&[
+        ("call_id", call_id),
+        ("tool_name", tool_name),
+        ("operation", operation),
+        ("effect", effect),
+    ])
+    .fields;
+    fields.insert("arguments".into(), json_to_proto_value(arguments));
+    Struct { fields }
+}
+
+fn json_to_proto_value(value: &JsonValue) -> Value {
+    let kind = match value {
+        JsonValue::Null => Kind::NullValue(0),
+        JsonValue::Bool(value) => Kind::BoolValue(*value),
+        JsonValue::Number(value) => Kind::NumberValue(value.as_f64().unwrap_or_default()),
+        JsonValue::String(value) => Kind::StringValue(value.clone()),
+        JsonValue::Array(values) => Kind::ListValue(prost_types::ListValue {
+            values: values.iter().map(json_to_proto_value).collect(),
+        }),
+        JsonValue::Object(values) => Kind::StructValue(Struct {
+            fields: values
+                .iter()
+                .map(|(key, value)| (key.clone(), json_to_proto_value(value)))
+                .collect(),
+        }),
+    };
+    Value { kind: Some(kind) }
+}
+
 fn bounded_output(run: &mut ActiveRun, text: &str) -> String {
     let limit = run.manifest.limits.max_output_bytes;
     if run.output_bytes >= limit {
@@ -891,6 +928,34 @@ mod tests {
                     if batch.events.iter().any(|event| event.event_type == "action.proposed"))
             })
         }));
+        let proposal_event = proposed
+            .iter()
+            .find_map(|message| match message.payload.as_ref() {
+                Some(runner_message::Payload::EventBatch(batch)) => batch
+                    .events
+                    .iter()
+                    .find(|event| event.event_type == "action.proposed"),
+                _ => None,
+            })
+            .expect("action proposal event");
+        let proposal_payload = proposal_event.payload.as_ref().expect("proposal payload");
+        assert!(matches!(
+            proposal_payload.fields.get("call_id").and_then(|value| value.kind.as_ref()),
+            Some(Kind::StringValue(value)) if value == "scripted-shell"
+        ));
+        let arguments = match proposal_payload
+            .fields
+            .get("arguments")
+            .and_then(|value| value.kind.as_ref())
+        {
+            Some(Kind::StructValue(arguments)) => arguments,
+            _ => panic!("proposal arguments are not a struct"),
+        };
+        assert!(matches!(
+            arguments.fields.get("command").and_then(|value| value.kind.as_ref()),
+            Some(Kind::StringValue(value)) if value == "echo approved"
+        ));
+
         let approved = executor.resolve_approval(&ApprovalResolution {
             run_id: "run-shell".into(),
             approval_request_id: "approval-1".into(),
@@ -906,6 +971,23 @@ mod tests {
                     if batch.events.iter().any(|event| event.event_type == "tool.call.failed" || event.event_type == "tool.call.completed"))
             })
         }));
+        let terminal_event = tool_result
+            .iter()
+            .find_map(|message| match message.payload.as_ref() {
+                Some(runner_message::Payload::EventBatch(batch)) => batch.events.iter().find(
+                    |event| event.event_type == "tool.call.failed" || event.event_type == "tool.call.completed",
+                ),
+                _ => None,
+            })
+            .expect("terminal tool event");
+        assert!(matches!(
+            terminal_event
+                .payload
+                .as_ref()
+                .and_then(|payload| payload.fields.get("call_id"))
+                .and_then(|value| value.kind.as_ref()),
+            Some(Kind::StringValue(value)) if value == "scripted-shell"
+        ));
         let finished = executor.tick().await;
         assert!(finished.iter().any(|message| matches!(
             message.payload,

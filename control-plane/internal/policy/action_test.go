@@ -22,6 +22,33 @@ func TestCanonicalizeMakesEquivalentArgumentsShareDigest(t *testing.T) {
 	}
 }
 
+func TestCanonicalizeChangesDigestWhenCallIDChanges(t *testing.T) {
+	base := Action{RunID: "run-1", CallID: "call-1", ToolName: "shell", Operation: "execute", Effect: "write", RequestedBy: "prn-1", Arguments: json.RawMessage(`{"timeout":3,"command":"printf approval"}`)}
+	equivalent := base
+	equivalent.Arguments = json.RawMessage(`{"command":"printf approval","timeout":3}`)
+	changed := base
+	changed.CallID = "call-2"
+
+	_, _, first, err := Canonicalize(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, second, err := Canonicalize(equivalent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, third, err := Canonicalize(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second {
+		t.Fatalf("equivalent digests differ: %s != %s", first, second)
+	}
+	if first == third {
+		t.Fatalf("call-id change did not change digest: %s", first)
+	}
+}
+
 func TestEvaluateRequiresApprovalForWrite(t *testing.T) {
 	evaluation, err := Evaluate(Action{RunID: "run-1", ToolName: "mail", Operation: "send", Effect: "write", RequestedBy: "prn-1"}, false)
 	if err != nil {

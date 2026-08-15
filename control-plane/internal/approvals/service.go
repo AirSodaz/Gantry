@@ -82,7 +82,7 @@ func (s *Service) Propose(ctx context.Context, tx pgx.Tx, action policy.Action, 
 	if evaluation.Decision == policy.RequireApproval {
 		actionState = "awaiting_approval"
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.actions (id, run_id, tool_name, operation, arguments_json, target, effect, credential_ref, credential_mode, policy_version, action_digest, state, revision, requested_by_principal_id) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10,$11,$12,1,$13)`, actionID, canonical.RunID, canonical.ToolName, canonical.Operation, string(canonical.Arguments), canonical.Target, canonical.Effect, canonical.CredentialRef, canonical.CredentialMode, canonical.PolicyVersion, digest, actionState, canonical.RequestedBy); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.actions (id, run_id, runner_call_id, tool_name, operation, arguments_json, target, effect, credential_ref, credential_mode, policy_version, action_digest, state, revision, requested_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,1,$14)`, actionID, canonical.RunID, canonical.CallID, canonical.ToolName, canonical.Operation, string(canonical.Arguments), canonical.Target, canonical.Effect, canonical.CredentialRef, canonical.CredentialMode, canonical.PolicyVersion, digest, actionState, canonical.RequestedBy); err != nil {
 		return Request{}, policy.Evaluation{}, err
 	}
 	if evaluation.Decision != policy.RequireApproval {
@@ -173,7 +173,9 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 		return Resolution{}, ErrAlreadyDecided
 	}
 	if !expiresAt.After(time.Now().UTC()) {
-		if _, err := tx.Exec(ctx, `UPDATE gantry.approval_requests SET status='expired', decided_at=now() WHERE id=$1 AND status='pending'`, input.ID); err != nil { return Resolution{}, err }
+		if _, err := tx.Exec(ctx, `UPDATE gantry.approval_requests SET status='expired', decided_at=now() WHERE id=$1 AND status='pending'`, input.ID); err != nil {
+			return Resolution{}, err
+		}
 		return Resolution{}, ErrExpired
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.approval_decisions (approval_id, principal_id, decision, reason, action_digest, idempotency_key) VALUES ($1,$2,$3,$4,$5,$6)`, input.ID, actor.ID, input.Decision, strings.TrimSpace(input.Reason), digest, input.Idempotency); err != nil {

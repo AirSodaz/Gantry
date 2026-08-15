@@ -24,6 +24,7 @@ const (
 // Arguments are normalized before this value is persisted or approved.
 type Action struct {
 	RunID             string          `json:"run_id"`
+	CallID            string          `json:"call_id,omitempty"`
 	ToolName          string          `json:"tool_name"`
 	Operation         string          `json:"operation"`
 	Arguments         json.RawMessage `json:"arguments"`
@@ -44,6 +45,7 @@ type Evaluation struct {
 
 func Canonicalize(action Action) (Action, []byte, string, error) {
 	action.RunID = strings.TrimSpace(action.RunID)
+	action.CallID = strings.TrimSpace(action.CallID)
 	action.ToolName = strings.TrimSpace(action.ToolName)
 	action.Operation = strings.TrimSpace(action.Operation)
 	action.Target = strings.TrimSpace(action.Target)
