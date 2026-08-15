@@ -161,9 +161,10 @@ evaluation gates.
 
 ## 5. Browser Event Stream
 
-Clients connect to a task or run stream after authorization:
+Clients first create a 60-second, task-bound event ticket with
+`POST /api/copilot/v1/tasks/{task_id}/events:ticket`, then connect to a task or run stream:
 
-`WSS /api/copilot/v1/tasks/{task_id}/events?after={cursor}`
+`WSS /api/copilot/v1/tasks/{task_id}/events?ticket={ticket}&after={cursor}`
 
 Admin has a corresponding run endpoint with richer event types.
 
@@ -196,6 +197,8 @@ Protocol requirements:
 - The server may coalesce high-frequency deltas for slow consumers but must
   preserve stream offsets, ordered content, and terminal states.
 - Each application receives only its permitted event projection.
+- The stream sends an initial resource snapshot and 20-second heartbeats. A
+  ticket expiry closes the stream; clients request a new ticket before reconnecting.
 
 ## 6. Runner gRPC Protocol
 
@@ -294,8 +297,9 @@ arguments.
 - Clients upload attachments through pre-authorized, size-limited upload URLs.
 - Uploaded objects remain quarantined until validation and malware scanning
   complete.
-- Runners declare output metadata and digest before receiving a short-lived
-  upload authorization.
+- Runners declare output metadata and digest before receiving a short-lived,
+  lease-bound upload authorization. The runner uploads to Gantry's private
+  endpoint and never receives object-storage credentials.
 - Downloads require a fresh authorization check; object-storage URLs are short
   lived and scoped to one object.
 - Preview generation occurs in an isolated service and never executes active

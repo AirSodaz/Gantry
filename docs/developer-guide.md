@@ -204,11 +204,13 @@ hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
 The persistent Copilot slice includes the development Dex browser login,
-catalog, task submission, polling, cancellation, retry, and action-time
+catalog, task submission, WebSocket event replay, cancellation, retry, artifact
+download, and action-time
 approval. The `lifecycle-await-approval` fixture proposes a policy-controlled
 shell action, pauses in `awaiting_approval`, and resumes only after a matching
-action digest is approved or rejected. It intentionally excludes durable
-artifacts and production gateway integration; the runner emits normalized
+action digest is approved or rejected. The deterministic completion fixture
+also produces a runner artifact; production malware scanning and gateway
+integration remain outside this slice. The runner emits normalized
 model/tool events and keeps sandboxing as a future boundary. Business workflow approvals such
 as leave or expense approval remain owned by the external tool and are not
 represented by the Copilot approval list.

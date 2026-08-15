@@ -56,6 +56,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{task_id}/events:ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a short-lived WebSocket event ticket */
+        post: operations["createTaskEventsTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks/{task_id}/runs/{run_id}:cancel": {
         parameters: {
             query?: never;
@@ -178,6 +195,7 @@ export interface components {
             /** @enum {string} */
             status: "queued" | "provisioning" | "running" | "awaiting_approval" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
             current_run?: components["schemas"]["RunStatus"];
+            artifacts?: components["schemas"]["ArtifactResponse"][];
             created_at?: components["schemas"]["Timestamp"];
         };
         TaskList: {
@@ -237,12 +255,26 @@ export interface components {
         };
         ArtifactResponse: {
             id: string;
+            task_id: string;
+            run_id: string;
             filename: string;
             media_type: string;
+            /** Format: int64 */
             size_bytes: number;
+            digest: string;
+            classification?: string;
+            /** @enum {string} */
+            state: "declared" | "uploaded" | "available" | "rejected";
+            /** @enum {string} */
+            scan_status: "pending" | "passed" | "failed";
             /** @description Short-lived pre-signed download URL */
             download_url?: string;
             download_url_expires_at?: components["schemas"]["Timestamp"];
+        };
+        TaskEventsTicket: {
+            ticket: string;
+            task_id: string;
+            expires_at: components["schemas"]["Timestamp"];
         };
     };
     responses: never;
@@ -360,6 +392,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TaskResponse"];
                 };
+            };
+        };
+    };
+    createTaskEventsTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: components["parameters"]["TaskIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived ticket for the task event stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskEventsTicket"];
+                };
+            };
+            /** @description Task was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

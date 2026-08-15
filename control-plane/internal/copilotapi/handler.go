@@ -31,6 +31,14 @@ type taskService interface {
 	Retry(context.Context, identity.Principal, string, bool) (tasks.Task, error)
 }
 
+type eventReader interface {
+	Events(context.Context, identity.Principal, string, uint64, int) (tasks.EventPage, error)
+}
+
+type artifactReader interface {
+	GetArtifact(context.Context, identity.Principal, string) (tasks.Artifact, error)
+}
+
 type dispatcher interface {
 	Dispatch(context.Context) error
 	RequestCancel(string, uint64, string) bool
@@ -48,18 +56,22 @@ type Handler struct {
 	approvals  approvalService
 	dispatcher dispatcher
 	logger     *slog.Logger
+	eventKey   []byte
 }
 
 func New(auth authenticator, taskService taskService, approvalService approvalService, dispatcher dispatcher, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, tasks: taskService, approvals: approvalService, dispatcher: dispatcher, logger: logger}
+	h := Handler{auth: auth, tasks: taskService, approvals: approvalService, dispatcher: dispatcher, logger: logger, eventKey: loadEventTicketKey()}
 	mux := http.NewServeMux()
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /tasks", h.withActor(h.submitTask))
 	mux.Handle("GET /tasks", h.withActor(h.listTasks))
 	mux.Handle("GET /tasks/{taskID}", h.withActor(h.getTask))
+	mux.Handle("POST /tasks/{taskID}/events:ticket", h.withActor(h.issueEventTicket))
+	mux.HandleFunc("GET /tasks/{taskID}/events", h.events)
+	mux.Handle("GET /artifacts/{artifactID}", h.withActor(h.getArtifact))
 	mux.Handle("GET /approvals", h.withActor(h.listApprovals))
 	mux.Handle("POST /approvals/{operation...}", h.withActor(h.decideApproval))
 	mux.Handle("POST /tasks/{taskID}/runs/{operation...}", h.withActor(h.cancelOperation))

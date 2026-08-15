@@ -2,12 +2,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TaskPage } from './TaskPage';
 
 const mocked = vi.hoisted(() => ({
   api: {
     getTask: vi.fn(),
+    createEventsTicket: vi.fn(),
+    getArtifact: vi.fn(),
     cancelRun: vi.fn(),
     retryTask: vi.fn(),
   },
@@ -34,10 +36,15 @@ function renderTask() {
 }
 
 describe('TaskPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    MockWebSocket.instances = [];
+  });
+  afterEach(() => vi.unstubAllGlobals());
 
   it('shows cancellation for an active run and sends the fenced run identity', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
     mocked.api.cancelRun.mockResolvedValue({ id: 'run_1', status: 'canceling' });
     const user = userEvent.setup();
     renderTask();
@@ -50,6 +57,7 @@ describe('TaskPage', () => {
 
   it('polls while the task remains active', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
     renderTask();
 
     await screen.findByText('Task tsk_1');
@@ -58,6 +66,7 @@ describe('TaskPage', () => {
 
   it('shows retry only for failed tasks and starts a new task run', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'failed', current_run: { id: 'run_1', status: 'failed', status_reason: 'Runner disconnected.' } });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
     mocked.api.retryTask.mockResolvedValue({ ...baseTask, status: 'queued', current_run: { id: 'run_2', status: 'assigned' } });
     const user = userEvent.setup();
     renderTask();
@@ -68,4 +77,47 @@ describe('TaskPage', () => {
 
     await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1'));
   });
+
+  it('accumulates event output and reconnects with the rendered cursor', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    renderTask();
+
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.instances[0].emit({ type: 'event', cursor: 'cur_1', event: { sequence: 1, type: 'model.delta', payload: { text: 'Hello' } } });
+    expect(await screen.findByText('Hello')).toBeInTheDocument();
+
+    MockWebSocket.instances[0].close();
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2), { timeout: 1_500 });
+    expect(MockWebSocket.instances[1].url).toContain('after=cur_1');
+  });
+
+  it('shows a retry action when an artifact download fails', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'completed', current_run: { id: 'run_1', status: 'completed' }, artifacts: [{ id: 'art_1', filename: 'result.txt', media_type: 'text/plain', size_bytes: 3, state: 'available', scan_status: 'passed' }] });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.getArtifact.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ download_url: 'http://example.test/result.txt' });
+    const user = userEvent.setup();
+    renderTask();
+
+    await user.click(await screen.findByRole('button', { name: 'Download' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Download failed');
+    expect(screen.getByRole('button', { name: 'Retry download' })).toBeInTheDocument();
+  });
 });
+
+class MockWebSocket {
+  static instances: MockWebSocket[] = [];
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onclose: ((event: Event) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+
+  constructor(readonly url: string) {
+    MockWebSocket.instances.push(this);
+    queueMicrotask(() => this.onopen?.(new Event('open')));
+  }
+
+  close() { this.onclose?.(new Event('close')); }
+  emit(frame: unknown) { this.onmessage?.(new MessageEvent('message', { data: JSON.stringify(frame) })); }
+}

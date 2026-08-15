@@ -1,4 +1,4 @@
-import type { Agent, Approval, ApprovalDecisionResponse, RunStatus, SubmitTaskInput, Task } from './types';
+import type { Agent, Approval, ApprovalDecisionResponse, Artifact, EventsTicket, RunStatus, SubmitTaskInput, Task } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
@@ -40,6 +40,17 @@ export class CopilotApi {
 
   getTask(taskId: string) {
     return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}`);
+  }
+
+  createEventsTicket(taskId: string) {
+    return this.request<EventsTicket>(`/tasks/${encodeURIComponent(taskId)}/events:ticket`, {
+      method: 'POST',
+      body: '{}',
+    });
+  }
+
+  getArtifact(artifactId: string) {
+    return this.request<Artifact>(`/artifacts/${encodeURIComponent(artifactId)}`);
   }
 
   submitTask(input: SubmitTaskInput, idempotencyKey: string) {

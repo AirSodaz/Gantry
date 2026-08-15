@@ -105,6 +105,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
 
+  /tasks/{task_id}/events:ticket:
+    post:
+      operationId: createTaskEventsTicket
+      summary: Create a short-lived WebSocket event ticket
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+      responses:
+        "200":
+          description: Short-lived ticket for the task event stream
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskEventsTicket"
+        "404":
+          description: Task was not found
+
   /tasks/{task_id}/runs/{run_id}:cancel:
     post:
       operationId: cancelRun
@@ -323,6 +340,10 @@ components:
           enum: [queued, provisioning, running, awaiting_approval, suspended, canceling, completed, failed, canceled]
         current_run:
           $ref: "#/components/schemas/RunStatus"
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactResponse"
         created_at:
           $ref: "#/components/schemas/Timestamp"
 
@@ -443,9 +464,13 @@ components:
     # --- Artifacts ---
     ArtifactResponse:
       type: object
-      required: [id, filename, media_type, size_bytes]
+      required: [id, task_id, run_id, filename, media_type, size_bytes, digest, state, scan_status]
       properties:
         id:
+          type: string
+        task_id:
+          type: string
+        run_id:
           type: string
         filename:
           type: string
@@ -453,8 +478,30 @@ components:
           type: string
         size_bytes:
           type: integer
+          format: int64
+        digest:
+          type: string
+        classification:
+          type: string
+        state:
+          type: string
+          enum: [declared, uploaded, available, rejected]
+        scan_status:
+          type: string
+          enum: [pending, passed, failed]
         download_url:
           type: string
           description: Short-lived pre-signed download URL
         download_url_expires_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    TaskEventsTicket:
+      type: object
+      required: [ticket, task_id, expires_at]
+      properties:
+        ticket:
+          type: string
+        task_id:
+          type: string
+        expires_at:
           $ref: "#/components/schemas/Timestamp"

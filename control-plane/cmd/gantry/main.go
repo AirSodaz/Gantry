@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -66,7 +67,7 @@ func main() {
 		}
 	}
 	approvalService := approvals.NewService(databasePool)
-	taskService := tasks.NewService(databasePool, approvalService)
+	taskService := tasks.NewServiceWithStore(databasePool, approvalService, store)
 	authorizer := authorization.NewService(databasePool)
 	agentService := agentlifecycle.NewService(databasePool, authorizer)
 	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while a run was active")
@@ -152,6 +153,21 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 	if cfg.Development.Enabled {
 		mux.Handle("/internal/development/", developmentapi.NewHandler(cfg.Development.Token, developmentLifecycle, scheduler, logger))
 	}
+	mux.HandleFunc("POST /internal/runner/artifacts/{artifactID}", func(w http.ResponseWriter, r *http.Request) {
+		uploader, ok := any(taskService).(interface {
+			UploadArtifact(context.Context, string, string, io.Reader) error
+		})
+		if !ok {
+			writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "artifact upload is unavailable"})
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<20+1)
+		if err := uploader.UploadArtifact(r.Context(), r.PathValue("artifactID"), r.Header.Get("X-Gantry-Artifact-Token"), r.Body); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "artifact upload rejected"})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]string{"status": "available", "artifact_id": r.PathValue("artifactID")})
+	})
 	if copilotAuth != nil {
 		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, approvalService, scheduler, logger)))
 	}

@@ -3,6 +3,7 @@ package runnersession
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -33,6 +34,11 @@ type runCoordinator interface {
 	RecordControlEvent(context.Context, string, string, uint64, string, string) error
 	Finish(context.Context, string, string, uint64, string, string) error
 	FailActive(context.Context, string, string, string) error
+}
+
+type artifactCoordinator interface {
+	DeclareArtifact(context.Context, string, string, uint64, tasks.Artifact) (tasks.Artifact, string, time.Time, error)
+	UploadArtifact(context.Context, string, string, io.Reader) error
 }
 
 type persistentRunner struct {
@@ -154,6 +160,27 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 		return s.recordSemanticEventLocked(runnerID, runner, "run.checkpoint_created", message.GetCheckpointMetadata())
 	case message.GetModelDelta() != nil:
 		return s.recordSemanticEventLocked(runnerID, runner, "model.delta", message.GetModelDelta())
+	case message.GetArtifactDeclaration() != nil:
+		declaration := message.GetArtifactDeclaration()
+		if runner.activeRunID != declaration.GetRunId() || runner.activeEpoch != declaration.GetLeaseEpoch() {
+			return fmt.Errorf("artifact declaration has an invalid run lease")
+		}
+		coordinator, ok := s.tasks.(artifactCoordinator)
+		if !ok {
+			return fmt.Errorf("artifact coordinator is unavailable")
+		}
+		artifact, token, expiresAt, err := coordinator.DeclareArtifact(context.Background(), runnerID, declaration.GetRunId(), declaration.GetLeaseEpoch(), tasks.Artifact{ID: declaration.GetArtifactId(), RunID: declaration.GetRunId(), Filename: declaration.GetFilename(), MediaType: declaration.GetMediaType(), SizeBytes: int64(declaration.GetSizeBytes()), Digest: declaration.GetDigest()})
+		if err != nil {
+			return err
+		}
+		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: declaration.GetRunId(), Payload: &runnerv1.ControlPlaneMessage_ArtifactUploadGrant{ArtifactUploadGrant: &runnerv1.ArtifactUploadGrant{RunId: declaration.GetRunId(), LeaseEpoch: declaration.GetLeaseEpoch(), ArtifactId: artifact.ID, UploadUrl: "/internal/runner/artifacts/" + artifact.ID, UploadToken: token, ExpiresAt: timestamppb.New(expiresAt)}}})
+		return nil
+	case message.GetArtifactUploadCompleted() != nil:
+		completed := message.GetArtifactUploadCompleted()
+		if runner.activeRunID != completed.GetRunId() || runner.activeEpoch != completed.GetLeaseEpoch() {
+			return fmt.Errorf("artifact completion has an invalid run lease")
+		}
+		return s.tasks.RecordControlEvent(context.Background(), runnerID, completed.GetRunId(), completed.GetLeaseEpoch(), "artifact.upload_completed", fmt.Sprintf(`{"artifact_id":%q,"digest":%q,"size_bytes":%d}`, completed.GetArtifactId(), completed.GetDigest(), completed.GetSizeBytes()))
 	case message.GetToolLifecycle() != nil:
 		return s.recordSemanticEventLocked(runnerID, runner, "tool.lifecycle", message.GetToolLifecycle())
 	case message.GetSecurityEvent() != nil:

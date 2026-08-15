@@ -40,12 +40,28 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, status str
 		task.Status = publicStatus(task.Status)
 		task.CurrentRun.Status = publicStatus(task.CurrentRun.Status)
 		items = append(items, task)
+		if s.store != nil {
+			if artifacts, artifactErr := s.ListArtifacts(ctx, actor, task.ID, 100); artifactErr == nil {
+				task.Artifacts = artifacts
+				items[len(items)-1] = task
+			}
+		}
 	}
 	return items, rows.Err()
 }
 
 func (s *Service) Get(ctx context.Context, actor identity.Principal, taskID string) (Task, error) {
-	return loadTask(ctx, s.pool, actor, taskID)
+	task, err := loadTask(ctx, s.pool, actor, taskID)
+	if err != nil {
+		return Task{}, err
+	}
+	if s.store != nil {
+		task.Artifacts, err = s.ListArtifacts(ctx, actor, taskID, 100)
+		if err != nil {
+			return Task{}, err
+		}
+	}
+	return task, nil
 }
 func (s *Service) GetRun(ctx context.Context, actor identity.Principal, runID string) (TaskRun, error) {
 	var result TaskRun

@@ -199,6 +199,7 @@ type RunnerMessage struct {
 	//	*RunnerMessage_ToolLifecycle
 	//	*RunnerMessage_SecurityEvent
 	//	*RunnerMessage_CompactionEvent
+	//	*RunnerMessage_ArtifactUploadCompleted
 	Payload       isRunnerMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -395,6 +396,15 @@ func (x *RunnerMessage) GetCompactionEvent() *CompactionEvent {
 	return nil
 }
 
+func (x *RunnerMessage) GetArtifactUploadCompleted() *ArtifactUploadCompleted {
+	if x != nil {
+		if x, ok := x.Payload.(*RunnerMessage_ArtifactUploadCompleted); ok {
+			return x.ArtifactUploadCompleted
+		}
+	}
+	return nil
+}
+
 type isRunnerMessage_Payload interface {
 	isRunnerMessage_Payload()
 }
@@ -455,6 +465,10 @@ type RunnerMessage_CompactionEvent struct {
 	CompactionEvent *CompactionEvent `protobuf:"bytes,23,opt,name=compaction_event,json=compactionEvent,proto3,oneof"`
 }
 
+type RunnerMessage_ArtifactUploadCompleted struct {
+	ArtifactUploadCompleted *ArtifactUploadCompleted `protobuf:"bytes,24,opt,name=artifact_upload_completed,json=artifactUploadCompleted,proto3,oneof"`
+}
+
 func (*RunnerMessage_Register) isRunnerMessage_Payload() {}
 
 func (*RunnerMessage_Heartbeat) isRunnerMessage_Payload() {}
@@ -483,6 +497,8 @@ func (*RunnerMessage_SecurityEvent) isRunnerMessage_Payload() {}
 
 func (*RunnerMessage_CompactionEvent) isRunnerMessage_Payload() {}
 
+func (*RunnerMessage_ArtifactUploadCompleted) isRunnerMessage_Payload() {}
+
 // Messages sent from control plane to runner.
 type ControlPlaneMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -498,6 +514,7 @@ type ControlPlaneMessage struct {
 	//	*ControlPlaneMessage_ResumeAction
 	//	*ControlPlaneMessage_RotateSession
 	//	*ControlPlaneMessage_DrainRunner
+	//	*ControlPlaneMessage_ArtifactUploadGrant
 	Payload       isControlPlaneMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -626,6 +643,15 @@ func (x *ControlPlaneMessage) GetDrainRunner() *DrainRunner {
 	return nil
 }
 
+func (x *ControlPlaneMessage) GetArtifactUploadGrant() *ArtifactUploadGrant {
+	if x != nil {
+		if x, ok := x.Payload.(*ControlPlaneMessage_ArtifactUploadGrant); ok {
+			return x.ArtifactUploadGrant
+		}
+	}
+	return nil
+}
+
 type isControlPlaneMessage_Payload interface {
 	isControlPlaneMessage_Payload()
 }
@@ -662,6 +688,10 @@ type ControlPlaneMessage_DrainRunner struct {
 	DrainRunner *DrainRunner `protobuf:"bytes,17,opt,name=drain_runner,json=drainRunner,proto3,oneof"`
 }
 
+type ControlPlaneMessage_ArtifactUploadGrant struct {
+	ArtifactUploadGrant *ArtifactUploadGrant `protobuf:"bytes,18,opt,name=artifact_upload_grant,json=artifactUploadGrant,proto3,oneof"`
+}
+
 func (*ControlPlaneMessage_AssignRun) isControlPlaneMessage_Payload() {}
 
 func (*ControlPlaneMessage_AcknowledgeEvents) isControlPlaneMessage_Payload() {}
@@ -677,6 +707,8 @@ func (*ControlPlaneMessage_ResumeAction) isControlPlaneMessage_Payload() {}
 func (*ControlPlaneMessage_RotateSession) isControlPlaneMessage_Payload() {}
 
 func (*ControlPlaneMessage_DrainRunner) isControlPlaneMessage_Payload() {}
+
+func (*ControlPlaneMessage_ArtifactUploadGrant) isControlPlaneMessage_Payload() {}
 
 // Runner registration.
 type RegisterRunner struct {
@@ -1161,6 +1193,7 @@ type ArtifactDeclaration struct {
 	MediaType     string                 `protobuf:"bytes,5,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
 	SizeBytes     uint64                 `protobuf:"varint,6,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	Digest        string                 `protobuf:"bytes,7,opt,name=digest,proto3" json:"digest,omitempty"`
+	SourcePath    string                 `protobuf:"bytes,8,opt,name=source_path,json=sourcePath,proto3" json:"source_path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1244,6 +1277,173 @@ func (x *ArtifactDeclaration) GetDigest() string {
 	return ""
 }
 
+func (x *ArtifactDeclaration) GetSourcePath() string {
+	if x != nil {
+		return x.SourcePath
+	}
+	return ""
+}
+
+type ArtifactUploadCompleted struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	ArtifactId    string                 `protobuf:"bytes,3,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
+	Digest        string                 `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	SizeBytes     uint64                 `protobuf:"varint,5,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArtifactUploadCompleted) Reset() {
+	*x = ArtifactUploadCompleted{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArtifactUploadCompleted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArtifactUploadCompleted) ProtoMessage() {}
+
+func (x *ArtifactUploadCompleted) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArtifactUploadCompleted.ProtoReflect.Descriptor instead.
+func (*ArtifactUploadCompleted) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ArtifactUploadCompleted) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ArtifactUploadCompleted) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *ArtifactUploadCompleted) GetArtifactId() string {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return ""
+}
+
+func (x *ArtifactUploadCompleted) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+func (x *ArtifactUploadCompleted) GetSizeBytes() uint64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+type ArtifactUploadGrant struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch    uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	ArtifactId    string                 `protobuf:"bytes,3,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
+	UploadUrl     string                 `protobuf:"bytes,4,opt,name=upload_url,json=uploadUrl,proto3" json:"upload_url,omitempty"`
+	UploadToken   string                 `protobuf:"bytes,5,opt,name=upload_token,json=uploadToken,proto3" json:"upload_token,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArtifactUploadGrant) Reset() {
+	*x = ArtifactUploadGrant{}
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArtifactUploadGrant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArtifactUploadGrant) ProtoMessage() {}
+
+func (x *ArtifactUploadGrant) ProtoReflect() protoreflect.Message {
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArtifactUploadGrant.ProtoReflect.Descriptor instead.
+func (*ArtifactUploadGrant) Descriptor() ([]byte, []int) {
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ArtifactUploadGrant) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ArtifactUploadGrant) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *ArtifactUploadGrant) GetArtifactId() string {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return ""
+}
+
+func (x *ArtifactUploadGrant) GetUploadUrl() string {
+	if x != nil {
+		return x.UploadUrl
+	}
+	return ""
+}
+
+func (x *ArtifactUploadGrant) GetUploadToken() string {
+	if x != nil {
+		return x.UploadToken
+	}
+	return ""
+}
+
+func (x *ArtifactUploadGrant) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
 // Checkpoint available.
 type CheckpointAvailable struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1257,7 +1457,7 @@ type CheckpointAvailable struct {
 
 func (x *CheckpointAvailable) Reset() {
 	*x = CheckpointAvailable{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[10]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1269,7 +1469,7 @@ func (x *CheckpointAvailable) String() string {
 func (*CheckpointAvailable) ProtoMessage() {}
 
 func (x *CheckpointAvailable) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[10]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1282,7 +1482,7 @@ func (x *CheckpointAvailable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckpointAvailable.ProtoReflect.Descriptor instead.
 func (*CheckpointAvailable) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{10}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CheckpointAvailable) GetRunId() string {
@@ -1327,7 +1527,7 @@ type ModelUsage struct {
 
 func (x *ModelUsage) Reset() {
 	*x = ModelUsage{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1339,7 +1539,7 @@ func (x *ModelUsage) String() string {
 func (*ModelUsage) ProtoMessage() {}
 
 func (x *ModelUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[11]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1352,7 +1552,7 @@ func (x *ModelUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelUsage.ProtoReflect.Descriptor instead.
 func (*ModelUsage) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{11}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ModelUsage) GetRunId() string {
@@ -1411,7 +1611,7 @@ type CheckpointMetadata struct {
 
 func (x *CheckpointMetadata) Reset() {
 	*x = CheckpointMetadata{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1423,7 +1623,7 @@ func (x *CheckpointMetadata) String() string {
 func (*CheckpointMetadata) ProtoMessage() {}
 
 func (x *CheckpointMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[12]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1436,7 +1636,7 @@ func (x *CheckpointMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckpointMetadata.ProtoReflect.Descriptor instead.
 func (*CheckpointMetadata) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{12}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CheckpointMetadata) GetRunId() string {
@@ -1495,7 +1695,7 @@ type ModelDelta struct {
 
 func (x *ModelDelta) Reset() {
 	*x = ModelDelta{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1507,7 +1707,7 @@ func (x *ModelDelta) String() string {
 func (*ModelDelta) ProtoMessage() {}
 
 func (x *ModelDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[13]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1520,7 +1720,7 @@ func (x *ModelDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelDelta.ProtoReflect.Descriptor instead.
 func (*ModelDelta) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{13}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ModelDelta) GetRunId() string {
@@ -1579,7 +1779,7 @@ type ToolLifecycle struct {
 
 func (x *ToolLifecycle) Reset() {
 	*x = ToolLifecycle{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1591,7 +1791,7 @@ func (x *ToolLifecycle) String() string {
 func (*ToolLifecycle) ProtoMessage() {}
 
 func (x *ToolLifecycle) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[14]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1604,7 +1804,7 @@ func (x *ToolLifecycle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolLifecycle.ProtoReflect.Descriptor instead.
 func (*ToolLifecycle) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{14}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ToolLifecycle) GetRunId() string {
@@ -1662,7 +1862,7 @@ type SecurityEvent struct {
 
 func (x *SecurityEvent) Reset() {
 	*x = SecurityEvent{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1874,7 @@ func (x *SecurityEvent) String() string {
 func (*SecurityEvent) ProtoMessage() {}
 
 func (x *SecurityEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[15]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1887,7 @@ func (x *SecurityEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityEvent.ProtoReflect.Descriptor instead.
 func (*SecurityEvent) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{15}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SecurityEvent) GetRunId() string {
@@ -1738,7 +1938,7 @@ type CompactionEvent struct {
 
 func (x *CompactionEvent) Reset() {
 	*x = CompactionEvent{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1750,7 +1950,7 @@ func (x *CompactionEvent) String() string {
 func (*CompactionEvent) ProtoMessage() {}
 
 func (x *CompactionEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[16]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1763,7 +1963,7 @@ func (x *CompactionEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionEvent.ProtoReflect.Descriptor instead.
 func (*CompactionEvent) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{16}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CompactionEvent) GetRunId() string {
@@ -1814,7 +2014,7 @@ type RunFinished struct {
 
 func (x *RunFinished) Reset() {
 	*x = RunFinished{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1826,7 +2026,7 @@ func (x *RunFinished) String() string {
 func (*RunFinished) ProtoMessage() {}
 
 func (x *RunFinished) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[17]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1839,7 +2039,7 @@ func (x *RunFinished) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunFinished.ProtoReflect.Descriptor instead.
 func (*RunFinished) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{17}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RunFinished) GetRunId() string {
@@ -1884,7 +2084,7 @@ type AssignRun struct {
 
 func (x *AssignRun) Reset() {
 	*x = AssignRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1896,7 +2096,7 @@ func (x *AssignRun) String() string {
 func (*AssignRun) ProtoMessage() {}
 
 func (x *AssignRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[18]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1909,7 +2109,7 @@ func (x *AssignRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignRun.ProtoReflect.Descriptor instead.
 func (*AssignRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{18}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AssignRun) GetRunId() string {
@@ -1960,7 +2160,7 @@ type AcknowledgeEvents struct {
 
 func (x *AcknowledgeEvents) Reset() {
 	*x = AcknowledgeEvents{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1972,7 +2172,7 @@ func (x *AcknowledgeEvents) String() string {
 func (*AcknowledgeEvents) ProtoMessage() {}
 
 func (x *AcknowledgeEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[19]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,7 +2185,7 @@ func (x *AcknowledgeEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcknowledgeEvents.ProtoReflect.Descriptor instead.
 func (*AcknowledgeEvents) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{19}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AcknowledgeEvents) GetRunId() string {
@@ -2041,7 +2241,7 @@ type ApprovalResolution struct {
 
 func (x *ApprovalResolution) Reset() {
 	*x = ApprovalResolution{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2053,7 +2253,7 @@ func (x *ApprovalResolution) String() string {
 func (*ApprovalResolution) ProtoMessage() {}
 
 func (x *ApprovalResolution) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[20]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2066,7 +2266,7 @@ func (x *ApprovalResolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalResolution.ProtoReflect.Descriptor instead.
 func (*ApprovalResolution) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{20}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ApprovalResolution) GetRunId() string {
@@ -2145,7 +2345,7 @@ type CancelRun struct {
 
 func (x *CancelRun) Reset() {
 	*x = CancelRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2157,7 +2357,7 @@ func (x *CancelRun) String() string {
 func (*CancelRun) ProtoMessage() {}
 
 func (x *CancelRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[21]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2170,7 +2370,7 @@ func (x *CancelRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRun.ProtoReflect.Descriptor instead.
 func (*CancelRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{21}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CancelRun) GetRunId() string {
@@ -2213,7 +2413,7 @@ type SuspendRun struct {
 
 func (x *SuspendRun) Reset() {
 	*x = SuspendRun{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2425,7 @@ func (x *SuspendRun) String() string {
 func (*SuspendRun) ProtoMessage() {}
 
 func (x *SuspendRun) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[22]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2438,7 @@ func (x *SuspendRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendRun.ProtoReflect.Descriptor instead.
 func (*SuspendRun) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{22}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SuspendRun) GetRunId() string {
@@ -2274,7 +2474,7 @@ type ResumeAction struct {
 
 func (x *ResumeAction) Reset() {
 	*x = ResumeAction{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2286,7 +2486,7 @@ func (x *ResumeAction) String() string {
 func (*ResumeAction) ProtoMessage() {}
 
 func (x *ResumeAction) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[23]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2299,7 +2499,7 @@ func (x *ResumeAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeAction.ProtoReflect.Descriptor instead.
 func (*ResumeAction) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{23}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ResumeAction) GetRunId() string {
@@ -2334,7 +2534,7 @@ type RotateSession struct {
 
 func (x *RotateSession) Reset() {
 	*x = RotateSession{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2346,7 +2546,7 @@ func (x *RotateSession) String() string {
 func (*RotateSession) ProtoMessage() {}
 
 func (x *RotateSession) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[24]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2359,7 +2559,7 @@ func (x *RotateSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateSession.ProtoReflect.Descriptor instead.
 func (*RotateSession) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{24}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RotateSession) GetNewSessionId() string {
@@ -2387,7 +2587,7 @@ type DrainRunner struct {
 
 func (x *DrainRunner) Reset() {
 	*x = DrainRunner{}
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2399,7 +2599,7 @@ func (x *DrainRunner) String() string {
 func (*DrainRunner) ProtoMessage() {}
 
 func (x *DrainRunner) ProtoReflect() protoreflect.Message {
-	mi := &file_gantry_runner_v1_runner_proto_msgTypes[25]
+	mi := &file_gantry_runner_v1_runner_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2412,7 +2612,7 @@ func (x *DrainRunner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DrainRunner.ProtoReflect.Descriptor instead.
 func (*DrainRunner) Descriptor() ([]byte, []int) {
-	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{25}
+	return file_gantry_runner_v1_runner_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DrainRunner) GetReason() string {
@@ -2433,7 +2633,8 @@ var File_gantry_runner_v1_runner_proto protoreflect.FileDescriptor
 
 const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\n" +
-	"\x1dgantry/runner/v1/runner.proto\x12\x10gantry.runner.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xad\t\n" +
+	"\x1dgantry/runner/v1/runner.proto\x12\x10gantry.runner.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x96\n" +
+	"\n" +
 	"\rRunnerMessage\x12\x1b\n" +
 	"\trunner_id\x18\x01 \x01(\tR\brunnerId\x12\x1d\n" +
 	"\n" +
@@ -2458,8 +2659,9 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"modelDelta\x12H\n" +
 	"\x0etool_lifecycle\x18\x15 \x01(\v2\x1f.gantry.runner.v1.ToolLifecycleH\x00R\rtoolLifecycle\x12H\n" +
 	"\x0esecurity_event\x18\x16 \x01(\v2\x1f.gantry.runner.v1.SecurityEventH\x00R\rsecurityEvent\x12N\n" +
-	"\x10compaction_event\x18\x17 \x01(\v2!.gantry.runner.v1.CompactionEventH\x00R\x0fcompactionEventB\t\n" +
-	"\apayload\"\xa7\x05\n" +
+	"\x10compaction_event\x18\x17 \x01(\v2!.gantry.runner.v1.CompactionEventH\x00R\x0fcompactionEvent\x12g\n" +
+	"\x19artifact_upload_completed\x18\x18 \x01(\v2).gantry.runner.v1.ArtifactUploadCompletedH\x00R\x17artifactUploadCompletedB\t\n" +
+	"\apayload\"\x84\x06\n" +
 	"\x13ControlPlaneMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12%\n" +
@@ -2475,7 +2677,8 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"suspendRun\x12E\n" +
 	"\rresume_action\x18\x0f \x01(\v2\x1e.gantry.runner.v1.ResumeActionH\x00R\fresumeAction\x12H\n" +
 	"\x0erotate_session\x18\x10 \x01(\v2\x1f.gantry.runner.v1.RotateSessionH\x00R\rrotateSession\x12B\n" +
-	"\fdrain_runner\x18\x11 \x01(\v2\x1d.gantry.runner.v1.DrainRunnerH\x00R\vdrainRunnerB\t\n" +
+	"\fdrain_runner\x18\x11 \x01(\v2\x1d.gantry.runner.v1.DrainRunnerH\x00R\vdrainRunner\x12[\n" +
+	"\x15artifact_upload_grant\x18\x12 \x01(\v2%.gantry.runner.v1.ArtifactUploadGrantH\x00R\x13artifactUploadGrantB\t\n" +
 	"\apayload\"\xcf\x01\n" +
 	"\x0eRegisterRunner\x12%\n" +
 	"\x0erunner_version\x18\x01 \x01(\tR\rrunnerVersion\x12\"\n" +
@@ -2516,7 +2719,7 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"\tstream_id\x18\x03 \x01(\tR\bstreamId\x12\x16\n" +
 	"\x06offset\x18\x04 \x01(\x04R\x06offset\x12\x12\n" +
 	"\x04data\x18\x05 \x01(\fR\x04data\x128\n" +
-	"\ttimestamp\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xe0\x01\n" +
+	"\ttimestamp\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\x81\x02\n" +
 	"\x13ArtifactDeclaration\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
@@ -2528,7 +2731,29 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"media_type\x18\x05 \x01(\tR\tmediaType\x12\x1d\n" +
 	"\n" +
 	"size_bytes\x18\x06 \x01(\x04R\tsizeBytes\x12\x16\n" +
-	"\x06digest\x18\a \x01(\tR\x06digest\"\x8a\x01\n" +
+	"\x06digest\x18\a \x01(\tR\x06digest\x12\x1f\n" +
+	"\vsource_path\x18\b \x01(\tR\n" +
+	"sourcePath\"\xa9\x01\n" +
+	"\x17ArtifactUploadCompleted\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x1f\n" +
+	"\vartifact_id\x18\x03 \x01(\tR\n" +
+	"artifactId\x12\x16\n" +
+	"\x06digest\x18\x04 \x01(\tR\x06digest\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x05 \x01(\x04R\tsizeBytes\"\xeb\x01\n" +
+	"\x13ArtifactUploadGrant\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
+	"leaseEpoch\x12\x1f\n" +
+	"\vartifact_id\x18\x03 \x01(\tR\n" +
+	"artifactId\x12\x1d\n" +
+	"\n" +
+	"upload_url\x18\x04 \x01(\tR\tuploadUrl\x12!\n" +
+	"\fupload_token\x18\x05 \x01(\tR\vuploadToken\x129\n" +
+	"\n" +
+	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\x8a\x01\n" +
 	"\x13CheckpointAvailable\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
@@ -2670,39 +2895,41 @@ func file_gantry_runner_v1_runner_proto_rawDescGZIP() []byte {
 }
 
 var file_gantry_runner_v1_runner_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_gantry_runner_v1_runner_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_gantry_runner_v1_runner_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_gantry_runner_v1_runner_proto_goTypes = []any{
-	(RunnerStatus)(0),             // 0: gantry.runner.v1.RunnerStatus
-	(RunTerminalStatus)(0),        // 1: gantry.runner.v1.RunTerminalStatus
-	(ApprovalDecisionType)(0),     // 2: gantry.runner.v1.ApprovalDecisionType
-	(*RunnerMessage)(nil),         // 3: gantry.runner.v1.RunnerMessage
-	(*ControlPlaneMessage)(nil),   // 4: gantry.runner.v1.ControlPlaneMessage
-	(*RegisterRunner)(nil),        // 5: gantry.runner.v1.RegisterRunner
-	(*ResourceLimits)(nil),        // 6: gantry.runner.v1.ResourceLimits
-	(*Heartbeat)(nil),             // 7: gantry.runner.v1.Heartbeat
-	(*RunAccepted)(nil),           // 8: gantry.runner.v1.RunAccepted
-	(*RunEventBatch)(nil),         // 9: gantry.runner.v1.RunEventBatch
-	(*RunEvent)(nil),              // 10: gantry.runner.v1.RunEvent
-	(*TerminalOutput)(nil),        // 11: gantry.runner.v1.TerminalOutput
-	(*ArtifactDeclaration)(nil),   // 12: gantry.runner.v1.ArtifactDeclaration
-	(*CheckpointAvailable)(nil),   // 13: gantry.runner.v1.CheckpointAvailable
-	(*ModelUsage)(nil),            // 14: gantry.runner.v1.ModelUsage
-	(*CheckpointMetadata)(nil),    // 15: gantry.runner.v1.CheckpointMetadata
-	(*ModelDelta)(nil),            // 16: gantry.runner.v1.ModelDelta
-	(*ToolLifecycle)(nil),         // 17: gantry.runner.v1.ToolLifecycle
-	(*SecurityEvent)(nil),         // 18: gantry.runner.v1.SecurityEvent
-	(*CompactionEvent)(nil),       // 19: gantry.runner.v1.CompactionEvent
-	(*RunFinished)(nil),           // 20: gantry.runner.v1.RunFinished
-	(*AssignRun)(nil),             // 21: gantry.runner.v1.AssignRun
-	(*AcknowledgeEvents)(nil),     // 22: gantry.runner.v1.AcknowledgeEvents
-	(*ApprovalResolution)(nil),    // 23: gantry.runner.v1.ApprovalResolution
-	(*CancelRun)(nil),             // 24: gantry.runner.v1.CancelRun
-	(*SuspendRun)(nil),            // 25: gantry.runner.v1.SuspendRun
-	(*ResumeAction)(nil),          // 26: gantry.runner.v1.ResumeAction
-	(*RotateSession)(nil),         // 27: gantry.runner.v1.RotateSession
-	(*DrainRunner)(nil),           // 28: gantry.runner.v1.DrainRunner
-	(*timestamppb.Timestamp)(nil), // 29: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),       // 30: google.protobuf.Struct
+	(RunnerStatus)(0),               // 0: gantry.runner.v1.RunnerStatus
+	(RunTerminalStatus)(0),          // 1: gantry.runner.v1.RunTerminalStatus
+	(ApprovalDecisionType)(0),       // 2: gantry.runner.v1.ApprovalDecisionType
+	(*RunnerMessage)(nil),           // 3: gantry.runner.v1.RunnerMessage
+	(*ControlPlaneMessage)(nil),     // 4: gantry.runner.v1.ControlPlaneMessage
+	(*RegisterRunner)(nil),          // 5: gantry.runner.v1.RegisterRunner
+	(*ResourceLimits)(nil),          // 6: gantry.runner.v1.ResourceLimits
+	(*Heartbeat)(nil),               // 7: gantry.runner.v1.Heartbeat
+	(*RunAccepted)(nil),             // 8: gantry.runner.v1.RunAccepted
+	(*RunEventBatch)(nil),           // 9: gantry.runner.v1.RunEventBatch
+	(*RunEvent)(nil),                // 10: gantry.runner.v1.RunEvent
+	(*TerminalOutput)(nil),          // 11: gantry.runner.v1.TerminalOutput
+	(*ArtifactDeclaration)(nil),     // 12: gantry.runner.v1.ArtifactDeclaration
+	(*ArtifactUploadCompleted)(nil), // 13: gantry.runner.v1.ArtifactUploadCompleted
+	(*ArtifactUploadGrant)(nil),     // 14: gantry.runner.v1.ArtifactUploadGrant
+	(*CheckpointAvailable)(nil),     // 15: gantry.runner.v1.CheckpointAvailable
+	(*ModelUsage)(nil),              // 16: gantry.runner.v1.ModelUsage
+	(*CheckpointMetadata)(nil),      // 17: gantry.runner.v1.CheckpointMetadata
+	(*ModelDelta)(nil),              // 18: gantry.runner.v1.ModelDelta
+	(*ToolLifecycle)(nil),           // 19: gantry.runner.v1.ToolLifecycle
+	(*SecurityEvent)(nil),           // 20: gantry.runner.v1.SecurityEvent
+	(*CompactionEvent)(nil),         // 21: gantry.runner.v1.CompactionEvent
+	(*RunFinished)(nil),             // 22: gantry.runner.v1.RunFinished
+	(*AssignRun)(nil),               // 23: gantry.runner.v1.AssignRun
+	(*AcknowledgeEvents)(nil),       // 24: gantry.runner.v1.AcknowledgeEvents
+	(*ApprovalResolution)(nil),      // 25: gantry.runner.v1.ApprovalResolution
+	(*CancelRun)(nil),               // 26: gantry.runner.v1.CancelRun
+	(*SuspendRun)(nil),              // 27: gantry.runner.v1.SuspendRun
+	(*ResumeAction)(nil),            // 28: gantry.runner.v1.ResumeAction
+	(*RotateSession)(nil),           // 29: gantry.runner.v1.RotateSession
+	(*DrainRunner)(nil),             // 30: gantry.runner.v1.DrainRunner
+	(*timestamppb.Timestamp)(nil),   // 31: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),         // 32: google.protobuf.Struct
 }
 var file_gantry_runner_v1_runner_proto_depIdxs = []int32{
 	5,  // 0: gantry.runner.v1.RunnerMessage.register:type_name -> gantry.runner.v1.RegisterRunner
@@ -2711,42 +2938,45 @@ var file_gantry_runner_v1_runner_proto_depIdxs = []int32{
 	9,  // 3: gantry.runner.v1.RunnerMessage.event_batch:type_name -> gantry.runner.v1.RunEventBatch
 	11, // 4: gantry.runner.v1.RunnerMessage.terminal_output:type_name -> gantry.runner.v1.TerminalOutput
 	12, // 5: gantry.runner.v1.RunnerMessage.artifact_declaration:type_name -> gantry.runner.v1.ArtifactDeclaration
-	13, // 6: gantry.runner.v1.RunnerMessage.checkpoint_available:type_name -> gantry.runner.v1.CheckpointAvailable
-	20, // 7: gantry.runner.v1.RunnerMessage.run_finished:type_name -> gantry.runner.v1.RunFinished
-	14, // 8: gantry.runner.v1.RunnerMessage.model_usage:type_name -> gantry.runner.v1.ModelUsage
-	15, // 9: gantry.runner.v1.RunnerMessage.checkpoint_metadata:type_name -> gantry.runner.v1.CheckpointMetadata
-	16, // 10: gantry.runner.v1.RunnerMessage.model_delta:type_name -> gantry.runner.v1.ModelDelta
-	17, // 11: gantry.runner.v1.RunnerMessage.tool_lifecycle:type_name -> gantry.runner.v1.ToolLifecycle
-	18, // 12: gantry.runner.v1.RunnerMessage.security_event:type_name -> gantry.runner.v1.SecurityEvent
-	19, // 13: gantry.runner.v1.RunnerMessage.compaction_event:type_name -> gantry.runner.v1.CompactionEvent
-	21, // 14: gantry.runner.v1.ControlPlaneMessage.assign_run:type_name -> gantry.runner.v1.AssignRun
-	22, // 15: gantry.runner.v1.ControlPlaneMessage.acknowledge_events:type_name -> gantry.runner.v1.AcknowledgeEvents
-	23, // 16: gantry.runner.v1.ControlPlaneMessage.approval_resolution:type_name -> gantry.runner.v1.ApprovalResolution
-	24, // 17: gantry.runner.v1.ControlPlaneMessage.cancel_run:type_name -> gantry.runner.v1.CancelRun
-	25, // 18: gantry.runner.v1.ControlPlaneMessage.suspend_run:type_name -> gantry.runner.v1.SuspendRun
-	26, // 19: gantry.runner.v1.ControlPlaneMessage.resume_action:type_name -> gantry.runner.v1.ResumeAction
-	27, // 20: gantry.runner.v1.ControlPlaneMessage.rotate_session:type_name -> gantry.runner.v1.RotateSession
-	28, // 21: gantry.runner.v1.ControlPlaneMessage.drain_runner:type_name -> gantry.runner.v1.DrainRunner
-	6,  // 22: gantry.runner.v1.RegisterRunner.resource_limits:type_name -> gantry.runner.v1.ResourceLimits
-	29, // 23: gantry.runner.v1.Heartbeat.timestamp:type_name -> google.protobuf.Timestamp
-	0,  // 24: gantry.runner.v1.Heartbeat.status:type_name -> gantry.runner.v1.RunnerStatus
-	10, // 25: gantry.runner.v1.RunEventBatch.events:type_name -> gantry.runner.v1.RunEvent
-	29, // 26: gantry.runner.v1.RunEvent.occurred_at:type_name -> google.protobuf.Timestamp
-	30, // 27: gantry.runner.v1.RunEvent.payload:type_name -> google.protobuf.Struct
-	29, // 28: gantry.runner.v1.TerminalOutput.timestamp:type_name -> google.protobuf.Timestamp
-	1,  // 29: gantry.runner.v1.RunFinished.status:type_name -> gantry.runner.v1.RunTerminalStatus
-	29, // 30: gantry.runner.v1.AssignRun.assignment_expiry:type_name -> google.protobuf.Timestamp
-	2,  // 31: gantry.runner.v1.ApprovalResolution.decision:type_name -> gantry.runner.v1.ApprovalDecisionType
-	29, // 32: gantry.runner.v1.ApprovalResolution.permit_expires_at:type_name -> google.protobuf.Timestamp
-	29, // 33: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
-	29, // 34: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
-	3,  // 35: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
-	4,  // 36: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
-	36, // [36:37] is the sub-list for method output_type
-	35, // [35:36] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	15, // 6: gantry.runner.v1.RunnerMessage.checkpoint_available:type_name -> gantry.runner.v1.CheckpointAvailable
+	22, // 7: gantry.runner.v1.RunnerMessage.run_finished:type_name -> gantry.runner.v1.RunFinished
+	16, // 8: gantry.runner.v1.RunnerMessage.model_usage:type_name -> gantry.runner.v1.ModelUsage
+	17, // 9: gantry.runner.v1.RunnerMessage.checkpoint_metadata:type_name -> gantry.runner.v1.CheckpointMetadata
+	18, // 10: gantry.runner.v1.RunnerMessage.model_delta:type_name -> gantry.runner.v1.ModelDelta
+	19, // 11: gantry.runner.v1.RunnerMessage.tool_lifecycle:type_name -> gantry.runner.v1.ToolLifecycle
+	20, // 12: gantry.runner.v1.RunnerMessage.security_event:type_name -> gantry.runner.v1.SecurityEvent
+	21, // 13: gantry.runner.v1.RunnerMessage.compaction_event:type_name -> gantry.runner.v1.CompactionEvent
+	13, // 14: gantry.runner.v1.RunnerMessage.artifact_upload_completed:type_name -> gantry.runner.v1.ArtifactUploadCompleted
+	23, // 15: gantry.runner.v1.ControlPlaneMessage.assign_run:type_name -> gantry.runner.v1.AssignRun
+	24, // 16: gantry.runner.v1.ControlPlaneMessage.acknowledge_events:type_name -> gantry.runner.v1.AcknowledgeEvents
+	25, // 17: gantry.runner.v1.ControlPlaneMessage.approval_resolution:type_name -> gantry.runner.v1.ApprovalResolution
+	26, // 18: gantry.runner.v1.ControlPlaneMessage.cancel_run:type_name -> gantry.runner.v1.CancelRun
+	27, // 19: gantry.runner.v1.ControlPlaneMessage.suspend_run:type_name -> gantry.runner.v1.SuspendRun
+	28, // 20: gantry.runner.v1.ControlPlaneMessage.resume_action:type_name -> gantry.runner.v1.ResumeAction
+	29, // 21: gantry.runner.v1.ControlPlaneMessage.rotate_session:type_name -> gantry.runner.v1.RotateSession
+	30, // 22: gantry.runner.v1.ControlPlaneMessage.drain_runner:type_name -> gantry.runner.v1.DrainRunner
+	14, // 23: gantry.runner.v1.ControlPlaneMessage.artifact_upload_grant:type_name -> gantry.runner.v1.ArtifactUploadGrant
+	6,  // 24: gantry.runner.v1.RegisterRunner.resource_limits:type_name -> gantry.runner.v1.ResourceLimits
+	31, // 25: gantry.runner.v1.Heartbeat.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 26: gantry.runner.v1.Heartbeat.status:type_name -> gantry.runner.v1.RunnerStatus
+	10, // 27: gantry.runner.v1.RunEventBatch.events:type_name -> gantry.runner.v1.RunEvent
+	31, // 28: gantry.runner.v1.RunEvent.occurred_at:type_name -> google.protobuf.Timestamp
+	32, // 29: gantry.runner.v1.RunEvent.payload:type_name -> google.protobuf.Struct
+	31, // 30: gantry.runner.v1.TerminalOutput.timestamp:type_name -> google.protobuf.Timestamp
+	31, // 31: gantry.runner.v1.ArtifactUploadGrant.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 32: gantry.runner.v1.RunFinished.status:type_name -> gantry.runner.v1.RunTerminalStatus
+	31, // 33: gantry.runner.v1.AssignRun.assignment_expiry:type_name -> google.protobuf.Timestamp
+	2,  // 34: gantry.runner.v1.ApprovalResolution.decision:type_name -> gantry.runner.v1.ApprovalDecisionType
+	31, // 35: gantry.runner.v1.ApprovalResolution.permit_expires_at:type_name -> google.protobuf.Timestamp
+	31, // 36: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
+	31, // 37: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
+	3,  // 38: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
+	4,  // 39: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
+	39, // [39:40] is the sub-list for method output_type
+	38, // [38:39] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_gantry_runner_v1_runner_proto_init() }
@@ -2769,6 +2999,7 @@ func file_gantry_runner_v1_runner_proto_init() {
 		(*RunnerMessage_ToolLifecycle)(nil),
 		(*RunnerMessage_SecurityEvent)(nil),
 		(*RunnerMessage_CompactionEvent)(nil),
+		(*RunnerMessage_ArtifactUploadCompleted)(nil),
 	}
 	file_gantry_runner_v1_runner_proto_msgTypes[1].OneofWrappers = []any{
 		(*ControlPlaneMessage_AssignRun)(nil),
@@ -2779,6 +3010,7 @@ func file_gantry_runner_v1_runner_proto_init() {
 		(*ControlPlaneMessage_ResumeAction)(nil),
 		(*ControlPlaneMessage_RotateSession)(nil),
 		(*ControlPlaneMessage_DrainRunner)(nil),
+		(*ControlPlaneMessage_ArtifactUploadGrant)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2786,7 +3018,7 @@ func file_gantry_runner_v1_runner_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gantry_runner_v1_runner_proto_rawDesc), len(file_gantry_runner_v1_runner_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   26,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

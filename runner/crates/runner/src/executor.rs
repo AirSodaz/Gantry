@@ -2,13 +2,14 @@ use policy_enforcement::check_command;
 use prost_types::{Struct, Value, value::Kind};
 use protocol::{
     gantry::runner::v1::{
-        AcknowledgeEvents, ApprovalDecisionType, ApprovalResolution, AssignRun, CancelRun,
-        RunAccepted, RunEvent, RunEventBatch, RunFinished, RunTerminalStatus, RunnerMessage,
-        runner_message,
+        AcknowledgeEvents, ApprovalDecisionType, ApprovalResolution, ArtifactDeclaration,
+        ArtifactUploadCompleted, ArtifactUploadGrant, AssignRun, CancelRun, RunAccepted, RunEvent,
+        RunEventBatch, RunFinished, RunTerminalStatus, RunnerMessage, runner_message,
     },
     types::{RUNNER_MANIFEST_KIND, RunManifest},
 };
 use serde_json::{Value as JsonValue, json};
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
@@ -27,6 +28,7 @@ pub struct AgentExecutor {
     session_id: String,
     next_message_id: u64,
     active: Option<ActiveRun>,
+    artifact_sources: HashMap<String, String>,
 }
 
 struct ActiveRun {
@@ -57,6 +59,7 @@ impl AgentExecutor {
             runner_id,
             next_message_id: 1,
             active: None,
+            artifact_sources: HashMap::new(),
         }
     }
 
@@ -152,6 +155,12 @@ impl AgentExecutor {
             user_rules.as_deref().map(std::path::Path::new),
         )
         .with_manifest(manifest.rules.clone());
+        let artifact_declarations = artifact_declarations(
+            &manifest,
+            &assignment.run_id,
+            assignment.lease_epoch,
+            &mut self.artifact_sources,
+        );
         self.active = Some(ActiveRun {
             run_id: assignment.run_id.clone(),
             lease_epoch: assignment.lease_epoch,
@@ -172,13 +181,52 @@ impl AgentExecutor {
             suspended: false,
         });
         let run = self.active.as_ref().unwrap();
-        vec![
+        let mut messages = vec![
             self.message(runner_message::Payload::RunAccepted(RunAccepted {
                 run_id: run.run_id.clone(),
                 lease_epoch: run.lease_epoch,
                 manifest_digest: run.manifest_digest.clone(),
             })),
-        ]
+        ];
+        messages.extend(artifact_declarations.into_iter().map(|declaration| {
+            self.message(runner_message::Payload::ArtifactDeclaration(declaration))
+        }));
+        messages
+    }
+
+    pub async fn upload_artifact(
+        &mut self,
+        grant: &ArtifactUploadGrant,
+        http_address: &str,
+    ) -> Option<RunnerMessage> {
+        let source = self.artifact_sources.remove(&grant.artifact_id)?;
+        if grant.run_id.is_empty() || grant.lease_epoch == 0 || grant.upload_token.is_empty() {
+            return None;
+        }
+        let bytes = tokio::fs::read(source).await.ok()?;
+        let url = format!("{}{}", http_address.trim_end_matches('/'), grant.upload_url);
+        let response = reqwest::Client::new()
+            .post(url)
+            .header("X-Gantry-Artifact-Token", &grant.upload_token)
+            .body(bytes.clone())
+            .send()
+            .await
+            .ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        let digest = protocol::types::RunManifest::digest_bytes(&bytes);
+        Some(
+            self.message(runner_message::Payload::ArtifactUploadCompleted(
+                ArtifactUploadCompleted {
+                    run_id: grant.run_id.clone(),
+                    lease_epoch: grant.lease_epoch,
+                    artifact_id: grant.artifact_id.clone(),
+                    digest,
+                    size_bytes: bytes.len() as u64,
+                },
+            )),
+        )
     }
 
     pub async fn tick(&mut self) -> Vec<RunnerMessage> {
@@ -355,7 +403,11 @@ impl AgentExecutor {
                     }
                     run.context
                         .push("assistant", JsonValue::String(text.clone()));
-                    outbound.push(self.event(&mut run, "model.delta", payload(&[("text", &text)])));
+                    outbound.push(self.event(
+                        &mut run,
+                        "model.delta",
+                        payload(&[("stream_id", "model"), ("text", &text)]),
+                    ));
                 }
                 ModelEvent::ThinkingDelta(text) => {
                     let text = bounded_output(&mut run, &text);
@@ -836,6 +888,47 @@ fn payload(values: &[(&str, &str)]) -> Struct {
     Struct { fields }
 }
 
+fn artifact_declarations(
+    manifest: &RunManifest,
+    run_id: &str,
+    lease_epoch: u64,
+    sources: &mut HashMap<String, String>,
+) -> Vec<ArtifactDeclaration> {
+    let Ok(root) = std::fs::canonicalize(&manifest.workspace_root) else {
+        return Vec::new();
+    };
+    manifest
+        .artifacts
+        .iter()
+        .enumerate()
+        .filter_map(|(index, spec)| {
+            let candidate = root.join(&spec.path);
+            let path = std::fs::canonicalize(candidate).ok()?;
+            if !path.starts_with(&root) {
+                return None;
+            }
+            let bytes = std::fs::read(&path).ok()?;
+            let artifact_id = format!("{}-artifact-{}", run_id, index + 1);
+            let filename = if spec.filename.trim().is_empty() {
+                path.file_name()?.to_string_lossy().into_owned()
+            } else {
+                spec.filename.clone()
+            };
+            sources.insert(artifact_id.clone(), path.to_string_lossy().into_owned());
+            Some(ArtifactDeclaration {
+                run_id: run_id.into(),
+                lease_epoch,
+                artifact_id,
+                filename,
+                media_type: spec.media_type.clone(),
+                size_bytes: bytes.len() as u64,
+                digest: RunManifest::digest_bytes(&bytes),
+                source_path: path.to_string_lossy().into_owned(),
+            })
+        })
+        .collect()
+}
+
 fn action_proposal_payload(
     call_id: &str,
     tool_name: &str,
@@ -929,6 +1022,7 @@ mod tests {
             limits: ResourceLimits::default(),
             checkpoint: CheckpointConfig::default(),
             command_policy: CommandPolicy::default(),
+            artifacts: Vec::new(),
         };
         AssignRun {
             run_id: "run-1".into(),
@@ -991,6 +1085,7 @@ mod tests {
                 allow_shell: true,
                 ..Default::default()
             },
+            artifacts: Vec::new(),
         };
         let assignment = AssignRun {
             run_id: "run-shell".into(),

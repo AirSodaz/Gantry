@@ -69,6 +69,18 @@ assert_action_projection() {
   [[ $projection == "$expected" ]] || { echo "unexpected action projection for ${run_id}: ${projection}" >&2; return 1; }
 }
 
+wait_artifact() {
+  local task_id=$1
+  for _ in $(seq 1 80); do
+    local value
+    value=$("${compose[@]}" exec -T postgres psql -U gantry -d gantry -Atqc "SELECT id FROM gantry.artifacts WHERE task_id='${task_id}' AND state='available' AND scan_status='passed' LIMIT 1")
+    [[ -n $value ]] && { printf '%s\n' "$value"; return 0; }
+    sleep 0.25
+  done
+  echo "artifact for task ${task_id} did not become available" >&2
+  return 1
+}
+
 
 "${compose[@]}" up --build --detach
 
@@ -92,6 +104,15 @@ submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
 complete_task=$(task_id)
 [[ -n $complete_task ]]
 wait_task_status "$complete_task" completed
+request POST "/api/copilot/v1/tasks/${complete_task}/events:ticket" '{}'
+[[ $response_status == 200 && -n $(json_value ticket) ]]
+artifact_id=$(wait_artifact "$complete_task")
+request GET "/api/copilot/v1/artifacts/${artifact_id}"
+[[ $response_status == 200 ]]
+artifact_url=$(json_value download_url)
+[[ -n $artifact_url ]]
+artifact_content=$(curl --noproxy '*' -sS "$artifact_url")
+[[ $artifact_content == 'Gantry deterministic artifact' ]]
 submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
 [[ $response_status == 200 && $(task_id) == "$complete_task" ]]
 

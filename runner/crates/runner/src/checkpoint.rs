@@ -193,6 +193,7 @@ mod tests {
                 path: Some(path.to_string_lossy().into()),
             },
             command_policy: CommandPolicy::default(),
+            artifacts: Vec::new(),
         };
         store
             .save("run", 1, &manifest, ContextState::default())
@@ -224,6 +225,7 @@ mod tests {
                 path: Some(path.to_string_lossy().into()),
             },
             command_policy: CommandPolicy::default(),
+            artifacts: Vec::new(),
         };
         store
             .save("run", 1, &manifest, ContextState::default())

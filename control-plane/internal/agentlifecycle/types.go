@@ -33,6 +33,7 @@ type Manifest struct {
 	Limits        ResourceLimits `json:"limits"`
 	Checkpoint    Checkpoint     `json:"checkpoint"`
 	CommandPolicy CommandPolicy  `json:"command_policy"`
+	Artifacts     []ArtifactSpec `json:"artifacts,omitempty"`
 }
 
 type ModelConfig struct {
@@ -64,6 +65,11 @@ type CommandPolicy struct {
 	AllowShell          bool     `json:"allow_shell,omitempty"`
 	InterceptorPatterns []string `json:"interceptor_patterns,omitempty"`
 	DeniedPatterns      []string `json:"denied_patterns,omitempty"`
+}
+type ArtifactSpec struct {
+	Path      string `json:"path"`
+	Filename  string `json:"filename,omitempty"`
+	MediaType string `json:"media_type,omitempty"`
 }
 
 type Finding struct {
@@ -137,6 +143,11 @@ func ValidateSpec(spec json.RawMessage) (json.RawMessage, []Finding) {
 	}
 	if manifest.Limits.MaxOutputBytes <= 0 {
 		findings = append(findings, Finding{Path: "/limits/max_output_bytes", Message: "Max output bytes must be greater than zero."})
+	}
+	for index, artifact := range manifest.Artifacts {
+		if artifact.Path == "" {
+			findings = append(findings, Finding{Path: fmt.Sprintf("/artifacts/%d/path", index), Message: "Artifact path is required."})
+		}
 	}
 	if len(findings) != 0 {
 		return nil, findings

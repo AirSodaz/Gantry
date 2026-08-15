@@ -22,9 +22,11 @@ async fn main() -> Result<()> {
         .init();
     let address =
         env::var("GANTRY_CONTROL_PLANE_ADDR").unwrap_or_else(|_| "http://127.0.0.1:8081".into());
+    let http_address = env::var("GANTRY_CONTROL_PLANE_HTTP_ADDR")
+        .unwrap_or_else(|_| "http://127.0.0.1:8080".into());
     let runner_id = env::var("GANTRY_RUNNER_ID").unwrap_or_else(|_| "dev-runner-01".into());
     loop {
-        match session(address.clone(), runner_id.clone()).await {
+        match session(address.clone(), http_address.clone(), runner_id.clone()).await {
             Ok(false) => return Ok(()),
             Ok(true) => tracing::warn!("runner session closed; reconnecting"),
             Err(error) => tracing::warn!(%error, "runner session failed; reconnecting"),
@@ -33,7 +35,7 @@ async fn main() -> Result<()> {
     }
 }
 
-async fn session(address: String, runner_id: String) -> Result<bool> {
+async fn session(address: String, http_address: String, runner_id: String) -> Result<bool> {
     let channel = connect(address).await?;
     let mut client = RunnerSessionClient::new(channel);
     let (sender, receiver) = mpsc::channel(32);
@@ -60,6 +62,11 @@ async fn session(address: String, runner_id: String) -> Result<bool> {
                             }
                             Some(control_plane_message::Payload::AcknowledgeEvents(acknowledgement)) => {
                                 for outbound in executor.acknowledge_events(&acknowledgement) { sender.send(outbound).await?; }
+                            }
+                            Some(control_plane_message::Payload::ArtifactUploadGrant(grant)) => {
+                                if let Some(outbound) = executor.upload_artifact(&grant, &http_address).await {
+                                    sender.send(outbound).await?;
+                                }
                             }
                             Some(control_plane_message::Payload::SuspendRun(suspend)) => {
                                 for outbound in executor.suspend(&suspend) { sender.send(outbound).await?; }

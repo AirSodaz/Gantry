@@ -22,6 +22,17 @@ pub struct RunManifest {
     pub checkpoint: CheckpointConfig,
     #[serde(default)]
     pub command_policy: CommandPolicy,
+    #[serde(default)]
+    pub artifacts: Vec<ArtifactSpec>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ArtifactSpec {
+    pub path: String,
+    #[serde(default)]
+    pub filename: String,
+    #[serde(default = "default_artifact_media_type")]
+    pub media_type: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -145,6 +156,10 @@ fn default_output_bytes() -> usize {
     128 * 1024
 }
 
+fn default_artifact_media_type() -> String {
+    "application/octet-stream".into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,6 +177,7 @@ mod tests {
             limits: ResourceLimits::default(),
             checkpoint: CheckpointConfig::default(),
             command_policy: CommandPolicy::default(),
+            artifacts: Vec::new(),
         };
         let digest = manifest.digest().unwrap();
         assert!(digest.starts_with("sha256:"));

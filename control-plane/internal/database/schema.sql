@@ -168,6 +168,44 @@ CREATE TABLE IF NOT EXISTS gantry.run_events (
   PRIMARY KEY (run_id, sequence)
 );
 
+CREATE TABLE IF NOT EXISTS gantry.run_content_segments (
+  id text PRIMARY KEY,
+  run_id text NOT NULL REFERENCES gantry.runs(id),
+  stream_id text NOT NULL,
+  start_offset bigint NOT NULL CHECK (start_offset >= 0),
+  end_offset bigint NOT NULL CHECK (end_offset > start_offset),
+  object_key text NOT NULL UNIQUE,
+  digest text NOT NULL,
+  size_bytes bigint NOT NULL CHECK (size_bytes > 0),
+  media_type text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (run_id, stream_id, start_offset),
+  CHECK (end_offset > start_offset)
+);
+CREATE INDEX IF NOT EXISTS run_content_segments_stream_idx ON gantry.run_content_segments (run_id, stream_id, start_offset);
+
+CREATE TABLE IF NOT EXISTS gantry.artifacts (
+  id text PRIMARY KEY,
+  task_id text NOT NULL REFERENCES gantry.tasks(id),
+  run_id text NOT NULL REFERENCES gantry.runs(id),
+  object_key text NOT NULL UNIQUE,
+  filename text NOT NULL,
+  media_type text NOT NULL,
+  size_bytes bigint NOT NULL CHECK (size_bytes >= 0),
+  digest text NOT NULL,
+  classification text NOT NULL DEFAULT 'internal',
+  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed')),
+  visibility text NOT NULL CHECK (visibility IN ('requester', 'workspace')),
+  state text NOT NULL CHECK (state IN ('declared', 'uploaded', 'available', 'rejected')),
+  upload_token_hash text NOT NULL DEFAULT '',
+  upload_lease_epoch bigint NOT NULL DEFAULT 0,
+  upload_expires_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  uploaded_at timestamptz,
+  UNIQUE (run_id, filename)
+);
+CREATE INDEX IF NOT EXISTS artifacts_task_idx ON gantry.artifacts (task_id, created_at);
+
 CREATE TABLE IF NOT EXISTS gantry.idempotency_tombstones (
   principal_id text NOT NULL REFERENCES gantry.principals(id),
   route text NOT NULL,

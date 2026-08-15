@@ -290,6 +290,12 @@ func (s *Service) RecordControlEvent(ctx context.Context, runnerID, runID string
 	if status != "accepted" && status != "canceling" {
 		return ErrInvalidInput
 	}
+	if eventType == "model.delta" && s.store != nil {
+		if err := tx.Commit(ctx); err != nil {
+			return err
+		}
+		return s.appendModelDelta(ctx, runID, payload)
+	}
 	if err := appendEventPayload(ctx, tx, runID, eventType, payload); err != nil {
 		return err
 	}
@@ -297,6 +303,9 @@ func (s *Service) RecordControlEvent(ctx context.Context, runnerID, runID string
 }
 
 func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint64, terminal, reason string) error {
+	if err := s.flushRunContent(ctx, runID); err != nil {
+		return err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -335,6 +344,9 @@ func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint
 }
 
 func (s *Service) FailActive(ctx context.Context, runnerID, runID, reason string) error {
+	if err := s.flushRunContent(ctx, runID); err != nil {
+		return err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err

@@ -28,7 +28,7 @@ const (
 )
 
 func Seed(ctx context.Context, pool *pgxpool.Pool) error {
-	completeSpec := `{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"user_input":"hello from development","workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false}}`
+	completeSpec := `{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"user_input":"hello from development","workspace_root":"/workspace","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false},"artifacts":[{"path":"result.txt","filename":"gantry-result.txt","media_type":"text/plain"}]}`
 	awaitCancelSpec := `{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"user_input":"wait for cancellation","workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false}}`
 	awaitApprovalSpec := `{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"user_input":"shell printf approval","workspace_root":".","tools":["shell"],"limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":true}}`
 	completeDigest := sha256.Sum256([]byte(completeSpec))

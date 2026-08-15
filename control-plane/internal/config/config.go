@@ -13,11 +13,13 @@ import (
 )
 
 type ObjectStorageConfig struct {
-	Endpoint     string
-	AccessKey    string
-	SecretKey    string
-	Region       string
-	UsePathStyle bool
+	Endpoint       string
+	PublicEndpoint string
+	Bucket         string
+	AccessKey      string
+	SecretKey      string
+	Region         string
+	UsePathStyle   bool
 }
 
 type Config struct {
@@ -107,7 +109,7 @@ func Load() (Config, error) {
 		GRPCAddress:   net.JoinHostPort("", strconv.Itoa(grpcPort)),
 		LogLevel:      level.Level(),
 		DatabaseURL:   databaseURL,
-		ObjectStorage: ObjectStorageConfig{Endpoint: value("GANTRY_S3_ENDPOINT", "http://localhost:9000"), AccessKey: value("GANTRY_S3_ACCESS_KEY", "gantry"), SecretKey: value("GANTRY_S3_SECRET_KEY", "gantry_dev_secret"), Region: value("GANTRY_S3_REGION", "us-east-1"), UsePathStyle: pathStyle},
+		ObjectStorage: ObjectStorageConfig{Endpoint: value("GANTRY_S3_ENDPOINT", "http://localhost:9000"), PublicEndpoint: value("GANTRY_S3_PUBLIC_ENDPOINT", value("GANTRY_S3_ENDPOINT", "http://localhost:9000")), Bucket: value("GANTRY_S3_BUCKET", "gantry"), AccessKey: value("GANTRY_S3_ACCESS_KEY", "gantry"), SecretKey: value("GANTRY_S3_SECRET_KEY", "gantry_dev_secret"), Region: value("GANTRY_S3_REGION", "us-east-1"), UsePathStyle: pathStyle},
 		RunnerTLS:     RunnerTLSConfig{CertificateFile: value("GANTRY_RUNNER_SERVER_CERT_FILE", ""), KeyFile: value("GANTRY_RUNNER_SERVER_KEY_FILE", ""), ClientCAFile: value("GANTRY_RUNNER_CLIENT_CA_FILE", "")},
 		Development:   DevelopmentConfig{Enabled: developmentMode, Token: developmentToken},
 		DevCredential: DevCredentialConfig{File: devCredentialFile, Key: devCredentialKey},

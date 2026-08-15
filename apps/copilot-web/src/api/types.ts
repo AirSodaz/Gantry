@@ -8,6 +8,8 @@ export type TaskStatus = Task['status'];
 export type RunStatus = components['schemas']['RunStatus'];
 export type Approval = components['schemas']['CopilotApproval'];
 export type ApprovalDecisionResponse = components['schemas']['ApprovalDecisionResponse'];
+export type Artifact = components['schemas']['ArtifactResponse'];
+export type EventsTicket = components['schemas']['TaskEventsTicket'];
 
 export type SubmitTaskInput = {
   agent_id: string;

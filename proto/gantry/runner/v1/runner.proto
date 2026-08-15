@@ -35,6 +35,7 @@ message RunnerMessage {
     ToolLifecycle tool_lifecycle = 21;
     SecurityEvent security_event = 22;
     CompactionEvent compaction_event = 23;
+    ArtifactUploadCompleted artifact_upload_completed = 24;
   }
 }
 
@@ -52,6 +53,7 @@ message ControlPlaneMessage {
     ResumeAction resume_action = 15;
     RotateSession rotate_session = 16;
     DrainRunner drain_runner = 17;
+    ArtifactUploadGrant artifact_upload_grant = 18;
   }
 }
 
@@ -124,6 +126,24 @@ message ArtifactDeclaration {
   string media_type = 5;
   uint64 size_bytes = 6;
   string digest = 7;
+  string source_path = 8;
+}
+
+message ArtifactUploadCompleted {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string artifact_id = 3;
+  string digest = 4;
+  uint64 size_bytes = 5;
+}
+
+message ArtifactUploadGrant {
+  string run_id = 1;
+  uint64 lease_epoch = 2;
+  string artifact_id = 3;
+  string upload_url = 4;
+  string upload_token = 5;
+  google.protobuf.Timestamp expires_at = 6;
 }
 
 // Checkpoint available.

@@ -10,5 +10,6 @@ RUN cargo build --release --bin runner 2>/dev/null || cargo build --release
 
 FROM alpine:3.21
 RUN apk --no-cache add ca-certificates
+RUN mkdir -p /workspace && printf 'Gantry deterministic artifact\n' > /workspace/result.txt
 COPY --from=builder /build/target/release/runner /usr/local/bin/gantry-runner
 ENTRYPOINT ["/usr/local/bin/gantry-runner"]

@@ -94,6 +94,7 @@ services:
       GANTRY_DB_PASSWORD: gantry_dev
       GANTRY_DB_NAME: gantry
       GANTRY_S3_ENDPOINT: http://minio:9000
+      GANTRY_S3_PUBLIC_ENDPOINT: http://localhost:9000
       GANTRY_S3_ACCESS_KEY: gantry
       GANTRY_S3_SECRET_KEY: gantry_dev_secret
       GANTRY_S3_REGION: us-east-1
@@ -128,6 +129,7 @@ services:
         condition: service_healthy
     environment:
       GANTRY_CONTROL_PLANE_ADDR: http://control-plane:8081
+      GANTRY_CONTROL_PLANE_HTTP_ADDR: http://control-plane:8080
       GANTRY_RUNNER_ID: dev-runner-01
       GANTRY_LOG_LEVEL: debug
     deploy:
