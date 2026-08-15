@@ -210,11 +210,14 @@ message AssignRun {
   google.protobuf.Timestamp assignment_expiry = 5;
 }
 
-// Acknowledge events received.
 message AcknowledgeEvents {
   string run_id = 1;
   uint64 last_acknowledged_sequence = 2;
+  bool execution_granted = 3;
+  string action_id = 4;
+  string call_id = 5;
 }
+
 
 // Approval resolution.
 message ApprovalResolution {
@@ -223,6 +226,10 @@ message ApprovalResolution {
   ApprovalDecisionType decision = 3;
   string reason = 4;
   uint64 lease_epoch = 5;
+  string action_id = 6;
+  string call_id = 7;
+  string permit_id = 8;
+  google.protobuf.Timestamp permit_expires_at = 9;
 }
 
 enum ApprovalDecisionType {

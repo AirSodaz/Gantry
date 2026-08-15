@@ -197,10 +197,15 @@ CREATE TABLE IF NOT EXISTS gantry.actions (
   state text NOT NULL CHECK (state IN ('proposed', 'awaiting_approval', 'ready', 'executing', 'succeeded', 'failed', 'rejected', 'unknown_outcome')),
   revision integer NOT NULL CHECK (revision > 0),
   requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  execution_permit_id text NOT NULL DEFAULT '',
+  execution_permit_lease_epoch bigint NOT NULL DEFAULT 0,
+  execution_permit_expires_at timestamptz,
+  execution_claimed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS actions_run_call_idx ON gantry.actions (run_id, runner_call_id);
+CREATE UNIQUE INDEX IF NOT EXISTS actions_execution_permit_idx ON gantry.actions (execution_permit_id) WHERE execution_permit_id <> '';
 
 
 CREATE TABLE IF NOT EXISTS gantry.approval_requests (

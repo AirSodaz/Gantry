@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
 	"github.com/AirSodaz/gantry/internal/tasks"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PersistentScheduler keeps only live streams in memory. Task and run state is
@@ -27,7 +29,7 @@ type PersistentScheduler struct {
 type runCoordinator interface {
 	ClaimNext(context.Context, string) (tasks.Assignment, bool, error)
 	Accept(context.Context, string, string, uint64, string) error
-	RecordEvents(context.Context, string, string, uint64, []tasks.RunnerEvent) (uint64, error)
+	RecordEvents(context.Context, string, string, uint64, []tasks.RunnerEvent) (tasks.RecordEventsResult, error)
 	RecordControlEvent(context.Context, string, string, uint64, string, string) error
 	Finish(context.Context, string, string, uint64, string, string) error
 	FailActive(context.Context, string, string, string) error
@@ -134,11 +136,17 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 			}
 			events = append(events, tasks.RunnerEvent{ClientSequence: event.GetClientSequence(), Type: event.GetEventType(), Payload: payload})
 		}
-		sequence, err := s.tasks.RecordEvents(context.Background(), runnerID, batch.GetRunId(), batch.GetLeaseEpoch(), events)
+		result, err := s.tasks.RecordEvents(context.Background(), runnerID, batch.GetRunId(), batch.GetLeaseEpoch(), events)
 		if err != nil {
 			return err
 		}
-		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: batch.GetRunId(), Payload: &runnerv1.ControlPlaneMessage_AcknowledgeEvents{AcknowledgeEvents: &runnerv1.AcknowledgeEvents{RunId: batch.GetRunId(), LastAcknowledgedSequence: sequence}}})
+		ack := &runnerv1.AcknowledgeEvents{RunId: batch.GetRunId(), LastAcknowledgedSequence: result.Sequence}
+		if result.Grant != nil {
+			ack.ExecutionGranted = true
+			ack.ActionId = result.Grant.ActionID
+			ack.CallId = result.Grant.CallID
+		}
+		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: batch.GetRunId(), Payload: &runnerv1.ControlPlaneMessage_AcknowledgeEvents{AcknowledgeEvents: ack}})
 		return nil
 	case message.GetModelUsage() != nil:
 		return s.recordSemanticEventLocked(runnerID, runner, "model.usage", message.GetModelUsage())
@@ -195,7 +203,7 @@ func (s *PersistentScheduler) RequestCancel(runID string, epoch uint64, reason s
 	return false
 }
 
-func (s *PersistentScheduler) ResolveApproval(runID, approvalID, decision, reason string) bool {
+func (s *PersistentScheduler) ResolveApproval(runID, approvalID, decision, reason, actionID, callID, permitID string, permitLeaseEpoch uint64, permitExpiresAt time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, runner := range s.runners {
@@ -206,7 +214,14 @@ func (s *PersistentScheduler) ResolveApproval(runID, approvalID, decision, reaso
 		if decision == "approve" {
 			controlDecision = runnerv1.ApprovalDecisionType_APPROVAL_DECISION_TYPE_APPROVED
 		}
-		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_ApprovalResolution{ApprovalResolution: &runnerv1.ApprovalResolution{RunId: runID, LeaseEpoch: runner.activeEpoch, ApprovalRequestId: approvalID, Decision: controlDecision, Reason: reason}}})
+		resolution := &runnerv1.ApprovalResolution{RunId: runID, LeaseEpoch: runner.activeEpoch, ApprovalRequestId: approvalID, Decision: controlDecision, Reason: reason, ActionId: actionID, CallId: callID, PermitId: permitID}
+		if permitLeaseEpoch != 0 {
+			resolution.LeaseEpoch = permitLeaseEpoch
+		}
+		if !permitExpiresAt.IsZero() {
+			resolution.PermitExpiresAt = timestamppb.New(permitExpiresAt)
+		}
+		s.sendLocked(runner, &runnerv1.ControlPlaneMessage{CorrelationId: runID, Payload: &runnerv1.ControlPlaneMessage_ApprovalResolution{ApprovalResolution: resolution}})
 		return true
 	}
 	return false

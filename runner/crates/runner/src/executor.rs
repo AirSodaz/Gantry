@@ -2,8 +2,9 @@ use policy_enforcement::check_command;
 use prost_types::{Struct, Value, value::Kind};
 use protocol::{
     gantry::runner::v1::{
-        ApprovalDecisionType, ApprovalResolution, AssignRun, CancelRun, RunAccepted, RunEvent,
-        RunEventBatch, RunFinished, RunTerminalStatus, RunnerMessage, runner_message,
+        AcknowledgeEvents, ApprovalDecisionType, ApprovalResolution, AssignRun, CancelRun,
+        RunAccepted, RunEvent, RunEventBatch, RunFinished, RunTerminalStatus, RunnerMessage,
+        runner_message,
     },
     types::{RUNNER_MANIFEST_KIND, RunManifest},
 };
@@ -41,6 +42,8 @@ struct ActiveRun {
     tools: WorkspaceTools,
     model: Box<dyn crate::model::ModelClient>,
     waiting_for_approval: bool,
+    execution_requested: bool,
+    execution_granted: bool,
     cancel: CancellationToken,
     checkpoint: Option<CheckpointStore>,
     suspended: bool,
@@ -162,6 +165,8 @@ impl AgentExecutor {
             tools,
             model,
             waiting_for_approval: false,
+            execution_requested: false,
+            execution_granted: false,
             cancel: CancellationToken::new(),
             checkpoint,
             suspended: false,
@@ -207,6 +212,44 @@ impl AgentExecutor {
                 .unwrap_or_default()
                 .to_string();
             let arguments = action.get("arguments").cloned().unwrap_or(JsonValue::Null);
+            let permit_id = action
+                .get("permit_id")
+                .and_then(JsonValue::as_str)
+                .unwrap_or_default()
+                .to_string();
+            if !permit_id.is_empty() && !run.execution_granted {
+                if run.execution_requested {
+                    run.context.pending_action = Some(action);
+                    self.active = Some(run);
+                    return Vec::new();
+                }
+                let action_id = action
+                    .get("action_id")
+                    .and_then(JsonValue::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                if action_id.is_empty() {
+                    let message = self.finish_message(
+                        &run,
+                        RunTerminalStatus::Failed,
+                        "execution permit action binding missing",
+                    );
+                    return vec![message];
+                }
+                run.execution_requested = true;
+                run.context.pending_action = Some(action);
+                let request = self.event(
+                    &mut run,
+                    "action.execution_requested",
+                    payload(&[
+                        ("action_id", &action_id),
+                        ("call_id", &id),
+                        ("permit_id", &permit_id),
+                    ]),
+                );
+                self.active = Some(run);
+                return vec![request];
+            }
             let result = self.dispatch_tool(&run, &name, arguments).await;
             let result_text = tool_result_content(&result);
             run.context.push(
@@ -366,17 +409,13 @@ impl AgentExecutor {
                             "name": name,
                             "arguments": arguments,
                         }));
+                        run.execution_requested = false;
+                        run.execution_granted = false;
                         run.waiting_for_approval = true;
                         outbound.push(self.event(
                             &mut run,
                             "action.proposed",
-                            action_proposal_payload(
-                                &id,
-                                &name,
-                                "execute",
-                                "write",
-                                &arguments,
-                            ),
+                            action_proposal_payload(&id, &name, "execute", "write", &arguments),
                         ));
                         continue;
                     }
@@ -472,7 +511,26 @@ impl AgentExecutor {
             return Vec::new();
         }
         run.waiting_for_approval = false;
-        let approved = resolution.decision == ApprovalDecisionType::Approved as i32;
+        let mut approved = resolution.decision == ApprovalDecisionType::Approved as i32;
+        if approved {
+            let valid = !resolution.action_id.is_empty()
+                && !resolution.call_id.is_empty()
+                && !resolution.permit_id.is_empty()
+                && run.context.pending_action.as_ref().is_some_and(|action| {
+                    action.get("id").and_then(JsonValue::as_str)
+                        == Some(resolution.call_id.as_str())
+                });
+            if valid {
+                if let Some(action) = run.context.pending_action.as_mut() {
+                    action["action_id"] = json!(resolution.action_id);
+                    action["permit_id"] = json!(resolution.permit_id);
+                }
+                run.execution_requested = false;
+                run.execution_granted = false;
+            } else {
+                approved = false;
+            }
+        }
         if !approved {
             run.context.pending_action = None;
         }
@@ -503,6 +561,28 @@ impl AgentExecutor {
             }));
             vec![event, finish]
         }
+    }
+    pub fn acknowledge_events(
+        &mut self,
+        acknowledgement: &AcknowledgeEvents,
+    ) -> Vec<RunnerMessage> {
+        let Some(mut run) = self.active.take() else {
+            return Vec::new();
+        };
+        let valid = acknowledgement.run_id == run.run_id
+            && acknowledgement.execution_granted
+            && run.context.pending_action.as_ref().is_some_and(|action| {
+                action.get("action_id").and_then(JsonValue::as_str)
+                    == Some(acknowledgement.action_id.as_str())
+                    && action.get("id").and_then(JsonValue::as_str)
+                        == Some(acknowledgement.call_id.as_str())
+            });
+        if valid {
+            run.execution_granted = true;
+            run.execution_requested = true;
+        }
+        self.active = Some(run);
+        Vec::new()
     }
 
     pub fn cancel(&mut self, cancel: &CancelRun) -> Vec<RunnerMessage> {
@@ -962,8 +1042,30 @@ mod tests {
             decision: ApprovalDecisionType::Approved as i32,
             reason: String::new(),
             lease_epoch: 1,
+            action_id: "action-1".into(),
+            call_id: "scripted-shell".into(),
+            permit_id: "permit-1".into(),
+            permit_expires_at: None,
         });
         assert!(!approved.is_empty());
+        let request = executor.tick().await;
+        assert!(request.iter().any(|message| {
+            message.payload.as_ref().is_some_and(|payload| {
+                matches!(payload, runner_message::Payload::EventBatch(batch)
+                    if batch.events.iter().any(|event| event.event_type == "action.execution_requested"))
+            })
+        }));
+        assert!(
+            executor
+                .acknowledge_events(&AcknowledgeEvents {
+                    run_id: "run-shell".into(),
+                    last_acknowledged_sequence: 4,
+                    execution_granted: true,
+                    action_id: "action-1".into(),
+                    call_id: "scripted-shell".into(),
+                })
+                .is_empty()
+        );
         let tool_result = executor.tick().await;
         assert!(tool_result.iter().any(|message| {
             message.payload.as_ref().is_some_and(|payload| {
@@ -974,9 +1076,12 @@ mod tests {
         let terminal_event = tool_result
             .iter()
             .find_map(|message| match message.payload.as_ref() {
-                Some(runner_message::Payload::EventBatch(batch)) => batch.events.iter().find(
-                    |event| event.event_type == "tool.call.failed" || event.event_type == "tool.call.completed",
-                ),
+                Some(runner_message::Payload::EventBatch(batch)) => {
+                    batch.events.iter().find(|event| {
+                        event.event_type == "tool.call.failed"
+                            || event.event_type == "tool.call.completed"
+                    })
+                }
                 _ => None,
             })
             .expect("terminal tool event");

@@ -50,12 +50,16 @@ type Request struct {
 }
 
 type Resolution struct {
-	ApprovalID   string
-	RunID        string
-	ActionID     string
-	ActionDigest string
-	Decision     string
-	Reason       string
+	ApprovalID       string
+	RunID            string
+	ActionID         string
+	CallID           string
+	ActionDigest     string
+	Decision         string
+	Reason           string
+	PermitID         string
+	PermitLeaseEpoch uint64
+	PermitExpiresAt  time.Time
 }
 
 type DecisionInput struct {
@@ -134,12 +138,12 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if err != nil {
 		return Resolution{}, err
 	}
-	defer tx.Rollback(ctx)
-	var resolution Resolution
 	var status, requestedBy, assignedTo, actionState string
-	var runID, actionID, digest string
+	var runID, actionID, callID, digest, permitID string
 	var expiresAt time.Time
-	err = tx.QueryRow(ctx, `SELECT ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.run_id, ar.action_id, ar.action_digest, ar.expires_at, a.state FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id WHERE ar.id=$1 FOR UPDATE`, input.ID).Scan(&status, &requestedBy, &assignedTo, &runID, &actionID, &digest, &expiresAt, &actionState)
+	var permitExpiresAt *time.Time
+	var leaseEpoch, permitLeaseEpoch uint64
+	err = tx.QueryRow(ctx, `SELECT ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest, ar.expires_at, a.state, COALESCE(a.execution_permit_id,''), a.execution_permit_expires_at, a.execution_permit_lease_epoch, r.lease_epoch FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id WHERE ar.id=$1 FOR UPDATE`, input.ID).Scan(&status, &requestedBy, &assignedTo, &runID, &actionID, &callID, &digest, &expiresAt, &actionState, &permitID, &permitExpiresAt, &permitLeaseEpoch, &leaseEpoch)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Resolution{}, ErrNotFound
 	}
@@ -164,7 +168,11 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 		if existingDecision != input.Decision {
 			return Resolution{}, ErrIdempotency
 		}
-		return Resolution{ApprovalID: input.ID, RunID: runID, ActionID: actionID, ActionDigest: digest, Decision: existingDecision, Reason: input.Reason}, tx.Commit(ctx)
+		var existingPermitExpiry time.Time
+		if permitExpiresAt != nil {
+			existingPermitExpiry = *permitExpiresAt
+		}
+		return Resolution{ApprovalID: input.ID, RunID: runID, ActionID: actionID, CallID: callID, ActionDigest: digest, Decision: existingDecision, Reason: input.Reason, PermitID: permitID, PermitLeaseEpoch: permitLeaseEpoch, PermitExpiresAt: existingPermitExpiry}, tx.Commit(ctx)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return Resolution{}, err
@@ -184,11 +192,19 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	newStatus, newActionState := "rejected", "rejected"
 	if input.Decision == "approve" {
 		newStatus, newActionState = "satisfied", "ready"
+		expiry := time.Now().UTC().Add(2 * time.Minute)
+		permitID = newID("permit")
+		permitExpiresAt = &expiry
+		permitLeaseEpoch = leaseEpoch
+	} else {
+		permitID = ""
+		permitExpiresAt = nil
+		permitLeaseEpoch = 0
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.approval_requests SET status=$2, decided_at=now() WHERE id=$1`, input.ID, newStatus); err != nil {
 		return Resolution{}, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.actions SET state=$2, revision=revision+1 WHERE id=$1 AND state='awaiting_approval'`, actionID, newActionState); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.actions SET state=$2, revision=revision+1, execution_permit_id=$3, execution_permit_lease_epoch=$4, execution_permit_expires_at=$5 WHERE id=$1 AND state='awaiting_approval'`, actionID, newActionState, permitID, permitLeaseEpoch, permitExpiresAt); err != nil {
 		return Resolution{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, runID); err != nil {
@@ -204,7 +220,10 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if err := appendEvent(ctx, tx, runID, eventType, map[string]any{"approval_id": input.ID, "action_digest": digest, "principal_id": actor.ID}); err != nil {
 		return Resolution{}, err
 	}
-	resolution = Resolution{ApprovalID: input.ID, RunID: runID, ActionID: actionID, ActionDigest: digest, Decision: input.Decision, Reason: strings.TrimSpace(input.Reason)}
+	resolution := Resolution{ApprovalID: input.ID, RunID: runID, ActionID: actionID, CallID: callID, ActionDigest: digest, Decision: input.Decision, Reason: strings.TrimSpace(input.Reason), PermitID: permitID, PermitLeaseEpoch: permitLeaseEpoch}
+	if permitExpiresAt != nil {
+		resolution.PermitExpiresAt = *permitExpiresAt
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Resolution{}, err
 	}

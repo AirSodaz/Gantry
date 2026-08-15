@@ -58,6 +58,9 @@ async fn session(address: String, runner_id: String) -> Result<bool> {
                             Some(control_plane_message::Payload::ApprovalResolution(resolution)) => {
                                 for outbound in executor.resolve_approval(&resolution) { sender.send(outbound).await?; }
                             }
+                            Some(control_plane_message::Payload::AcknowledgeEvents(acknowledgement)) => {
+                                for outbound in executor.acknowledge_events(&acknowledgement) { sender.send(outbound).await?; }
+                            }
                             Some(control_plane_message::Payload::SuspendRun(suspend)) => {
                                 for outbound in executor.suspend(&suspend) { sender.send(outbound).await?; }
                             }

@@ -75,6 +75,18 @@ type RunnerEvent struct {
 	Payload        string
 }
 
+type ExecutionGrant struct {
+	ActionID  string
+	CallID    string
+	PermitID  string
+	ExpiresAt time.Time
+}
+
+type RecordEventsResult struct {
+	Sequence uint64
+	Grant    *ExecutionGrant
+}
+
 type TaskRun struct {
 	TaskID string
 	Run    Run

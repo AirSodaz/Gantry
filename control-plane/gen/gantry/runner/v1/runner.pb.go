@@ -1947,11 +1947,13 @@ func (x *AssignRun) GetAssignmentExpiry() *timestamppb.Timestamp {
 	return nil
 }
 
-// Acknowledge events received.
 type AcknowledgeEvents struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	RunId                    string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
 	LastAcknowledgedSequence uint64                 `protobuf:"varint,2,opt,name=last_acknowledged_sequence,json=lastAcknowledgedSequence,proto3" json:"last_acknowledged_sequence,omitempty"`
+	ExecutionGranted         bool                   `protobuf:"varint,3,opt,name=execution_granted,json=executionGranted,proto3" json:"execution_granted,omitempty"`
+	ActionId                 string                 `protobuf:"bytes,4,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	CallId                   string                 `protobuf:"bytes,5,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -2000,6 +2002,27 @@ func (x *AcknowledgeEvents) GetLastAcknowledgedSequence() uint64 {
 	return 0
 }
 
+func (x *AcknowledgeEvents) GetExecutionGranted() bool {
+	if x != nil {
+		return x.ExecutionGranted
+	}
+	return false
+}
+
+func (x *AcknowledgeEvents) GetActionId() string {
+	if x != nil {
+		return x.ActionId
+	}
+	return ""
+}
+
+func (x *AcknowledgeEvents) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
 // Approval resolution.
 type ApprovalResolution struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
@@ -2008,6 +2031,10 @@ type ApprovalResolution struct {
 	Decision          ApprovalDecisionType   `protobuf:"varint,3,opt,name=decision,proto3,enum=gantry.runner.v1.ApprovalDecisionType" json:"decision,omitempty"`
 	Reason            string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	LeaseEpoch        uint64                 `protobuf:"varint,5,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	ActionId          string                 `protobuf:"bytes,6,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	CallId            string                 `protobuf:"bytes,7,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	PermitId          string                 `protobuf:"bytes,8,opt,name=permit_id,json=permitId,proto3" json:"permit_id,omitempty"`
+	PermitExpiresAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=permit_expires_at,json=permitExpiresAt,proto3" json:"permit_expires_at,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2075,6 +2102,34 @@ func (x *ApprovalResolution) GetLeaseEpoch() uint64 {
 		return x.LeaseEpoch
 	}
 	return 0
+}
+
+func (x *ApprovalResolution) GetActionId() string {
+	if x != nil {
+		return x.ActionId
+	}
+	return ""
+}
+
+func (x *ApprovalResolution) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *ApprovalResolution) GetPermitId() string {
+	if x != nil {
+		return x.PermitId
+	}
+	return ""
+}
+
+func (x *ApprovalResolution) GetPermitExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PermitExpiresAt
+	}
+	return nil
 }
 
 // Cancel a run.
@@ -2543,17 +2598,24 @@ const file_gantry_runner_v1_runner_proto_rawDesc = "" +
 	"leaseEpoch\x12\x1a\n" +
 	"\bmanifest\x18\x03 \x01(\fR\bmanifest\x12'\n" +
 	"\x0fmanifest_digest\x18\x04 \x01(\tR\x0emanifestDigest\x12G\n" +
-	"\x11assignment_expiry\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x10assignmentExpiry\"h\n" +
+	"\x11assignment_expiry\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x10assignmentExpiry\"\xcb\x01\n" +
 	"\x11AcknowledgeEvents\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12<\n" +
-	"\x1alast_acknowledged_sequence\x18\x02 \x01(\x04R\x18lastAcknowledgedSequence\"\xd8\x01\n" +
+	"\x1alast_acknowledged_sequence\x18\x02 \x01(\x04R\x18lastAcknowledgedSequence\x12+\n" +
+	"\x11execution_granted\x18\x03 \x01(\bR\x10executionGranted\x12\x1b\n" +
+	"\taction_id\x18\x04 \x01(\tR\bactionId\x12\x17\n" +
+	"\acall_id\x18\x05 \x01(\tR\x06callId\"\xf3\x02\n" +
 	"\x12ApprovalResolution\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12.\n" +
 	"\x13approval_request_id\x18\x02 \x01(\tR\x11approvalRequestId\x12B\n" +
 	"\bdecision\x18\x03 \x01(\x0e2&.gantry.runner.v1.ApprovalDecisionTypeR\bdecision\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1f\n" +
 	"\vlease_epoch\x18\x05 \x01(\x04R\n" +
-	"leaseEpoch\"q\n" +
+	"leaseEpoch\x12\x1b\n" +
+	"\taction_id\x18\x06 \x01(\tR\bactionId\x12\x17\n" +
+	"\acall_id\x18\a \x01(\tR\x06callId\x12\x1b\n" +
+	"\tpermit_id\x18\b \x01(\tR\bpermitId\x12F\n" +
+	"\x11permit_expires_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x0fpermitExpiresAt\"q\n" +
 	"\tCancelRun\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
@@ -2675,15 +2737,16 @@ var file_gantry_runner_v1_runner_proto_depIdxs = []int32{
 	1,  // 29: gantry.runner.v1.RunFinished.status:type_name -> gantry.runner.v1.RunTerminalStatus
 	29, // 30: gantry.runner.v1.AssignRun.assignment_expiry:type_name -> google.protobuf.Timestamp
 	2,  // 31: gantry.runner.v1.ApprovalResolution.decision:type_name -> gantry.runner.v1.ApprovalDecisionType
-	29, // 32: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
-	29, // 33: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
-	3,  // 34: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
-	4,  // 35: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
-	35, // [35:36] is the sub-list for method output_type
-	34, // [34:35] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	29, // 32: gantry.runner.v1.ApprovalResolution.permit_expires_at:type_name -> google.protobuf.Timestamp
+	29, // 33: gantry.runner.v1.RotateSession.effective_at:type_name -> google.protobuf.Timestamp
+	29, // 34: gantry.runner.v1.DrainRunner.deadline:type_name -> google.protobuf.Timestamp
+	3,  // 35: gantry.runner.v1.RunnerSession.Session:input_type -> gantry.runner.v1.RunnerMessage
+	4,  // 36: gantry.runner.v1.RunnerSession.Session:output_type -> gantry.runner.v1.ControlPlaneMessage
+	36, // [36:37] is the sub-list for method output_type
+	35, // [35:36] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_gantry_runner_v1_runner_proto_init() }

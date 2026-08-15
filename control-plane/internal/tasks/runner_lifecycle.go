@@ -79,84 +79,111 @@ func (s *Service) Accept(ctx context.Context, runnerID, runID string, epoch uint
 	return tx.Commit(ctx)
 }
 
-func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoch uint64, events []RunnerEvent) (uint64, error) {
+func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoch uint64, events []RunnerEvent) (RecordEventsResult, error) {
 	if len(events) == 0 {
-		return 0, ErrInvalidInput
+		return RecordEventsResult{}, ErrInvalidInput
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return RecordEventsResult{}, err
 	}
 	defer tx.Rollback(ctx)
 	var status, requesterID string
 	var current uint64
 	err = tx.QueryRow(ctx, `SELECT r.status, r.runner_event_sequence, t.requester_principal_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status, &current, &requesterID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrNotFound
+		return RecordEventsResult{}, ErrNotFound
 	}
 	if err != nil {
-		return 0, err
+		return RecordEventsResult{}, err
 	}
 	if status != "accepted" && status != "canceling" {
-		return 0, ErrInvalidInput
+		return RecordEventsResult{}, ErrInvalidInput
 	}
+	var grant *ExecutionGrant
 	for _, event := range events {
 		if err := validateRunnerEvent(event); err != nil {
-			return 0, err
+			return RecordEventsResult{}, err
 		}
 		if event.ClientSequence != current+1 {
-			return 0, ErrInvalidInput
+			return RecordEventsResult{}, ErrInvalidInput
 		}
 		current++
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET runner_event_sequence=$2 WHERE id=$1`, runID, current); err != nil {
-			return 0, err
+			return RecordEventsResult{}, err
 		}
 		if err := appendEventPayload(ctx, tx, runID, event.Type, event.Payload); err != nil {
-			return 0, err
+			return RecordEventsResult{}, err
 		}
 		switch event.Type {
 		case "action.proposed":
 			if s.approvals == nil {
-				return 0, ErrInvalidInput
+				return RecordEventsResult{}, ErrInvalidInput
 			}
 			action, err := decodeObservedAction(event.Payload, runID, requesterID)
 			if err != nil {
-				return 0, err
+				return RecordEventsResult{}, err
 			}
 			request, evaluation, err := s.approvals.Propose(ctx, tx, action, time.Now().UTC().Add(15*time.Minute))
 			if err != nil {
-				return 0, err
+				return RecordEventsResult{}, err
 			}
 			if evaluation.Decision == policy.RequireApproval {
 				if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='awaiting_approval' WHERE id=$1`, runID); err != nil {
-					return 0, err
+					return RecordEventsResult{}, err
 				}
 				if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_approval' WHERE current_run_id=$1`, runID); err != nil {
-					return 0, err
+					return RecordEventsResult{}, err
 				}
 				payload, _ := json.Marshal(map[string]any{"approval_id": request.ID, "action_digest": request.ActionDigest})
 				if err := appendEventPayload(ctx, tx, runID, "approval.requested", string(payload)); err != nil {
-					return 0, err
+					return RecordEventsResult{}, err
 				}
 			}
+		case "action.execution_requested":
+			var request struct {
+				ActionID string `json:"action_id"`
+				CallID   string `json:"call_id"`
+				PermitID string `json:"permit_id"`
+			}
+			if err := json.Unmarshal([]byte(event.Payload), &request); err != nil || strings.TrimSpace(request.ActionID) == "" || strings.TrimSpace(request.CallID) == "" || strings.TrimSpace(request.PermitID) == "" {
+				return RecordEventsResult{}, ErrInvalidInput
+			}
+			var actionID, callID, permitID string
+			var expiresAt time.Time
+			err := tx.QueryRow(ctx, `SELECT id, runner_call_id, execution_permit_id, execution_permit_expires_at FROM gantry.actions WHERE id=$1 AND run_id=$2 AND runner_call_id=$3 AND execution_permit_id=$4 AND execution_permit_lease_epoch=$5 AND state='ready' AND execution_permit_expires_at > now() FOR UPDATE`, request.ActionID, runID, request.CallID, request.PermitID, epoch).Scan(&actionID, &callID, &permitID, &expiresAt)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return RecordEventsResult{}, ErrInvalidInput
+			}
+			if err != nil {
+				return RecordEventsResult{}, err
+			}
+			result, err := tx.Exec(ctx, `UPDATE gantry.actions SET state='executing', revision=revision+1, execution_claimed_at=now(), updated_at=now() WHERE id=$1 AND state='ready'`, actionID)
+			if err != nil || result.RowsAffected() != 1 {
+				if err != nil {
+					return RecordEventsResult{}, err
+				}
+				return RecordEventsResult{}, ErrInvalidInput
+			}
+			grant = &ExecutionGrant{ActionID: actionID, CallID: callID, PermitID: permitID, ExpiresAt: expiresAt}
 		case "tool.call.completed", "tool.call.failed":
 			callID, err := decodeObservedCallID(event.Payload)
 			if err != nil {
-				return 0, err
+				return RecordEventsResult{}, err
 			}
 			terminalState := "succeeded"
 			if event.Type == "tool.call.failed" {
 				terminalState = "failed"
 			}
 			if err := transitionObservedAction(ctx, tx, runID, callID, terminalState); err != nil {
-				return 0, err
+				return RecordEventsResult{}, err
 			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return 0, err
+		return RecordEventsResult{}, err
 	}
-	return current, nil
+	return RecordEventsResult{Sequence: current, Grant: grant}, nil
 }
 
 func decodeObservedAction(payload, runID, requesterID string) (policy.Action, error) {
@@ -197,21 +224,18 @@ func transitionObservedAction(ctx context.Context, tx pgx.Tx, runID, callID, ter
 	if runID == "" || callID == "" || (terminalState != "succeeded" && terminalState != "failed") {
 		return ErrInvalidInput
 	}
-	var actionID string
-	if err := tx.QueryRow(ctx, `SELECT id FROM gantry.actions WHERE run_id=$1 AND runner_call_id=$2 AND state='ready' FOR UPDATE`, runID, callID).Scan(&actionID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrInvalidInput
-		}
-		return err
+	var actionID, state string
+	err := tx.QueryRow(ctx, `SELECT id, state FROM gantry.actions WHERE run_id=$1 AND runner_call_id=$2 FOR UPDATE`, runID, callID).Scan(&actionID, &state)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
 	}
-	result, err := tx.Exec(ctx, `UPDATE gantry.actions SET state='executing', revision=revision+1, updated_at=now() WHERE id=$1 AND state='ready'`, actionID)
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() != 1 {
+	if state != "executing" {
 		return ErrInvalidInput
 	}
-	result, err = tx.Exec(ctx, `UPDATE gantry.actions SET state=$2, revision=revision+1, updated_at=now() WHERE id=$1 AND state='executing'`, actionID, terminalState)
+	result, err := tx.Exec(ctx, `UPDATE gantry.actions SET state=$2, revision=revision+1, updated_at=now() WHERE id=$1 AND state='executing'`, actionID, terminalState)
 	if err != nil {
 		return err
 	}
@@ -295,6 +319,9 @@ func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint
 	if terminal != "completed" && terminal != "failed" && terminal != "canceled" {
 		return ErrInvalidInput
 	}
+	if err := markExecutingActionsUnknown(ctx, tx, runID); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status=$2, status_reason=$3, completed_at=now() WHERE id=$1`, runID, terminal, reason); err != nil {
 		return err
 	}
@@ -319,6 +346,9 @@ func (s *Service) FailActive(ctx context.Context, runnerID, runID, reason string
 		return nil
 	}
 	if err != nil {
+		return err
+	}
+	if err := markExecutingActionsUnknown(ctx, tx, runID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed' WHERE id=$1`, taskID); err != nil {
@@ -367,11 +397,20 @@ func (s *Service) FailInFlight(ctx context.Context, reason string) (int, error) 
 		if err := appendEvent(ctx, tx, run.id, "run.failed"); err != nil {
 			return 0, err
 		}
+		if err := markExecutingActionsUnknown(ctx, tx, run.id); err != nil {
+			return 0, err
+		}
 	}
+
 	if err := tx.Commit(ctx); err != nil {
+
 		return 0, err
 	}
 	return len(failed), nil
+}
+func markExecutingActionsUnknown(ctx context.Context, tx pgx.Tx, runID string) error {
+	_, err := tx.Exec(ctx, `UPDATE gantry.actions SET state='unknown_outcome', revision=revision+1, updated_at=now() WHERE run_id=$1 AND state='executing'`, runID)
+	return err
 }
 
 func executionManifest(spec json.RawMessage) ([]byte, string, error) {

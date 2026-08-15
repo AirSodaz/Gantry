@@ -3,14 +3,14 @@ package copilotapi
 import (
 	"context"
 	"errors"
+	"github.com/AirSodaz/gantry/internal/approvals"
+	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/tasks"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/AirSodaz/gantry/internal/approvals"
-	"github.com/AirSodaz/gantry/internal/identity"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"time"
 )
 
 type fakeAuthenticator struct {
@@ -35,11 +35,15 @@ type fakeApprovalService struct {
 }
 
 func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, limit int) ([]approvals.Request, error) {
-	if s.list != nil { return s.list(ctx, actor, limit) }
+	if s.list != nil {
+		return s.list(ctx, actor, limit)
+	}
 	return nil, nil
 }
 func (s fakeApprovalService) Decide(ctx context.Context, actor identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
-	if s.decide != nil { return s.decide(ctx, actor, input) }
+	if s.decide != nil {
+		return s.decide(ctx, actor, input)
+	}
 	return approvals.Resolution{}, approvals.ErrNotFound
 }
 
@@ -95,7 +99,9 @@ func (d *fakeDispatcher) RequestCancel(runID string, epoch uint64, _ string) boo
 	d.canceledEpoch = epoch
 	return true
 }
-func (d *fakeDispatcher) ResolveApproval(string, string, string, string) bool { return true }
+func (d *fakeDispatcher) ResolveApproval(string, string, string, string, string, string, string, uint64, time.Time) bool {
+	return true
+}
 
 func TestSubmitTaskUsesHeaderIdempotencyKey(t *testing.T) {
 	dispatcher := &fakeDispatcher{}
@@ -259,8 +265,12 @@ func TestDecideApprovalRequiresExactActionDigest(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer access-token")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
-	if response.Code != http.StatusOK { t.Fatalf("status = %d, body = %s", response.Code, response.Body.String()) }
-	if received.ID != "apr_1" || received.ActionDigest != "sha256:one" || received.Idempotency != "decision-1" { t.Fatalf("input = %#v", received) }
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if received.ID != "apr_1" || received.ActionDigest != "sha256:one" || received.Idempotency != "decision-1" {
+		t.Fatalf("input = %#v", received)
+	}
 }
 
 func TestCopilotRoutesRequireBearerAuthentication(t *testing.T) {

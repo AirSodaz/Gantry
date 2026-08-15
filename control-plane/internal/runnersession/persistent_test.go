@@ -30,9 +30,9 @@ func (c *fakeRunCoordinator) Accept(_ context.Context, _ string, _ string, _ uin
 	return nil
 }
 
-func (c *fakeRunCoordinator) RecordEvents(_ context.Context, _ string, _ string, _ uint64, events []tasks.RunnerEvent) (uint64, error) {
+func (c *fakeRunCoordinator) RecordEvents(_ context.Context, _ string, _ string, _ uint64, events []tasks.RunnerEvent) (tasks.RecordEventsResult, error) {
 	c.events = append(c.events, events...)
-	return events[len(events)-1].ClientSequence, nil
+	return tasks.RecordEventsResult{Sequence: events[len(events)-1].ClientSequence}, nil
 }
 
 func (c *fakeRunCoordinator) RecordControlEvent(context.Context, string, string, uint64, string, string) error {

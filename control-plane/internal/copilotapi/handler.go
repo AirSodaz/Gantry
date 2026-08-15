@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
@@ -33,7 +34,7 @@ type taskService interface {
 type dispatcher interface {
 	Dispatch(context.Context) error
 	RequestCancel(string, uint64, string) bool
-	ResolveApproval(string, string, string, string) bool
+	ResolveApproval(string, string, string, string, string, string, string, uint64, time.Time) bool
 }
 
 type approvalService interface {
@@ -151,13 +152,16 @@ func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor id
 		return
 	}
 	approvalID, ok := operationTarget(r.PathValue("operation"), ":decide")
-	if !ok { http.NotFound(w, r); return }
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
 	resolution, err := h.approvals.Decide(r.Context(), actor, approvals.DecisionInput{ID: approvalID, Decision: request.Decision, Reason: request.Reason, ActionDigest: request.ActionDigest, Idempotency: request.Idempotency})
 	if err != nil {
 		writeApprovalError(w, err)
 		return
 	}
-	if !h.dispatcher.ResolveApproval(resolution.RunID, resolution.ApprovalID, resolution.Decision, resolution.Reason) {
+	if !h.dispatcher.ResolveApproval(resolution.RunID, resolution.ApprovalID, resolution.Decision, resolution.Reason, resolution.ActionID, resolution.CallID, resolution.PermitID, resolution.PermitLeaseEpoch, resolution.PermitExpiresAt) {
 		h.logger.Warn("approval persisted without an active runner session", "approval_id", resolution.ApprovalID, "run_id", resolution.RunID)
 	}
 	status := "rejected"
