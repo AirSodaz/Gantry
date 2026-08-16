@@ -105,9 +105,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   catalog model; broader schema compatibility and authority checks remain.
 - **Admin lifecycle UX:** The Draft/Revision/Deployment core lifecycle is usable.
   The read-only Run evidence workbench and scope-authorized Audit Explorer
-  list/detail slice are implemented. Run mutations, Policies, Evaluations,
-  signed Audit export, Integrations, and platform administration are not
-  complete product areas.
+  list/detail and signed object-storage Audit export lifecycle are implemented.
+  Run mutations, Policies, Evaluations, Integrations, and platform
+  administration are not complete product areas.
 
 ### Designed, Not Yet Implemented
 
@@ -116,11 +116,14 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   constraints, and CLI Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 - Detailed deployment history, Run mutations, policy projections, evaluations,
-  signed Audit export, integrations, and platform administration remain
-  designed but are not complete product areas. Audit list/detail currently
-  projects the existing append-only event envelope; outcome, risk,
-  correlation, policy links, and full authentication context are empty until
-  their durable event fields are defined and populated.
+  integrations, and platform administration remain designed but are not
+  complete product areas. Audit list/detail/export currently projects the
+  existing append-only event envelope; outcome, risk, correlation, policy
+  links, and full authentication context are empty until their durable event
+  fields are defined and populated. The current role model does not yet map
+  Security Reviewer or Auditor export capabilities, and export processing is
+  currently an in-process development worker without restart recovery or a
+  durable retry scheduler.
 - Per-Agent ACLs with independent metadata read, configuration read, Draft edit,
   Review, deployment, run-inspection, execution, and access-management
   capabilities. Current authorization is workspace-role based.

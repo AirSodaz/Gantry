@@ -92,6 +92,9 @@ type runService interface {
 type auditService interface {
 	List(context.Context, identity.Principal, adminaudit.ListOptions) (adminaudit.ListResult, error)
 	Get(context.Context, identity.Principal, string) (adminaudit.Detail, error)
+	CreateExport(context.Context, identity.Principal, adminaudit.ListOptions) (adminaudit.Export, error)
+	GetExport(context.Context, identity.Principal, string) (adminaudit.Export, error)
+	DownloadExport(context.Context, identity.Principal, string) (adminaudit.Download, error)
 }
 
 type Handler struct {
@@ -148,6 +151,9 @@ func newHandlerWithAudit(auth authenticator, authorize authorizer, service lifec
 	if audit != nil {
 		mux.Handle("GET /audit-events", h.withActor(h.listAuditEvents))
 		mux.Handle("GET /audit-events/{eventID}", h.withActor(h.getAuditEvent))
+		mux.Handle("POST /audit-events:export", h.withActor(h.createAuditExport))
+		mux.Handle("GET /audit-exports/{exportID}", h.withActor(h.getAuditExport))
+		mux.Handle("GET /audit-exports/{exportID}/download", h.withActor(h.downloadAuditExport))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)
@@ -195,6 +201,38 @@ func (h Handler) listAuditEvents(w http.ResponseWriter, r *http.Request, actor i
 
 func (h Handler) getAuditEvent(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	item, err := h.audit.Get(r.Context(), actor, r.PathValue("eventID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) createAuditExport(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var options adminaudit.ListOptions
+	if err := decodeOptionalJSON(w, r, &options); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	item, err := h.audit.CreateExport(r.Context(), actor, options)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, item)
+}
+
+func (h Handler) getAuditExport(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.audit.GetExport(r.Context(), actor, r.PathValue("exportID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) downloadAuditExport(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.audit.DownloadExport(r.Context(), actor, r.PathValue("exportID"))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -598,6 +636,10 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The run query is not valid.")
 	case errors.Is(err, adminaudit.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "invalid_request", "The audit query is not valid.")
+	case errors.Is(err, adminaudit.ErrExportNotReady):
+		writeError(w, http.StatusConflict, "export_not_ready", "The audit export is not ready for download.")
+	case errors.Is(err, adminaudit.ErrExportUnavailable):
+		writeError(w, http.StatusServiceUnavailable, "export_unavailable", "Audit export storage is unavailable.")
 	case errors.Is(err, agentlifecycle.ErrRevisionConflict):
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")
 	case errors.Is(err, agentlifecycle.ErrInvalidState):

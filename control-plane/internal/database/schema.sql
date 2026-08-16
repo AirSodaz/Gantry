@@ -237,6 +237,26 @@ CREATE TABLE IF NOT EXISTS gantry.audit_events (
 );
 CREATE INDEX IF NOT EXISTS audit_events_resource_idx ON gantry.audit_events (resource_type, resource_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS gantry.audit_exports (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  query_json jsonb NOT NULL,
+  query_digest text NOT NULL,
+  scope text NOT NULL,
+  state text NOT NULL CHECK (state IN ('requested', 'processing', 'ready', 'expired', 'failed')),
+  package_digest text NOT NULL DEFAULT '',
+  object_key text NOT NULL DEFAULT '',
+  download_count integer NOT NULL DEFAULT 0,
+  expires_at timestamptz,
+  failure_reason text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE gantry.audit_exports
+  ADD COLUMN IF NOT EXISTS download_count integer NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS audit_exports_owner_idx ON gantry.audit_exports (organization_id, requested_by_principal_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS gantry.tasks (
   id text PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),

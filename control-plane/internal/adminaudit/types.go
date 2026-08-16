@@ -4,21 +4,21 @@ package adminaudit
 import "encoding/json"
 
 type ListOptions struct {
-	WorkspaceID     string
-	ResourceType    string
-	ResourceID      string
-	ActorID         string
-	EventType       string
-	Outcome         string
-	Risk            string
-	CorrelationID   string
-	RunID           string
-	RevisionHash    string
-	PolicyVersionID string
-	Before          string
-	After           string
-	Limit           int
-	Cursor          string
+	WorkspaceID     string `json:"workspace_id,omitempty"`
+	ResourceType    string `json:"resource_type,omitempty"`
+	ResourceID      string `json:"resource_id,omitempty"`
+	ActorID         string `json:"actor_id,omitempty"`
+	EventType       string `json:"event_type,omitempty"`
+	Outcome         string `json:"outcome,omitempty"`
+	Risk            string `json:"risk,omitempty"`
+	CorrelationID   string `json:"correlation_id,omitempty"`
+	RunID           string `json:"run_id,omitempty"`
+	RevisionHash    string `json:"revision_hash,omitempty"`
+	PolicyVersionID string `json:"policy_version_id,omitempty"`
+	Before          string `json:"before,omitempty"`
+	After           string `json:"after,omitempty"`
+	Limit           int    `json:"limit,omitempty"`
+	Cursor          string `json:"cursor,omitempty"`
 }
 
 type Event struct {
@@ -63,4 +63,22 @@ type Detail struct {
 	Payload           json.RawMessage   `json:"payload"`
 	Evidence          []Evidence        `json:"evidence"`
 	RedactionMetadata RedactionMetadata `json:"redaction_metadata"`
+}
+
+type Export struct {
+	ID            string `json:"id"`
+	QueryDigest   string `json:"query_digest"`
+	Scope         string `json:"scope"`
+	State         string `json:"state"`
+	PackageDigest string `json:"package_digest"`
+	DownloadCount int    `json:"download_count"`
+	ExpiresAt     string `json:"expires_at,omitempty"`
+	FailureReason string `json:"failure_reason,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+}
+
+type Download struct {
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expires_at"`
 }

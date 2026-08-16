@@ -786,6 +786,20 @@ a {
   margin-top: 14px;
 }
 
+.admin-export-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-export-status {
+  color: var(--ds-text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
 .admin-runs-table td {
   white-space: normal;
 }

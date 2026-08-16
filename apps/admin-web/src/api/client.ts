@@ -1,4 +1,4 @@
-import type { AdminAuditEvent, AdminAuditEventDetail, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -46,6 +46,15 @@ export class AdminApi {
     return this.request<{ items: AdminAuditEvent[]; page_info: { has_more: boolean; next_cursor?: string } }>(`/audit-events${value ? `?${value}` : ''}`);
   }
   getAuditEvent(eventId: string) { return this.request<AdminAuditEventDetail>(`/audit-events/${encodeURIComponent(eventId)}`); }
+  createAuditExport(options: Omit<AuditListOptions, 'cursor' | 'limit'> = {}) {
+    return this.request<AdminAuditExport>('/audit-events:export', { method: 'POST', body: JSON.stringify({
+      workspace_id: options.workspaceId, resource_type: options.resourceType, resource_id: options.resourceId, actor_id: options.actorId,
+      event_type: options.eventType, outcome: options.outcome, risk: options.risk, correlation_id: options.correlationId, run_id: options.runId,
+      revision_hash: options.revisionHash, policy_version_id: options.policyVersionId, before: options.before, after: options.after,
+    }) });
+  }
+  getAuditExport(exportId: string) { return this.request<AdminAuditExport>(`/audit-exports/${encodeURIComponent(exportId)}`); }
+  downloadAuditExport(exportId: string) { return this.request<AdminAuditExportDownload>(`/audit-exports/${encodeURIComponent(exportId)}/download`); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

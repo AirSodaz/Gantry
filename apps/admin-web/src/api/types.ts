@@ -25,6 +25,8 @@ export type AssetUsage = Components['schemas']['AssetUsage'];
 export type PluginDetail = Components['schemas']['PluginDetail'];
 export type AdminAuditEvent = Components['schemas']['AdminAuditEvent'];
 export type AdminAuditEventDetail = Components['schemas']['AdminAuditEventDetail'];
+export type AdminAuditExport = Components['schemas']['AdminAuditExport'];
+export type AdminAuditExportDownload = Components['schemas']['AdminAuditExportDownload'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';

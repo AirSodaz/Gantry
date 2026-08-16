@@ -12,6 +12,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/objectstore"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,10 +25,15 @@ var (
 type Service struct {
 	pool  *pgxpool.Pool
 	authz *authorization.Service
+	store objectstore.ArtifactStore
 }
 
 func NewService(pool *pgxpool.Pool, authz *authorization.Service) *Service {
-	return &Service{pool: pool, authz: authz}
+	return NewServiceWithStore(pool, authz, nil)
+}
+
+func NewServiceWithStore(pool *pgxpool.Pool, authz *authorization.Service, store objectstore.ArtifactStore) *Service {
+	return &Service{pool: pool, authz: authz, store: store}
 }
 
 const accessibleEvent = `

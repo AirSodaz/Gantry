@@ -108,6 +108,46 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /audit-events:export:
+    post:
+      operationId: createAdminAuditExport
+      summary: Create a signed, scoped audit export package
+      tags: [Audit]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditExportRequest"}}}
+      responses:
+        "202": {description: Export requested, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditExport"}}}}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /audit-exports/{export_id}:
+    get:
+      operationId: getAdminAuditExport
+      summary: Inspect an audit export package lifecycle
+      tags: [Audit]
+      parameters:
+        - {name: export_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Audit export state, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditExport"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /audit-exports/{export_id}/download:
+    get:
+      operationId: downloadAdminAuditExport
+      summary: Get a short-lived download reference for a ready export
+      tags: [Audit]
+      parameters:
+        - {name: export_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Short-lived download reference, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditExportDownload"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
   /workspaces:
     get:
       operationId: listManagedWorkspaces
@@ -738,6 +778,9 @@ components:
     InvalidState:
       description: Operation is not permitted in the current state.
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    ServiceUnavailable:
+      description: Required storage or infrastructure is unavailable.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
     RevisionConflict:
       description: Draft revision is stale.
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
@@ -1206,6 +1249,42 @@ components:
             payload: {type: object, additionalProperties: true}
             evidence: {type: array, items: {$ref: "#/components/schemas/AdminAuditEvidence"}}
             redaction_metadata: {$ref: "#/components/schemas/AdminAuditRedactionMetadata"}
+    AdminAuditExportRequest:
+      type: object
+      properties:
+        workspace_id: {type: string}
+        resource_type: {type: string}
+        resource_id: {type: string}
+        actor_id: {type: string}
+        event_type: {type: string}
+        outcome: {type: string}
+        risk: {type: string}
+        correlation_id: {type: string}
+        run_id: {type: string}
+        revision_hash: {type: string}
+        policy_version_id: {type: string}
+        before: {type: string, format: date-time}
+        after: {type: string, format: date-time}
+    AdminAuditExport:
+      type: object
+      required: [id, query_digest, scope, state, package_digest, download_count, created_at, updated_at]
+      properties:
+        id: {type: string}
+        query_digest: {type: string}
+        scope: {type: string}
+        state: {type: string, enum: [requested, processing, ready, expired, failed]}
+        package_digest: {type: string}
+        download_count: {type: integer, minimum: 0}
+        expires_at: {type: string, format: date-time}
+        failure_reason: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AdminAuditExportDownload:
+      type: object
+      required: [url, expires_at]
+      properties:
+        url: {type: string, format: uri}
+        expires_at: {type: string, format: date-time}
     UpdateDraftRequest:
       type: object
       required: [spec]

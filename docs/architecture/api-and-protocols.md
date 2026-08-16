@@ -57,7 +57,10 @@ Current and planned resources:
   approvals, and artifact metadata.
 - Implemented: `/api/admin/v1/audit-events` and `/api/admin/v1/audit-events/{eventId}`
   provide the scope-authorized immutable Audit list/detail projection. Signed
-  export lifecycle and durable outcome/risk/correlation fields remain planned.
+  export lifecycle is implemented through `/audit-events:export` and
+  `/audit-exports/{id}`. The current role model grants export only to
+  Organization Administrators; Security Reviewer/Auditor capability mapping
+  and durable outcome/risk/correlation fields remain planned.
 - Target extension: Skill marketplace/direct-locator/upload/local import with
   complete artifact inspection; Plugin contained-asset inspection; Tool Server
   discovery/health; descriptor authoring; and CLI Command Profiles. Gantry still

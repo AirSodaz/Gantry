@@ -89,6 +89,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit-events:export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a signed, scoped audit export package */
+        post: operations["createAdminAuditExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect an audit export package lifecycle */
+        get: operations["getAdminAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a short-lived download reference for a ready export */
+        get: operations["downloadAdminAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -1126,6 +1177,45 @@ export interface components {
             evidence: components["schemas"]["AdminAuditEvidence"][];
             redaction_metadata: components["schemas"]["AdminAuditRedactionMetadata"];
         };
+        AdminAuditExportRequest: {
+            workspace_id?: string;
+            resource_type?: string;
+            resource_id?: string;
+            actor_id?: string;
+            event_type?: string;
+            outcome?: string;
+            risk?: string;
+            correlation_id?: string;
+            run_id?: string;
+            revision_hash?: string;
+            policy_version_id?: string;
+            /** Format: date-time */
+            before?: string;
+            /** Format: date-time */
+            after?: string;
+        };
+        AdminAuditExport: {
+            id: string;
+            query_digest: string;
+            scope: string;
+            /** @enum {string} */
+            state: "requested" | "processing" | "ready" | "expired" | "failed";
+            package_digest: string;
+            download_count: number;
+            /** Format: date-time */
+            expires_at?: string;
+            failure_reason?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminAuditExportDownload: {
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
         UpdateDraftRequest: {
             spec: Record<string, never>;
         };
@@ -1267,6 +1357,15 @@ export interface components {
         };
         /** @description Operation is not permitted in the current state. */
         InvalidState: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Required storage or infrastructure is unavailable. */
+        ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1439,6 +1538,86 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    createAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminAuditExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Export requested */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExport"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit export state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    downloadAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived download reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExportDownload"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
         };
     };
     listManagedWorkspaces: {

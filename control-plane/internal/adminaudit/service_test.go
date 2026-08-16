@@ -26,3 +26,10 @@ func TestRedactPayloadMarksSensitiveFields(t *testing.T) {
 		t.Fatalf("unexpected redaction: payload=%s fields=%v", redacted, fields)
 	}
 }
+
+func TestExportQueryOmitsPaginationState(t *testing.T) {
+	query := exportQuery(ListOptions{ResourceType: "agent", Limit: 100, Cursor: "opaque"})
+	if query.ResourceType != "agent" || query.Limit != 0 || query.Cursor != "" {
+		t.Fatalf("export query retained pagination state: %+v", query)
+	}
+}
