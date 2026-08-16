@@ -214,6 +214,20 @@ func TestSupersededIntegerLifecycleRoutesAreNotRegistered(t *testing.T) {
 	}
 }
 
+func TestTargetActionRoutesRegisterWithServeMux(t *testing.T) {
+	mux := http.NewServeMux()
+	Handler{}.registerTargetRoutes(mux)
+}
+
+func TestSplitTargetOperationPreservesColonInResourceID(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/agents/agt_1/revisions/sha256:abc123:publish", nil)
+	request.SetPathValue("operation", "sha256:abc123:publish")
+	resourceID, operation, ok := splitTargetOperation(request)
+	if !ok || resourceID != "sha256:abc123" || operation != "publish" {
+		t.Fatalf("splitTargetOperation() = %q, %q, %t", resourceID, operation, ok)
+	}
+}
+
 func TestAdminOverviewRouteForwardsWorkspaceScope(t *testing.T) {
 	called := false
 	handler := NewWithAssetsAndOverview(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, fakeAssetService{}, fakeOverviewService{

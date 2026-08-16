@@ -3,6 +3,7 @@ package adminapi
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/identity"
@@ -14,17 +15,65 @@ func (h Handler) registerTargetRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /agents/{agentID}/drafts", h.withActor(h.createNamedDraft))
 	mux.Handle("GET /agents/{agentID}/drafts/{draftID}", h.withActor(h.getNamedDraft))
 	mux.Handle("PUT /agents/{agentID}/drafts/{draftID}", h.withActor(h.updateNamedDraft))
-	mux.Handle("POST /agents/{agentID}/drafts/{draftID}:archive", h.withActor(h.archiveNamedDraft))
-	mux.Handle("POST /agents/{agentID}/drafts/{draftID}:commit", h.withActor(h.commitNamedDraft))
+	mux.Handle("POST /agents/{agentID}/drafts/{operation...}", h.withActor(h.draftCommand))
 	mux.Handle("GET /agents/{agentID}/revisions", h.withActor(h.listRevisions))
 	mux.Handle("GET /agents/{agentID}/revisions/{revisionHash}", h.withActor(h.getRevision))
 	mux.Handle("GET /agents/{agentID}/revisions/{revisionHash}/review", h.withActor(h.getRevisionReview))
 	mux.Handle("POST /agents/{agentID}/revisions/{revisionHash}/review", h.withActor(h.submitRevisionReview))
-	mux.Handle("POST /agents/{agentID}/revisions/{revisionHash}:review-decision", h.withActor(h.decideRevisionReview))
-	mux.Handle("POST /agents/{agentID}/revisions/{revisionHash}:publish", h.withActor(h.publishRevision))
+	mux.Handle("POST /agents/{agentID}/revisions/{operation...}", h.withActor(h.revisionCommand))
 	mux.Handle("GET /agents/{agentID}/deployments", h.withActor(h.listDeployments))
 	mux.Handle("POST /agents/{agentID}/deployments", h.withActor(h.createTestDeployment))
-	mux.Handle("POST /agents/{agentID}/deployments/{deploymentID}:stop", h.withActor(h.stopTestDeployment))
+	mux.Handle("POST /agents/{agentID}/deployments/{operation...}", h.withActor(h.deploymentCommand))
+}
+
+func splitTargetOperation(r *http.Request) (string, string, bool) {
+	value := r.PathValue("operation")
+	separator := strings.LastIndexByte(value, ':')
+	if separator <= 0 || separator == len(value)-1 {
+		return "", "", false
+	}
+	return value[:separator], value[separator+1:], true
+}
+
+func (h Handler) draftCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	_, operation, ok := splitTargetOperation(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	switch operation {
+	case "archive":
+		h.archiveNamedDraft(w, r, actor)
+	case "commit":
+		h.commitNamedDraft(w, r, actor)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h Handler) revisionCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	_, operation, ok := splitTargetOperation(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	switch operation {
+	case "review-decision":
+		h.decideRevisionReview(w, r, actor)
+	case "publish":
+		h.publishRevision(w, r, actor)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h Handler) deploymentCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	_, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "stop" {
+		http.NotFound(w, r)
+		return
+	}
+	h.stopTestDeployment(w, r, actor)
 }
 
 func (h Handler) getTargetOverview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -90,7 +139,12 @@ func (h Handler) updateNamedDraft(w http.ResponseWriter, r *http.Request, actor 
 }
 
 func (h Handler) archiveNamedDraft(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	if err := h.target.ArchiveNamedDraft(r.Context(), actor, r.PathValue("agentID"), r.PathValue("draftID")); err != nil {
+	draftID, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "archive" {
+		http.NotFound(w, r)
+		return
+	}
+	if err := h.target.ArchiveNamedDraft(r.Context(), actor, r.PathValue("agentID"), draftID); err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
@@ -98,12 +152,17 @@ func (h Handler) archiveNamedDraft(w http.ResponseWriter, r *http.Request, actor
 }
 
 func (h Handler) commitNamedDraft(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	draftID, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "commit" {
+		http.NotFound(w, r)
+		return
+	}
 	var request agentlifecycle.CommitDraftRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	revision, err := h.target.CommitNamedDraft(r.Context(), actor, r.PathValue("agentID"), r.PathValue("draftID"), request)
+	revision, err := h.target.CommitNamedDraft(r.Context(), actor, r.PathValue("agentID"), draftID, request)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -155,12 +214,17 @@ func (h Handler) submitRevisionReview(w http.ResponseWriter, r *http.Request, ac
 }
 
 func (h Handler) decideRevisionReview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	revisionHash, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "review-decision" {
+		http.NotFound(w, r)
+		return
+	}
 	var request agentlifecycle.ReviewDecisionRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	review, err := h.target.DecideRevisionReview(r.Context(), actor, r.PathValue("agentID"), r.PathValue("revisionHash"), request.Decision, request.Reason)
+	review, err := h.target.DecideRevisionReview(r.Context(), actor, r.PathValue("agentID"), revisionHash, request.Decision, request.Reason)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -169,12 +233,17 @@ func (h Handler) decideRevisionReview(w http.ResponseWriter, r *http.Request, ac
 }
 
 func (h Handler) publishRevision(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	revisionHash, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "publish" {
+		http.NotFound(w, r)
+		return
+	}
 	var request agentlifecycle.PublishRevisionRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	request.RevisionHash = r.PathValue("revisionHash")
+	request.RevisionHash = revisionHash
 	deployment, err := h.target.PublishRevision(r.Context(), actor, r.PathValue("agentID"), request)
 	if err != nil {
 		h.writeServiceError(w, err)
@@ -207,7 +276,12 @@ func (h Handler) createTestDeployment(w http.ResponseWriter, r *http.Request, ac
 }
 
 func (h Handler) stopTestDeployment(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	if err := h.target.StopTestDeployment(r.Context(), actor, r.PathValue("agentID"), r.PathValue("deploymentID")); err != nil {
+	deploymentID, operation, ok := splitTargetOperation(r)
+	if !ok || operation != "stop" {
+		http.NotFound(w, r)
+		return
+	}
+	if err := h.target.StopTestDeployment(r.Context(), actor, r.PathValue("agentID"), deploymentID); err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
