@@ -9,7 +9,7 @@ import (
 )
 
 func (h Handler) listIntegrations(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.integrations.List(r.Context(), actor, r.URL.Query().Get("state"))
+	items, err := h.integrations.List(r.Context(), actor, r.URL.Query().Get("state"), r.URL.Query().Get("search"), r.URL.Query().Get("environment"))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

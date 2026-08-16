@@ -5062,6 +5062,8 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "active" | "disabled" | "retired";
+                search?: string;
+                environment?: "development" | "staging" | "production";
             };
             header?: never;
             path?: never;

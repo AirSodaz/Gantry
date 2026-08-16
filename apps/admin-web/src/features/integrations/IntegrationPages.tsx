@@ -1,17 +1,31 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, RotateCw } from 'lucide-react';
-import { Button } from '@gantry/design-system';
+import { Button, Select, type SelectOption } from '@gantry/design-system';
 import { useAdminApi } from '../../api/ApiProvider';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
+import './IntegrationPages.css';
+
+const INTEGRATION_STATE_OPTIONS: SelectOption[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'disabled', label: 'Disabled' },
+  { value: 'retired', label: 'Retired' },
+];
+const INTEGRATION_ENVIRONMENT_OPTIONS: SelectOption[] = [
+  { value: 'development', label: 'Development' },
+  { value: 'staging', label: 'Staging' },
+  { value: 'production', label: 'Production' },
+];
 
 export function IntegrationsPage() {
-  const api = useAdminApi(); const qc = useQueryClient(); const [slug, setSlug] = useState(''); const [name, setName] = useState('');
-  const list = useQuery({ queryKey: ['admin-integrations'], queryFn: () => api.listIntegrations() });
+  const api = useAdminApi(); const qc = useQueryClient(); const [searchParams, setSearchParams] = useSearchParams(); const [slug, setSlug] = useState(''); const [name, setName] = useState('');
+  const search = searchParams.get('search') ?? ''; const state = searchParams.get('state') ?? ''; const environment = searchParams.get('environment') ?? '';
+  const list = useQuery({ queryKey: ['admin-integrations', state, search, environment], queryFn: () => api.listIntegrations({ state: state as 'active' | 'disabled' | 'retired' || undefined, search: search || undefined, environment: environment as 'development' | 'staging' | 'production' || undefined }) });
+  const updateFilter = (key: string, value: string) => { const next = new URLSearchParams(searchParams); if (value) next.set(key, value); else next.delete(key); setSearchParams(next); };
   const create = useMutation({ mutationFn: () => api.createIntegration({ slug, display_name: name }), onSuccess: () => { setSlug(''); setName(''); void qc.invalidateQueries({ queryKey: ['admin-integrations'] }); } });
   if (list.isLoading) return <LoadingState label="Loading integrations" />; if (list.error) return <ErrorState message="Integrations could not be loaded." />;
-  return <div className="admin-page"><div className="admin-page-header"><div><h1>Integrations</h1><p>Registered enterprise clients, exact Agent publications, and webhook endpoints.</p></div></div><section className="admin-detail-block"><h2>Register integration</h2><form className="admin-form-grid" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}><label className="admin-field"><span className="admin-field-label">Slug</span><input className="ds-input" value={slug} onChange={(e) => setSlug(e.target.value)} required /></label><label className="admin-field"><span className="admin-field-label">Display name</span><input className="ds-input" value={name} onChange={(e) => setName(e.target.value)} required /></label><Button type="submit" disabled={create.isPending}><Plus size={15} /> Register</Button></form>{create.error ? <p className="admin-error" role="alert">{create.error.message}</p> : null}</section><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>State</th><th>Environments</th></tr></thead><tbody>{(list.data?.items ?? []).map((item) => <tr key={item.id}><td><Link to={`/integrations/${item.id}`}>{item.display_name}</Link></td><td>{item.slug}</td><td>{item.state}</td><td>{item.environments.join(', ') || 'No clients'}</td></tr>)}</tbody></table></div>;
+  return <div className="admin-page integration-page"><div className="admin-page-header"><div><h1>Integrations</h1><p>Registered enterprise clients, exact Agent publications, and webhook endpoints.</p></div></div><div className="integration-toolbar"><label className="admin-field integration-search"><span className="admin-field-label">Search</span><input className="ds-input" value={search} onChange={(e) => updateFilter('search', e.target.value)} placeholder="Name or slug" /></label><Select label="State" options={INTEGRATION_STATE_OPTIONS} value={state} onChange={(value) => updateFilter('state', value)} placeholder="All states" /><Select label="Environment" options={INTEGRATION_ENVIRONMENT_OPTIONS} value={environment} onChange={(value) => updateFilter('environment', value)} placeholder="All environments" /></div><section className="admin-detail-block"><h2>Register integration</h2><form className="admin-form-grid" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}><label className="admin-field"><span className="admin-field-label">Slug</span><input className="ds-input" value={slug} onChange={(e) => setSlug(e.target.value)} required /></label><label className="admin-field"><span className="admin-field-label">Display name</span><input className="ds-input" value={name} onChange={(e) => setName(e.target.value)} required /></label><Button type="submit" disabled={create.isPending}><Plus size={15} /> Register</Button></form>{create.error ? <p className="admin-error" role="alert">{create.error.message}</p> : null}</section>{list.data?.items.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Slug</th><th>State</th><th>Environments</th></tr></thead><tbody>{list.data.items.map((item) => <tr key={item.id}><td><Link to={`/integrations/${item.id}`}>{item.display_name}</Link></td><td>{item.slug}</td><td>{item.state}</td><td>{item.environments.join(', ') || 'No clients'}</td></tr>)}</tbody></table></div> : <div className="admin-empty"><strong>No integrations</strong><span>Register an integration identity to expose enterprise metadata.</span></div>}</div>;
 }
 
 export function IntegrationDetailPage() {

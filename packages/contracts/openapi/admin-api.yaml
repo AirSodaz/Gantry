@@ -1087,6 +1087,8 @@ paths:
       tags: [Integrations]
       parameters:
         - {name: state, in: query, schema: {type: string, enum: [active, disabled, retired]}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: environment, in: query, schema: {type: string, enum: [development, staging, production]}}
       responses:
         "200": {description: Integrations, content: {application/json: {schema: {$ref: "#/components/schemas/IntegrationList"}}}}
     post:

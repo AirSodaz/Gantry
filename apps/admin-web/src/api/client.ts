@@ -15,7 +15,7 @@ export type RunListOptions = { workspaceId?: string; agentId?: string; revisionH
 export type AuditListOptions = { workspaceId?: string; resourceType?: string; resourceId?: string; actorId?: string; eventType?: string; outcome?: string; risk?: string; correlationId?: string; runId?: string; revisionHash?: string; policyVersionId?: string; before?: string; after?: string; cursor?: string; limit?: number };
 export type PolicyListOptions = { type?: string; workspaceId?: string; state?: Policy['state']; ownerId?: string; bindingTarget?: string; cursor?: string; limit?: number };
 export type EvaluationSuiteListOptions = { workspaceId?: string; state?: EvaluationSuite['state']; search?: string; limit?: number };
-export type IntegrationListOptions = { state?: Integration['state'] };
+export type IntegrationListOptions = { state?: Integration['state']; search?: string; environment?: IntegrationClient['environment'] };
 
 export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
@@ -94,7 +94,7 @@ export class AdminApi {
   listEvaluationRunRegressions(runId: string) { return this.request<EvaluationRegressionList>(`/evaluation-runs/${encodeURIComponent(runId)}/regressions`); }
   listEvaluationGates(options: { workspaceId?: string; agentRevisionHash?: string } = {}) { const query = new URLSearchParams(); if (options.workspaceId) query.set('workspace_id', options.workspaceId); if (options.agentRevisionHash) query.set('agent_revision_hash', options.agentRevisionHash); return this.request<{ items: EvaluationGate[] }>(`/evaluation-gates${query.size ? `?${query.toString()}` : ''}`); }
   overrideEvaluationGate(gateId: string, input: { reason: string; expires_at: string }) { return this.request<EvaluationGate>(`/evaluation-gates/${encodeURIComponent(gateId)}:override`, { method: 'POST', body: JSON.stringify(input) }); }
-  listIntegrations(options: IntegrationListOptions = {}) { const query = options.state ? `?state=${encodeURIComponent(options.state)}` : ''; return this.request<{ items: Integration[]; page_info: { next_cursor: string | null } }>(`/integrations${query}`); }
+  listIntegrations(options: IntegrationListOptions = {}) { const query = new URLSearchParams(); if (options.state) query.set('state', options.state); if (options.search) query.set('search', options.search); if (options.environment) query.set('environment', options.environment); const value = query.toString(); return this.request<{ items: Integration[]; page_info: { next_cursor: string | null } }>(`/integrations${value ? `?${value}` : ''}`); }
   createIntegration(input: { slug: string; display_name: string }) { return this.request<Integration>('/integrations', { method: 'POST', body: JSON.stringify(input) }); }
   getIntegration(id: string) { return this.request<Integration>(`/integrations/${encodeURIComponent(id)}`); }
   patchIntegration(id: string, displayName: string) { return this.request<Integration>(`/integrations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ display_name: displayName }) }); }

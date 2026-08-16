@@ -32,8 +32,8 @@ func NewService(pool *pgxpool.Pool, authz *authorization.Service) *Service {
 	return &Service{pool: pool, authz: authz}
 }
 
-func (s *Service) List(ctx context.Context, actor identity.Principal, state string) ([]Integration, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, organization_id, slug, display_name, state, owner_principal_id, EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='development'), EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='staging'), EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='production') FROM gantry.integrations i WHERE organization_id=$1 AND ($2='' OR state=$2) ORDER BY display_name,id`, actor.OrganizationID, strings.TrimSpace(state))
+func (s *Service) List(ctx context.Context, actor identity.Principal, state, search, environment string) ([]Integration, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, organization_id, slug, display_name, state, owner_principal_id, EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='development'), EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='staging'), EXISTS(SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment='production') FROM gantry.integrations i WHERE organization_id=$1 AND ($2='' OR state=$2) AND ($3='' OR slug ILIKE '%' || $3 || '%' OR display_name ILIKE '%' || $3 || '%') AND ($4='' OR EXISTS (SELECT 1 FROM gantry.integration_clients c WHERE c.integration_id=i.id AND c.environment=$4)) ORDER BY display_name,id`, actor.OrganizationID, strings.TrimSpace(state), strings.TrimSpace(search), strings.TrimSpace(environment))
 	if err != nil {
 		return nil, err
 	}

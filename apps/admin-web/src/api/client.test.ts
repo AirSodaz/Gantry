@@ -71,10 +71,10 @@ describe('AdminApi', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
     globalThis.fetch = fetchMock;
     const api = new AdminApi(() => 'admin-token');
-    await api.listIntegrations({ state: 'active' });
+    await api.listIntegrations({ state: 'active', search: 'human resources', environment: 'production' });
     await api.createIntegration({ slug: 'hr', display_name: 'HR' });
     await api.listIntegrationClients('int_1');
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/integrations?state=active', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/integrations?state=active&search=human+resources&environment=production', expect.anything());
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/integrations', expect.objectContaining({ method: 'POST' }));
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/admin/v1/integrations/int_1/clients', expect.anything());
   });

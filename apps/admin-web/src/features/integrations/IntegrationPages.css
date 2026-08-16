@@ -1,0 +1,33 @@
+.integration-page {
+  display: grid;
+  gap: 20px;
+}
+
+.integration-page > * {
+  min-width: 0;
+}
+
+.integration-toolbar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.integration-toolbar > .ds-select-wrapper,
+.integration-search {
+  flex: 1 1 220px;
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  .integration-toolbar {
+    align-items: stretch;
+  }
+
+  .integration-toolbar > .ds-select-wrapper,
+  .integration-search {
+    flex-basis: 100%;
+    width: 100%;
+  }
+}

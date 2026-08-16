@@ -138,7 +138,7 @@ type evaluationService interface {
 }
 
 type integrationService interface {
-	List(context.Context, identity.Principal, string) ([]adminintegration.Integration, error)
+	List(context.Context, identity.Principal, string, string, string) ([]adminintegration.Integration, error)
 	Get(context.Context, identity.Principal, string) (adminintegration.Integration, error)
 	Create(context.Context, identity.Principal, adminintegration.CreateIntegrationRequest) (adminintegration.Integration, error)
 	Patch(context.Context, identity.Principal, string, adminintegration.PatchIntegrationRequest) (adminintegration.Integration, error)
