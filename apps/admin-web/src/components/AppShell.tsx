@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Cable, Database, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
+import { Bot, Cable, Database, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -28,7 +28,7 @@ export function AppShell() {
     }
   }, [isCollapsed]);
 
-  const isNewAgentActive = location.pathname === '/new';
+  const isNewAgentActive = location.pathname === '/new' || location.pathname === '/agents/new';
 
   return (
     <div className={`admin-shell ${isCollapsed ? 'admin-shell-collapsed' : ''}`}>
@@ -54,7 +54,7 @@ export function AppShell() {
           {!isCollapsed ? (
             <button
               type="button"
-              onClick={() => navigate('/new')}
+              onClick={() => navigate('/agents/new')}
               className={`admin-new-agent-btn ${
                 isNewAgentActive ? 'admin-new-agent-btn-active' : ''
               }`}
@@ -67,7 +67,7 @@ export function AppShell() {
           ) : (
             <IconButton
               label="New agent"
-              onClick={() => navigate('/new')}
+              onClick={() => navigate('/agents/new')}
               className={`admin-new-agent-btn-collapsed ${
                 isNewAgentActive ? 'admin-new-agent-collapsed-active' : ''
               }`}
@@ -79,12 +79,13 @@ export function AppShell() {
 
         <nav className="admin-nav" aria-label="Admin navigation">
           {!isCollapsed ? (
-            <span className="admin-nav-label">Agent management</span>
+            <span className="admin-nav-label">Workspace</span>
           ) : (
             <div className="admin-nav-divider" />
           )}
 
-          <NavLink end to="/" title={isCollapsed ? 'Agents' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><PanelLeft size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Agents</span> : null}</NavLink>
+          <NavLink end to="/" title={isCollapsed ? 'Overview' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Gauge size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Overview</span> : null}</NavLink>
+          <NavLink to="/agents" title={isCollapsed ? 'Agents' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><PanelLeft size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Agents</span> : null}</NavLink>
 
           {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Configuration</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
           <NavLink to="/skills" title={isCollapsed ? 'Skills' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Layers3 size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Skills</span> : null}</NavLink>

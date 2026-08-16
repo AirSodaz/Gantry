@@ -10,6 +10,7 @@ import { NewAgentPage } from './features/agents/NewAgentPage';
 import { AgentOverviewPage } from './features/agents/AgentOverviewPage';
 import { AgentVersionPage } from './features/agents/AgentVersionPage';
 import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
+import { OverviewPage } from './features/overview/OverviewPage';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -44,8 +45,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<AgentsPage />} />
+        <Route index element={<OverviewPage />} />
         <Route path="new" element={<NewAgentPage />} />
+        <Route path="agents" element={<AgentsPage />} />
         <Route path="agents/new" element={<NewAgentPage />} />
         <Route path="agents/:agentId" element={<AgentOverviewPage />} />
         <Route path="agents/:agentId/design" element={<AgentDetailPage />} />
@@ -56,7 +58,7 @@ export default function App() {
         <Route path="plugins/:assetId" element={<AssetDetailPage kind="plugins" />} />
         <Route path="tools" element={<ToolsPage />} />
         <Route path="tools/:assetId" element={<AssetDetailPage kind="tools" />} />
-        <Route path="*" element={<AgentsPage />} />
+        <Route path="*" element={<OverviewPage />} />
       </Route>
     </Routes>
   );

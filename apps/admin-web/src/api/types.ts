@@ -6,6 +6,7 @@ export type Agent = Components['schemas']['Agent'];
 export type Draft = Components['schemas']['AgentDraft'];
 export type AgentVersion = Components['schemas']['AgentVersion'];
 export type AgentOverview = Components['schemas']['AgentOverview'];
+export type AdminOverview = Components['schemas']['AdminOverview'];
 export type ActivityItem = Components['schemas']['ActivityItem'];
 export type PromptSnapshot = Components['schemas']['PromptSnapshot'];
 export type CreateAgentInput = Components['schemas']['CreateAgentRequest'];

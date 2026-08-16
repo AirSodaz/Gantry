@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the scope-authorized Admin overview */
+        get: operations["getAdminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -793,6 +810,49 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        AdminOverviewScope: {
+            workspace_id?: string;
+            label: string;
+        };
+        AdminOverviewMetrics: {
+            agents_total: number;
+            published_agents: number;
+            drafts_needing_review: number;
+            invalid_drafts: number;
+            active_runs: number;
+            awaiting_approvals: number;
+            failed_runs_24_hours: number;
+        };
+        AdminOverviewAttentionItem: {
+            id: string;
+            kind: string;
+            /** @enum {string} */
+            severity: "high" | "medium";
+            title: string;
+            description: string;
+            href: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminOverviewPublication: {
+            agent_id: string;
+            agent_name: string;
+            workspace_id: string;
+            version_id: string;
+            version: number;
+            /** Format: date-time */
+            published_at: string;
+        };
+        AdminOverview: {
+            scope: components["schemas"]["AdminOverviewScope"];
+            /** Format: date-time */
+            generated_at: string;
+            metrics: components["schemas"]["AdminOverviewMetrics"];
+            attention: components["schemas"]["AdminOverviewAttentionItem"][];
+            recent_publications: components["schemas"]["AdminOverviewPublication"][];
+            recent_activity: components["schemas"]["ActivityItem"][];
+            unavailable_signals: string[];
+        };
         AgentOverview: {
             agent: components["schemas"]["Agent"];
             draft: components["schemas"]["AgentDraft"];
@@ -916,6 +976,31 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getAdminOverview: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listManagedWorkspaces: {
         parameters: {
             query?: never;

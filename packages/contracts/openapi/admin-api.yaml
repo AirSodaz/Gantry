@@ -8,6 +8,24 @@ servers:
 security:
   - oauth2: [admin]
 paths:
+  /overview:
+    get:
+      operationId: getAdminOverview
+      summary: Get the scope-authorized Admin overview
+      tags: [Overview]
+      parameters:
+        - name: workspace_id
+          in: query
+          schema: {type: string}
+      responses:
+        "200":
+          description: Admin overview
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminOverview"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /workspaces:
     get:
       operationId: listManagedWorkspaces
@@ -885,6 +903,55 @@ components:
         event_type: {type: string}
         payload: {type: object, additionalProperties: true}
         created_at: {type: string, format: date-time}
+    AdminOverviewScope:
+      type: object
+      required: [label]
+      properties:
+        workspace_id: {type: string}
+        label: {type: string}
+    AdminOverviewMetrics:
+      type: object
+      required: [agents_total, published_agents, drafts_needing_review, invalid_drafts, active_runs, awaiting_approvals, failed_runs_24_hours]
+      properties:
+        agents_total: {type: integer}
+        published_agents: {type: integer}
+        drafts_needing_review: {type: integer}
+        invalid_drafts: {type: integer}
+        active_runs: {type: integer}
+        awaiting_approvals: {type: integer}
+        failed_runs_24_hours: {type: integer}
+    AdminOverviewAttentionItem:
+      type: object
+      required: [id, kind, severity, title, description, href, created_at]
+      properties:
+        id: {type: string}
+        kind: {type: string}
+        severity: {type: string, enum: [high, medium]}
+        title: {type: string}
+        description: {type: string}
+        href: {type: string}
+        created_at: {type: string, format: date-time}
+    AdminOverviewPublication:
+      type: object
+      required: [agent_id, agent_name, workspace_id, version_id, version, published_at]
+      properties:
+        agent_id: {type: string}
+        agent_name: {type: string}
+        workspace_id: {type: string}
+        version_id: {type: string}
+        version: {type: integer}
+        published_at: {type: string, format: date-time}
+    AdminOverview:
+      type: object
+      required: [scope, generated_at, metrics, attention, recent_publications, recent_activity, unavailable_signals]
+      properties:
+        scope: {$ref: "#/components/schemas/AdminOverviewScope"}
+        generated_at: {type: string, format: date-time}
+        metrics: {$ref: "#/components/schemas/AdminOverviewMetrics"}
+        attention: {type: array, items: {$ref: "#/components/schemas/AdminOverviewAttentionItem"}}
+        recent_publications: {type: array, items: {$ref: "#/components/schemas/AdminOverviewPublication"}}
+        recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
+        unavailable_signals: {type: array, items: {type: string}}
     AgentOverview:
       type: object
       required: [agent, draft, version_count, recent_activity]

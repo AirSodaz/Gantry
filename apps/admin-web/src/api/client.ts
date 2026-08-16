@@ -1,4 +1,4 @@
-import type { Agent, AgentOverview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminOverview, Agent, AgentOverview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -16,6 +16,10 @@ export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
 
   listWorkspaces() { return this.request<{ items: Workspace[] }>('/workspaces'); }
+  getOverview(workspaceId = '') {
+    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
+    return this.request<AdminOverview>(`/overview${query}`);
+  }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

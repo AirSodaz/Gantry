@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AirSodaz/gantry/internal/adminoverview"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/configassets"
@@ -69,28 +70,38 @@ type assetService interface {
 	RetireTool(context.Context, identity.Principal, string, string) error
 }
 
+type overviewService interface {
+	Get(context.Context, identity.Principal, string) (adminoverview.Overview, error)
+}
+
 type Handler struct {
 	auth      authenticator
 	authorize authorizer
 	service   lifecycleService
 	assets    assetService
+	overview  overviewService
 	logger    *slog.Logger
 }
 
 func New(auth authenticator, authorize authorizer, service lifecycleService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, nil, logger)
+	return newHandler(auth, authorize, service, nil, nil, logger)
 }
 
 func NewWithAssets(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, assets, logger)
+	return newHandler(auth, authorize, service, assets, nil, logger)
 }
 
-func newHandler(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
+func NewWithAssetsAndOverview(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
+	return newHandler(auth, authorize, service, assets, overview, logger)
+}
+
+func newHandler(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, assets: assets, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, assets: assets, overview: overview, logger: logger}
 	mux := http.NewServeMux()
+	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /agents", h.withActor(h.createAgent))
@@ -391,6 +402,19 @@ func (h Handler) listWorkspaces(w http.ResponseWriter, r *http.Request, actor id
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) getOverview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	if h.overview == nil {
+		writeError(w, http.StatusNotImplemented, "not_implemented", "The Admin overview is not configured.")
+		return
+	}
+	overview, err := h.overview.Get(r.Context(), actor, r.URL.Query().Get("workspace_id"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, overview)
 }
 
 func (h Handler) listAgents(w http.ResponseWriter, r *http.Request, actor identity.Principal) {

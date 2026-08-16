@@ -36,6 +36,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Admin Agent workspace views: scope-authorized Agent Overview and immutable
   Version Detail routes expose current publication, draft validation, audit
   activity, version metadata, and the frozen Prompt Snapshot projection.
+- Admin home Overview: scope-authorized aggregation of Agent lifecycle state,
+  pending reviews, invalid Drafts, active and failed runs, requester approval
+  waits, recent publications, and scoped Agent audit activity. Provider health
+  and runner capacity remain explicitly unavailable until their owning platform
+  services are implemented.
 - Prompt Snapshot compilation: published versions persist compiler version,
   ordered prompt content, and a deterministic content digest. Tool descriptor
   schemas can be authored at registration and declared operation lists are

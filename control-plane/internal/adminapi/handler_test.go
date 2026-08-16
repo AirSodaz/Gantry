@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AirSodaz/gantry/internal/adminoverview"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/configassets"
@@ -45,6 +46,17 @@ type fakeAssetService struct {
 	skillUsage    func(string) ([]configassets.AssetUsage, error)
 	listSkillOpts func(configassets.ListOptions)
 	status        func(string, string, string) error
+}
+
+type fakeOverviewService struct {
+	get func(context.Context, identity.Principal, string) (adminoverview.Overview, error)
+}
+
+func (s fakeOverviewService) Get(ctx context.Context, actor identity.Principal, workspaceID string) (adminoverview.Overview, error) {
+	if s.get == nil {
+		return adminoverview.Overview{}, agentlifecycle.ErrNotFound
+	}
+	return s.get(ctx, actor, workspaceID)
 }
 
 func (s fakeAssetService) ListSkills(_ context.Context, _ identity.Principal, options configassets.ListOptions) ([]configassets.Skill, error) {
@@ -257,6 +269,21 @@ func TestAgentOverviewAndVersionDetailRoutesForwardIdentifiers(t *testing.T) {
 	handler.ServeHTTP(versionResponse, httptest.NewRequest(http.MethodGet, "/agents/agt_1/versions/agtv_1", nil))
 	if overviewResponse.Code != http.StatusOK || versionResponse.Code != http.StatusOK || !overviewCalled || !versionCalled {
 		t.Fatalf("overview=%d version=%d overviewCalled=%t versionCalled=%t", overviewResponse.Code, versionResponse.Code, overviewCalled, versionCalled)
+	}
+}
+
+func TestAdminOverviewRouteForwardsWorkspaceScope(t *testing.T) {
+	called := false
+	handler := NewWithAssetsAndOverview(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, fakeAssetService{}, fakeOverviewService{
+		get: func(_ context.Context, _ identity.Principal, workspaceID string) (adminoverview.Overview, error) {
+			called = workspaceID == "ws_1"
+			return adminoverview.Overview{Scope: adminoverview.Scope{WorkspaceID: workspaceID, Label: "Selected workspace"}}, nil
+		},
+	}, nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/overview?workspace_id=ws_1", nil))
+	if response.Code != http.StatusOK || !called {
+		t.Fatalf("status=%d called=%t", response.Code, called)
 	}
 }
 
