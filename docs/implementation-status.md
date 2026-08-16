@@ -1,8 +1,8 @@
 # Implementation Status
 
 This document separates the checked-in product from the target design. It is a
-source-based snapshot of the current worktree on top of `a8ddc22` on
-2026-08-16. A capability is not considered complete merely because a package,
+source-based snapshot of the current worktree on 2026-08-16. A capability is
+not considered complete merely because a package,
 table, route, or UI placeholder exists.
 
 ## Status Vocabulary
@@ -66,11 +66,13 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   cancellation, and runner-loss handling exist. Production runner pools,
   Kubernetes Jobs, gVisor, network enforcement, resource accounting, and
   cleanup controllers do not.
-- **Admin configuration UX:** Skills, Plugins, and Tools can be registered and
-  listed, and an Agent Draft can select exact catalog references. Package upload
-  materialization, artifact inspection, catalog search/filtering, Plugin
-  enablement visibility, descriptor schema editing, narrow binding constraints,
-  and asset lifecycle commands are not complete.
+- **Admin configuration UX:** Skills, Plugins, and Tools can be registered,
+  listed, explicitly activated/deprecated/retired, and an Agent Draft can
+  select exact catalog references. Metadata detail, Agent usage, Plugin
+  enablement visibility, and Tool descriptor schema display are available.
+  Package upload materialization and content inspection, catalog
+  search/filtering, Plugin contained-asset inspection, Tool discovery/health,
+  descriptor schema authoring, and narrow binding constraints are not complete.
 - **Admin lifecycle UX:** The core lifecycle is usable. Policies, evaluations,
   run operations, audit search, integrations, and platform administration are
   not complete product areas.
@@ -79,8 +81,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 
 - Agent-owned Prompt Snapshot compilation, package-content ingestion and
   inspection, Plugin asset expansion, Tool Server health/discovery, descriptor
-  schema/version lifecycle, narrow Tool Binding constraints, and CLI Command
-  Profile catalogs described in
+  schema authoring/compatibility, narrow Tool Binding constraints, and CLI
+  Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
 - Hash-identified Agent Revisions with commit messages, multiple independent named
   Drafts, multiple test Deployments, and one default Production Deployment. The

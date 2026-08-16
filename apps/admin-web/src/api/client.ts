@@ -1,4 +1,4 @@
-import type { Agent, AgentReview, AgentVersion, CreateAgentInput, Draft, Plugin, Skill, Tool, Workspace } from './types';
+import type { Agent, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -19,17 +19,32 @@ export class AdminApi {
     const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
     return this.request<{ items: Skill[] }>(`/skills${query}`);
   }
+  getSkill(skillId: string) { return this.request<Skill>(`/skills/${encodeURIComponent(skillId)}`); }
+  listSkillUsage(skillId: string) { return this.request<{ items: AssetUsage[] }>(`/skills/${encodeURIComponent(skillId)}/usage`); }
   registerSkill(input: Omit<Skill, 'id' | 'status'>) {
     return this.request<Skill>('/skills', { method: 'POST', body: JSON.stringify(input) });
   }
   listPlugins() { return this.request<{ items: Plugin[] }>('/plugins'); }
+  getPlugin(pluginId: string) { return this.request<PluginDetail>(`/plugins/${encodeURIComponent(pluginId)}`); }
+  listPluginUsage(pluginId: string) { return this.request<{ items: AssetUsage[] }>(`/plugins/${encodeURIComponent(pluginId)}/usage`); }
   registerPlugin(input: Omit<Plugin, 'id' | 'status'>) {
     return this.request<Plugin>('/plugins', { method: 'POST', body: JSON.stringify(input) });
   }
   enablePlugin(pluginId: string, workspaceId: string) {
     return this.request<void>(`/plugins/${encodeURIComponent(pluginId)}/enable`, { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId }) });
   }
+  activateSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:activate`, reason); }
+  deprecateSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:deprecate`, reason); }
+  retireSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:retire`, reason); }
+  activatePlugin(pluginId: string, reason = '') { return this.assetStatus(`/plugins/${encodeURIComponent(pluginId)}:activate`, reason); }
+  deprecatePlugin(pluginId: string, reason = '') { return this.assetStatus(`/plugins/${encodeURIComponent(pluginId)}:deprecate`, reason); }
+  retirePlugin(pluginId: string, reason = '') { return this.assetStatus(`/plugins/${encodeURIComponent(pluginId)}:retire`, reason); }
+  activateTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:activate`, reason); }
+  deprecateTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:deprecate`, reason); }
+  retireTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:retire`, reason); }
   listTools() { return this.request<{ items: Tool[] }>('/tools'); }
+  getTool(toolId: string) { return this.request<Tool>(`/tools/${encodeURIComponent(toolId)}`); }
+  listToolUsage(toolId: string) { return this.request<{ items: AssetUsage[] }>(`/tools/${encodeURIComponent(toolId)}/usage`); }
   registerTool(input: { server_name: string; server_type: string; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: string; idempotency: string; content_digest: string }) {
     return this.request<Tool>('/tools', { method: 'POST', body: JSON.stringify(input) });
   }
@@ -58,6 +73,10 @@ export class AdminApi {
   }
   retire(agentId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:retire`, { method: 'POST', body: '{}' }); }
   rollback(agentId: string, versionId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:rollback`, { method: 'POST', body: JSON.stringify({ version_id: versionId }) }); }
+
+  private assetStatus(path: string, reason: string) {
+    return this.request<void>(path, { method: 'POST', body: JSON.stringify({ reason }) });
+  }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const token = this.tokenProvider();

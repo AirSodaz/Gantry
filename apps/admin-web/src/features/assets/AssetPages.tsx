@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cable, Database, Package, Plus } from 'lucide-react';
+import { Archive, ArrowLeft, Cable, CircleSlash, Database, Package, Plus, RotateCcw } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import { Button, Select, type SelectOption, StatusMark } from '@gantry/design-system';
 import { useAdminApi } from '../../api/ApiProvider';
-import type { Plugin, Skill, Tool } from '../../api/types';
+import type { AssetUsage, Plugin, PluginDetail, Skill, Tool } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 
 type AssetKind = 'skills' | 'plugins' | 'tools';
 type AssetItem = Skill | Plugin | Tool;
+type AssetAction = 'activate' | 'deprecate' | 'retire';
 
 const headings: Record<AssetKind, { title: string; description: string; icon: typeof Package }> = {
   skills: { title: 'Skills', description: 'Imported workspace artifacts pinned by Agent revisions.', icon: Package },
@@ -18,6 +20,41 @@ const headings: Record<AssetKind, { title: string; description: string; icon: ty
 export function SkillsPage() { return <AssetCatalog kind="skills" />; }
 export function PluginsPage() { return <AssetCatalog kind="plugins" />; }
 export function ToolsPage() { return <AssetCatalog kind="tools" />; }
+
+export function AssetDetailPage({ kind }: { kind: AssetKind }) {
+  const api = useAdminApi();
+  const { assetId = '' } = useParams<{ assetId: string }>();
+  const detail = useQuery<Skill | PluginDetail | Tool>({
+    queryKey: ['admin-asset', kind, assetId],
+    queryFn: () => kind === 'skills' ? api.getSkill(assetId) : kind === 'plugins' ? api.getPlugin(assetId) : api.getTool(assetId),
+    enabled: assetId !== '',
+  });
+  const usage = useQuery<{ items: AssetUsage[] }>({
+    queryKey: ['admin-asset-usage', kind, assetId],
+    queryFn: () => kind === 'skills' ? api.listSkillUsage(assetId) : kind === 'plugins' ? api.listPluginUsage(assetId) : api.listToolUsage(assetId),
+    enabled: assetId !== '' && detail.isSuccess,
+  });
+  const title = kind === 'skills' ? 'Skill artifact' : kind === 'plugins' ? 'Plugin version' : 'Tool descriptor';
+  if (detail.isLoading) return <LoadingState label={`Loading ${title.toLowerCase()}`} />;
+  if (detail.error || !detail.data) return <div className="admin-page"><ErrorState message={`The ${title.toLowerCase()} could not be loaded.`} /></div>;
+  const item = detail.data;
+  const name = 'display_name' in item ? item.display_name : item.fully_qualified_name;
+  const version = 'declared_version' in item ? (item.declared_version || '未声明') : 'version' in item ? item.version : '';
+  return <section className="admin-page">
+    <Link className="admin-back-link" to={`/${kind}`}><ArrowLeft size={15} /> Back to {kind}</Link>
+    <header className="admin-page-heading"><div><h1>{name}</h1><p>{title} · {version}</p></div><StatusMark status={item.status} /></header>
+    <div className="admin-detail-grid">
+      <section className="admin-detail-block"><h2>Identity</h2><DetailField label="Catalog ID" value={item.id} /><DetailField label="Content digest" value={item.content_digest} />{ 'source_ref' in item ? <><DetailField label="Source type" value={item.source_type} /><DetailField label="Source reference" value={item.source_ref} /></> : null }{ 'server_name' in item ? <><DetailField label="Server" value={`${item.server_name} · ${item.server_type}`} /><DetailField label="Endpoint reference" value={item.endpoint_ref || 'Not configured'} /><DetailField label="Effect" value={item.effect} /><DetailField label="Idempotency" value={item.idempotency} /></> : null }</section>
+      { 'workspaces' in item ? <section className="admin-detail-block"><h2>Enabled workspaces</h2>{item.workspaces.length === 0 ? <p className="admin-muted">No workspace enablements.</p> : <ul className="admin-detail-list">{item.workspaces.map((workspace) => <li key={workspace.id}><strong>{workspace.display_name}</strong><span>{workspace.id}</span></li>)}</ul>}</section> : null }
+      { 'schema_json' in item ? <section className="admin-detail-block"><h2>Input and output schema</h2><pre className="admin-json-block">{JSON.stringify(item.schema_json, null, 2)}</pre></section> : null }
+      <section className="admin-detail-block"><h2>Agent usage</h2>{usage.isLoading ? <LoadingState label="Loading usage" /> : usage.error ? <ErrorState message="Usage could not be loaded." /> : usage.data?.items.length ? <ul className="admin-detail-list">{usage.data.items.map((entry) => <li key={`${entry.reference_kind}-${entry.agent_id}-${entry.reference_index}`}><strong>{entry.agent_name}</strong><span>{entry.reference_kind} {entry.reference_index} · {entry.workspace_id}</span></li>)}</ul> : <p className="admin-muted">No Agent draft or revision references this asset.</p>}</section>
+    </div>
+  </section>;
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return <div className="admin-detail-field"><span>{label}</span><strong>{value}</strong></div>;
+}
 
 function AssetCatalog({ kind }: { kind: AssetKind }) {
   const api = useAdminApi();
@@ -48,6 +85,24 @@ function AssetCatalog({ kind }: { kind: AssetKind }) {
     },
     onSuccess: () => { setForm({}); setIsAdding(false); void queryClient.invalidateQueries({ queryKey: ['admin-assets', kind] }); },
   });
+  const statusMutation = useMutation<void, Error, { id: string; action: AssetAction }>({
+    mutationFn: ({ id, action }) => {
+      if (kind === 'skills') {
+        if (action === 'activate') return api.activateSkill(id);
+        if (action === 'deprecate') return api.deprecateSkill(id);
+        return api.retireSkill(id);
+      }
+      if (kind === 'plugins') {
+        if (action === 'activate') return api.activatePlugin(id);
+        if (action === 'deprecate') return api.deprecatePlugin(id);
+        return api.retirePlugin(id);
+      }
+      if (action === 'activate') return api.activateTool(id);
+      if (action === 'deprecate') return api.deprecateTool(id);
+      return api.retireTool(id);
+    },
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['admin-assets', kind] }); },
+  });
 
   const workspaceOptions = useMemo<SelectOption[]>(() => (workspaces.data?.items ?? []).map((workspace) => ({ value: workspace.id, label: workspace.display_name })), [workspaces.data?.items]);
   const items = query.data?.items ?? [];
@@ -71,12 +126,21 @@ function AssetCatalog({ kind }: { kind: AssetKind }) {
           {items.map((item) => {
             const name = 'display_name' in item ? item.display_name : item.fully_qualified_name;
             const version = 'version' in item ? item.version : 'declared_version' in item ? (item.declared_version || '未声明') : '';
-            return <div className="admin-agent-row" key={item.id}><span className="admin-agent-icon"><Icon size={17} /></span><span className="admin-agent-copy"><strong>{name}</strong><span>{version} · {item.content_digest.slice(0, 18)}...</span></span><StatusMark status={item.status} /></div>;
+            return <div className="admin-agent-row" key={item.id}><span className="admin-agent-icon"><Icon size={17} /></span><Link className="admin-agent-copy" to={`/${kind}/${item.id}`}><strong>{name}</strong><span>{version} · {item.content_digest.slice(0, 18)}...</span></Link><StatusMark status={item.status} /><AssetActions status={item.status} busy={statusMutation.isPending} onAction={(action) => statusMutation.mutate({ id: item.id, action })} /></div>;
           })}
         </div>
       )}
+      {statusMutation.error ? <p className="admin-error" role="alert">{statusMutation.error.message}</p> : null}
     </section>
   );
+}
+
+function AssetActions({ status, busy, onAction }: { status: string; busy: boolean; onAction: (action: AssetAction) => void }) {
+  const actions: AssetAction[] = status === 'retired' ? [] : status === 'proposed' ? ['activate'] : status === 'deprecated' ? ['activate', 'retire'] : ['deprecate', 'retire'];
+  if (actions.length === 0) return null;
+  const labels: Record<AssetAction, string> = { activate: 'Activate', deprecate: 'Deprecate', retire: 'Retire' };
+  const icons: Record<AssetAction, typeof RotateCcw> = { activate: RotateCcw, deprecate: CircleSlash, retire: Archive };
+  return <span className="admin-asset-actions">{actions.map((action) => { const ActionIcon = icons[action]; return <Button key={action} type="button" size="sm" variant={action === 'retire' ? 'danger' : 'quiet'} disabled={busy} onClick={() => onAction(action)} title={labels[action]}><ActionIcon size={14} />{labels[action]}</Button>; })}</span>;
 }
 
 function AssetForm({ kind, form, setForm, workspaceOptions, onSubmit, busy, error }: { kind: AssetKind; form: Record<string, string>; setForm: (value: Record<string, string>) => void; workspaceOptions: SelectOption[]; onSubmit: () => void; busy: boolean; error?: string }) {

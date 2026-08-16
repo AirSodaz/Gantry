@@ -43,12 +43,27 @@ type lifecycleService interface {
 
 type assetService interface {
 	ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error)
+	GetSkill(context.Context, identity.Principal, string) (configassets.Skill, error)
+	ListSkillUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreateSkill(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
 	ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error)
+	GetPlugin(context.Context, identity.Principal, string) (configassets.PluginDetail, error)
+	ListPluginUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error)
 	EnablePlugin(context.Context, identity.Principal, string, string) error
 	ListTools(context.Context, identity.Principal) ([]configassets.Tool, error)
+	GetTool(context.Context, identity.Principal, string) (configassets.Tool, error)
+	ListToolUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreateTool(context.Context, identity.Principal, configassets.CreateToolRequest) (configassets.Tool, error)
+	ActivateSkill(context.Context, identity.Principal, string, string) error
+	DeprecateSkill(context.Context, identity.Principal, string, string) error
+	RetireSkill(context.Context, identity.Principal, string, string) error
+	ActivatePlugin(context.Context, identity.Principal, string, string) error
+	DeprecatePlugin(context.Context, identity.Principal, string, string) error
+	RetirePlugin(context.Context, identity.Principal, string, string) error
+	ActivateTool(context.Context, identity.Principal, string, string) error
+	DeprecateTool(context.Context, identity.Principal, string, string) error
+	RetireTool(context.Context, identity.Principal, string, string) error
 }
 
 type Handler struct {
@@ -83,12 +98,21 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
 	if assets != nil {
 		mux.Handle("GET /skills", h.withActor(h.listSkills))
+		mux.Handle("GET /skills/{skillID}", h.withActor(h.getSkill))
+		mux.Handle("GET /skills/{skillID}/usage", h.withActor(h.listSkillUsage))
 		mux.Handle("POST /skills", h.withActor(h.createSkill))
 		mux.Handle("GET /plugins", h.withActor(h.listPlugins))
+		mux.Handle("GET /plugins/{pluginID}", h.withActor(h.getPlugin))
+		mux.Handle("GET /plugins/{pluginID}/usage", h.withActor(h.listPluginUsage))
 		mux.Handle("POST /plugins", h.withActor(h.createPlugin))
 		mux.Handle("POST /plugins/{pluginID}/enable", h.withActor(h.enablePlugin))
 		mux.Handle("GET /tools", h.withActor(h.listTools))
+		mux.Handle("GET /tools/{toolID}", h.withActor(h.getTool))
+		mux.Handle("GET /tools/{toolID}/usage", h.withActor(h.listToolUsage))
 		mux.Handle("POST /tools", h.withActor(h.createTool))
+		mux.Handle("POST /skills/{operation...}", h.withActor(h.skillCommand))
+		mux.Handle("POST /plugins/{operation...}", h.withActor(h.pluginCommand))
+		mux.Handle("POST /tools/{operation...}", h.withActor(h.toolCommand))
 	}
 	mux.Handle("POST /agents/{operation...}", h.withActor(h.command))
 	return mux
@@ -96,6 +120,24 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 
 func (h Handler) listSkills(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	items, err := h.assets.ListSkills(r.Context(), actor, r.URL.Query().Get("workspace_id"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) getSkill(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.assets.GetSkill(r.Context(), actor, r.PathValue("skillID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) listSkillUsage(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListSkillUsage(r.Context(), actor, r.PathValue("skillID"))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -119,6 +161,24 @@ func (h Handler) createSkill(w http.ResponseWriter, r *http.Request, actor ident
 
 func (h Handler) listPlugins(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	items, err := h.assets.ListPlugins(r.Context(), actor)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) getPlugin(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.assets.GetPlugin(r.Context(), actor, r.PathValue("pluginID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) listPluginUsage(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListPluginUsage(r.Context(), actor, r.PathValue("pluginID"))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -162,6 +222,24 @@ func (h Handler) listTools(w http.ResponseWriter, r *http.Request, actor identit
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
 }
 
+func (h Handler) getTool(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.assets.GetTool(r.Context(), actor, r.PathValue("toolID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) listToolUsage(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListToolUsage(r.Context(), actor, r.PathValue("toolID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
 func (h Handler) createTool(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	var request configassets.CreateToolRequest
 	if err := decodeJSON(w, r, &request); err != nil {
@@ -174,6 +252,96 @@ func (h Handler) createTool(w http.ResponseWriter, r *http.Request, actor identi
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
+}
+
+func (h Handler) skillCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	assetID, operation, ok := strings.Cut(r.PathValue("operation"), ":")
+	if !ok || assetID == "" {
+		http.NotFound(w, r)
+		return
+	}
+	var request configassets.AssetStatusRequest
+	if err := decodeOptionalJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	var err error
+	switch operation {
+	case "activate":
+		err = h.assets.ActivateSkill(r.Context(), actor, assetID, request.Reason)
+	case "deprecate":
+		err = h.assets.DeprecateSkill(r.Context(), actor, assetID, request.Reason)
+	case "retire":
+		err = h.assets.RetireSkill(r.Context(), actor, assetID, request.Reason)
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h Handler) pluginCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	assetID, operation, ok := strings.Cut(r.PathValue("operation"), ":")
+	if !ok || assetID == "" {
+		http.NotFound(w, r)
+		return
+	}
+	var request configassets.AssetStatusRequest
+	if err := decodeOptionalJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	var err error
+	switch operation {
+	case "activate":
+		err = h.assets.ActivatePlugin(r.Context(), actor, assetID, request.Reason)
+	case "deprecate":
+		err = h.assets.DeprecatePlugin(r.Context(), actor, assetID, request.Reason)
+	case "retire":
+		err = h.assets.RetirePlugin(r.Context(), actor, assetID, request.Reason)
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h Handler) toolCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	assetID, operation, ok := strings.Cut(r.PathValue("operation"), ":")
+	if !ok || assetID == "" {
+		http.NotFound(w, r)
+		return
+	}
+	var request configassets.AssetStatusRequest
+	if err := decodeOptionalJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	var err error
+	switch operation {
+	case "activate":
+		err = h.assets.ActivateTool(r.Context(), actor, assetID, request.Reason)
+	case "deprecate":
+		err = h.assets.DeprecateTool(r.Context(), actor, assetID, request.Reason)
+	case "retire":
+		err = h.assets.RetireTool(r.Context(), actor, assetID, request.Reason)
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type actorHandler func(http.ResponseWriter, *http.Request, identity.Principal)
@@ -384,12 +552,21 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
 	return nil
 }
 
+func decodeOptionalJSON(w http.ResponseWriter, r *http.Request, destination any) error {
+	if r.Body == nil || r.Body == http.NoBody || r.ContentLength == 0 {
+		return nil
+	}
+	return decodeJSON(w, r, destination)
+}
+
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
-	case errors.Is(err, agentlifecycle.ErrInvalidInput), errors.Is(err, configassets.ErrInvalidInput):
+	case errors.Is(err, agentlifecycle.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The agent request is not valid.")
+	case errors.Is(err, configassets.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The configuration asset request is not valid.")
 	case errors.Is(err, agentlifecycle.ErrRevisionConflict):
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")
 	case errors.Is(err, agentlifecycle.ErrInvalidState):

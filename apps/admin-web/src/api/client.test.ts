@@ -48,4 +48,16 @@ describe('AdminApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/skills', expect.objectContaining({ method: 'POST', body: expect.stringContaining('registry://search') }));
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/plugins/plugin_1/enable', expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspace_id: 'ws_1' }) }));
   });
+
+  it('loads asset detail and posts an auditable lifecycle command', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'skill_1', status: 'deprecated' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.getSkill('skill_1');
+    await api.activateSkill('skill_1', 'validated replacement package');
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/skills/skill_1', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer admin-token' }) }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/skills/skill_1:activate', expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'validated replacement package' }) }));
+  });
 });

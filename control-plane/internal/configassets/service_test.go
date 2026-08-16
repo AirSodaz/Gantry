@@ -23,3 +23,18 @@ func TestCatalogSlugValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogStatusTransitions(t *testing.T) {
+	if !validSkillTransition("available", "deprecated") || !validSkillTransition("deprecated", "available") || !validSkillTransition("deprecated", "retired") {
+		t.Fatal("valid Skill transitions were rejected")
+	}
+	if validSkillTransition("retired", "available") || validSkillTransition("available", "available") {
+		t.Fatal("invalid Skill transition was accepted")
+	}
+	if !validPluginTransition("active", "deprecated") || !validPluginTransition("deprecated", "active") || validPluginTransition("retired", "active") {
+		t.Fatal("Plugin transition classification is incorrect")
+	}
+	if !validToolTransition("proposed", "active") || !validToolTransition("active", "retired") || validToolTransition("proposed", "retired") {
+		t.Fatal("Tool transition classification is incorrect")
+	}
+}

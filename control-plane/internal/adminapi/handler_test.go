@@ -38,10 +38,25 @@ type fakeLifecycleService struct {
 type fakeAssetService struct {
 	createSkill  func(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
 	enablePlugin func(context.Context, identity.Principal, string, string) error
+	getSkill     func(string) (configassets.Skill, error)
+	skillUsage   func(string) ([]configassets.AssetUsage, error)
+	status       func(string, string, string) error
 }
 
 func (fakeAssetService) ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error) {
 	return nil, nil
+}
+func (s fakeAssetService) GetSkill(_ context.Context, _ identity.Principal, id string) (configassets.Skill, error) {
+	if s.getSkill == nil {
+		return configassets.Skill{}, configassets.ErrNotFound
+	}
+	return s.getSkill(id)
+}
+func (s fakeAssetService) ListSkillUsage(_ context.Context, _ identity.Principal, id string) ([]configassets.AssetUsage, error) {
+	if s.skillUsage == nil {
+		return nil, configassets.ErrNotFound
+	}
+	return s.skillUsage(id)
 }
 func (s fakeAssetService) CreateSkill(ctx context.Context, actor identity.Principal, request configassets.CreateSkillRequest) (configassets.Skill, error) {
 	if s.createSkill == nil {
@@ -51,6 +66,12 @@ func (s fakeAssetService) CreateSkill(ctx context.Context, actor identity.Princi
 }
 func (fakeAssetService) ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error) {
 	return nil, nil
+}
+func (fakeAssetService) GetPlugin(context.Context, identity.Principal, string) (configassets.PluginDetail, error) {
+	return configassets.PluginDetail{}, configassets.ErrNotFound
+}
+func (fakeAssetService) ListPluginUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error) {
+	return nil, configassets.ErrNotFound
 }
 func (fakeAssetService) CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error) {
 	return configassets.Plugin{}, configassets.ErrNotFound
@@ -64,8 +85,47 @@ func (s fakeAssetService) EnablePlugin(ctx context.Context, actor identity.Princ
 func (fakeAssetService) ListTools(context.Context, identity.Principal) ([]configassets.Tool, error) {
 	return nil, nil
 }
+func (fakeAssetService) GetTool(context.Context, identity.Principal, string) (configassets.Tool, error) {
+	return configassets.Tool{}, configassets.ErrNotFound
+}
+func (fakeAssetService) ListToolUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error) {
+	return nil, configassets.ErrNotFound
+}
 func (fakeAssetService) CreateTool(context.Context, identity.Principal, configassets.CreateToolRequest) (configassets.Tool, error) {
 	return configassets.Tool{}, configassets.ErrNotFound
+}
+func (s fakeAssetService) ActivateSkill(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("skill", id, "activate", reason)
+}
+func (s fakeAssetService) DeprecateSkill(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("skill", id, "deprecate", reason)
+}
+func (s fakeAssetService) RetireSkill(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("skill", id, "retire", reason)
+}
+func (s fakeAssetService) ActivatePlugin(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("plugin", id, "activate", reason)
+}
+func (s fakeAssetService) DeprecatePlugin(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("plugin", id, "deprecate", reason)
+}
+func (s fakeAssetService) RetirePlugin(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("plugin", id, "retire", reason)
+}
+func (s fakeAssetService) ActivateTool(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("tool", id, "activate", reason)
+}
+func (s fakeAssetService) DeprecateTool(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("tool", id, "deprecate", reason)
+}
+func (s fakeAssetService) RetireTool(_ context.Context, _ identity.Principal, id, reason string) error {
+	return s.callStatus("tool", id, "retire", reason)
+}
+func (s fakeAssetService) callStatus(kind, id, operation, reason string) error {
+	if s.status == nil {
+		return configassets.ErrNotFound
+	}
+	return s.status(kind, id, operation+":"+reason)
 }
 
 func (fakeLifecycleService) ListWorkspaces(context.Context, identity.Principal) ([]authorization.Workspace, error) {
@@ -235,5 +295,35 @@ func TestSkillRegistrationAndPluginEnablementRoutesForwardScopedRequests(t *test
 	handler.ServeHTTP(enableResponse, enable)
 	if createResponse.Code != http.StatusCreated || enableResponse.Code != http.StatusNoContent || !created || !enabled {
 		t.Fatalf("create=%d enable=%d created=%t enabled=%t", createResponse.Code, enableResponse.Code, created, enabled)
+	}
+}
+
+func TestAssetLifecycleRoutesForwardOperationAndReason(t *testing.T) {
+	called := ""
+	assets := fakeAssetService{status: func(kind, id, operationAndReason string) error {
+		called = kind + ":" + id + ":" + operationAndReason
+		return nil
+	}}
+	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
+	request := httptest.NewRequest(http.MethodPost, "/skills/skill_1:deprecate", strings.NewReader(`{"reason":"upstream replacement"}`))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent || called != "skill:skill_1:deprecate:upstream replacement" {
+		t.Fatalf("status=%d called=%q", response.Code, called)
+	}
+}
+
+func TestSkillUsageRouteReturnsScopedReferences(t *testing.T) {
+	assets := fakeAssetService{skillUsage: func(id string) ([]configassets.AssetUsage, error) {
+		if id != "skill_1" {
+			t.Fatalf("asset id=%q", id)
+		}
+		return []configassets.AssetUsage{{AgentID: "agt_1", AgentName: "Search", ReferenceKind: "draft", ReferenceIndex: 2}}, nil
+	}}
+	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/skills/skill_1/usage", nil))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"agent_id":"agt_1"`) {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
 }

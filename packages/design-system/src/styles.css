@@ -701,7 +701,9 @@
 
 .ds-status-completed .ds-status-dot,
 .ds-status-published .ds-status-dot,
-.ds-status-valid .ds-status-dot {
+.ds-status-valid .ds-status-dot,
+.ds-status-available .ds-status-dot,
+.ds-status-active .ds-status-dot {
   background: var(--ds-status-completed);
 }
 
@@ -712,6 +714,15 @@
 }
 
 .ds-status-canceled .ds-status-dot {
+  background: var(--ds-status-canceled);
+}
+
+.ds-status-proposed .ds-status-dot,
+.ds-status-deprecated .ds-status-dot {
+  background: var(--ds-status-running);
+}
+
+.ds-status-retired .ds-status-dot {
   background: var(--ds-status-canceled);
 }
 

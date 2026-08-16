@@ -7,11 +7,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,6 +33,24 @@ type Skill struct {
 	DeclaredVersion string `json:"declared_version"`
 	ContentDigest   string `json:"content_digest"`
 	Status          string `json:"status"`
+}
+
+type AssetUsage struct {
+	AgentID        string `json:"agent_id"`
+	AgentName      string `json:"agent_name"`
+	WorkspaceID    string `json:"workspace_id"`
+	ReferenceKind  string `json:"reference_kind"`
+	ReferenceIndex int    `json:"reference_index"`
+}
+
+type PluginWorkspace struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+}
+
+type PluginDetail struct {
+	Plugin
+	Workspaces []PluginWorkspace `json:"workspaces"`
 }
 
 type CreateSkillRequest struct {
@@ -66,17 +86,25 @@ type EnablePluginRequest struct {
 	WorkspaceID string `json:"workspace_id"`
 }
 
+// AssetStatusRequest carries the audit reason for an explicit catalog
+// lifecycle command. The target state is part of the route, not user input.
+type AssetStatusRequest struct {
+	Reason string `json:"reason"`
+}
+
 type Tool struct {
-	ID                 string `json:"id"`
-	ServerID           string `json:"server_id"`
-	ServerName         string `json:"server_name"`
-	ServerType         string `json:"server_type"`
-	FullyQualifiedName string `json:"fully_qualified_name"`
-	Version            string `json:"version"`
-	Effect             string `json:"effect"`
-	Idempotency        string `json:"idempotency"`
-	ContentDigest      string `json:"content_digest"`
-	Status             string `json:"status"`
+	ID                 string          `json:"id"`
+	ServerID           string          `json:"server_id"`
+	ServerName         string          `json:"server_name"`
+	ServerType         string          `json:"server_type"`
+	EndpointRef        string          `json:"endpoint_ref,omitempty"`
+	FullyQualifiedName string          `json:"fully_qualified_name"`
+	Version            string          `json:"version"`
+	Effect             string          `json:"effect"`
+	Idempotency        string          `json:"idempotency"`
+	ContentDigest      string          `json:"content_digest"`
+	Schema             json.RawMessage `json:"schema_json"`
+	Status             string          `json:"status"`
 }
 
 type CreateToolRequest struct {
@@ -109,7 +137,7 @@ func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, work
 		SELECT id, workspace_id, slug, display_name, description, source_type, source_ref,
 			declared_version, content_digest, status
 		FROM gantry.skills
-		WHERE organization_id=$1 AND ($2='' OR workspace_id=$2) AND status <> 'retired' AND (
+		WHERE organization_id=$1 AND ($2='' OR workspace_id=$2) AND (
 			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
 			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='workspace_agent_editor' AND rb.workspace_id=gantry.skills.workspace_id)
 		)
@@ -127,6 +155,35 @@ func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, work
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (s *Service) GetSkill(ctx context.Context, actor identity.Principal, skillID string) (Skill, error) {
+	var item Skill
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, workspace_id, slug, display_name, description, source_type, source_ref,
+			declared_version, content_digest, status
+		FROM gantry.skills
+		WHERE id=$1 AND organization_id=$2`, skillID, actor.OrganizationID).Scan(
+		&item.ID, &item.WorkspaceID, &item.Slug, &item.DisplayName, &item.Description,
+		&item.SourceType, &item.SourceRef, &item.DeclaredVersion, &item.ContentDigest, &item.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Skill{}, ErrNotFound
+	}
+	if err != nil {
+		return Skill{}, err
+	}
+	if err := s.authz.RequireWorkspace(ctx, actor, item.WorkspaceID); err != nil {
+		return Skill{}, err
+	}
+	return item, nil
+}
+
+func (s *Service) ListSkillUsage(ctx context.Context, actor identity.Principal, skillID string) ([]AssetUsage, error) {
+	skill, err := s.GetSkill(ctx, actor, skillID)
+	if err != nil {
+		return nil, err
+	}
+	return s.listUsage(ctx, actor, skillID, skill.WorkspaceID, "skills", "artifact_id")
 }
 
 func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, request CreateSkillRequest) (Skill, error) {
@@ -154,7 +211,7 @@ func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, req
 }
 
 func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal) ([]Plugin, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE organization_id=$1 AND status <> 'retired' ORDER BY display_name, version DESC, id`, actor.OrganizationID)
+	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE organization_id=$1 ORDER BY display_name, version DESC, id`, actor.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +225,50 @@ func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal) ([]
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (s *Service) GetPlugin(ctx context.Context, actor identity.Principal, pluginID string) (PluginDetail, error) {
+	var item Plugin
+	err := s.pool.QueryRow(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE id=$1 AND organization_id=$2`, pluginID, actor.OrganizationID).Scan(
+		&item.ID, &item.Slug, &item.DisplayName, &item.Description, &item.Version, &item.ContentDigest, &item.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PluginDetail{}, ErrNotFound
+	}
+	if err != nil {
+		return PluginDetail{}, err
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT w.id, w.display_name
+		FROM gantry.workspace_plugin_enablements e
+		JOIN gantry.workspaces w ON w.id=e.workspace_id
+		WHERE e.plugin_id=$1 AND w.organization_id=$2 AND (
+			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
+			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='workspace_agent_editor' AND rb.workspace_id=w.id)
+		)
+		ORDER BY w.display_name, w.id`, pluginID, actor.OrganizationID, actor.ID)
+	if err != nil {
+		return PluginDetail{}, err
+	}
+	defer rows.Close()
+	detail := PluginDetail{Plugin: item, Workspaces: make([]PluginWorkspace, 0)}
+	for rows.Next() {
+		var workspace PluginWorkspace
+		if err := rows.Scan(&workspace.ID, &workspace.DisplayName); err != nil {
+			return PluginDetail{}, err
+		}
+		detail.Workspaces = append(detail.Workspaces, workspace)
+	}
+	if err := rows.Err(); err != nil {
+		return PluginDetail{}, err
+	}
+	return detail, nil
+}
+
+func (s *Service) ListPluginUsage(ctx context.Context, actor identity.Principal, pluginID string) ([]AssetUsage, error) {
+	if _, err := s.GetPlugin(ctx, actor, pluginID); err != nil {
+		return nil, err
+	}
+	return s.listUsage(ctx, actor, pluginID, "", "plugins", "plugin_version_id")
 }
 
 func (s *Service) CreatePlugin(ctx context.Context, actor identity.Principal, request CreatePluginRequest) (Plugin, error) {
@@ -208,8 +309,148 @@ func (s *Service) EnablePlugin(ctx context.Context, actor identity.Principal, pl
 	return err
 }
 
+func (s *Service) ActivateSkill(ctx context.Context, actor identity.Principal, skillID, reason string) error {
+	return s.setSkillStatus(ctx, actor, skillID, "available", reason)
+}
+
+func (s *Service) DeprecateSkill(ctx context.Context, actor identity.Principal, skillID, reason string) error {
+	return s.setSkillStatus(ctx, actor, skillID, "deprecated", reason)
+}
+
+func (s *Service) RetireSkill(ctx context.Context, actor identity.Principal, skillID, reason string) error {
+	return s.setSkillStatus(ctx, actor, skillID, "retired", reason)
+}
+
+func (s *Service) setSkillStatus(ctx context.Context, actor identity.Principal, skillID, target, reason string) error {
+	var workspaceID string
+	if err := s.pool.QueryRow(ctx, `SELECT workspace_id FROM gantry.skills WHERE id=$1 AND organization_id=$2`, skillID, actor.OrganizationID).Scan(&workspaceID); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if err := s.authz.RequireWorkspace(ctx, actor, workspaceID); err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var current string
+	if err := tx.QueryRow(ctx, `SELECT status FROM gantry.skills WHERE id=$1 AND organization_id=$2 FOR UPDATE`, skillID, actor.OrganizationID).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if current == target {
+		return tx.Commit(ctx)
+	}
+	if !validSkillTransition(current, target) {
+		return ErrInvalidInput
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.skills SET status=$3 WHERE id=$1 AND organization_id=$2`, skillID, actor.OrganizationID, target); err != nil {
+		return err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, "skill", skillID, current, target, reason); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Service) ActivatePlugin(ctx context.Context, actor identity.Principal, pluginID, reason string) error {
+	return s.setPluginStatus(ctx, actor, pluginID, "active", reason)
+}
+
+func (s *Service) DeprecatePlugin(ctx context.Context, actor identity.Principal, pluginID, reason string) error {
+	return s.setPluginStatus(ctx, actor, pluginID, "deprecated", reason)
+}
+
+func (s *Service) RetirePlugin(ctx context.Context, actor identity.Principal, pluginID, reason string) error {
+	return s.setPluginStatus(ctx, actor, pluginID, "retired", reason)
+}
+
+func (s *Service) setPluginStatus(ctx context.Context, actor identity.Principal, pluginID, target, reason string) error {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return err
+	}
+	return s.setOrganizationAssetStatus(ctx, actor, "plugin", pluginID, target, reason, `SELECT status FROM gantry.plugins WHERE id=$1 AND organization_id=$2 FOR UPDATE`, `UPDATE gantry.plugins SET status=$3 WHERE id=$1 AND organization_id=$2`, validPluginTransition)
+}
+
+func (s *Service) ActivateTool(ctx context.Context, actor identity.Principal, toolID, reason string) error {
+	return s.setToolStatus(ctx, actor, toolID, "active", reason)
+}
+
+func (s *Service) DeprecateTool(ctx context.Context, actor identity.Principal, toolID, reason string) error {
+	return s.setToolStatus(ctx, actor, toolID, "deprecated", reason)
+}
+
+func (s *Service) RetireTool(ctx context.Context, actor identity.Principal, toolID, reason string) error {
+	return s.setToolStatus(ctx, actor, toolID, "retired", reason)
+}
+
+func (s *Service) setToolStatus(ctx context.Context, actor identity.Principal, toolID, target, reason string) error {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return err
+	}
+	return s.setOrganizationAssetStatus(ctx, actor, "tool_descriptor", toolID, target, reason, `SELECT d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id WHERE d.id=$1 AND s.organization_id=$2 FOR UPDATE`, `UPDATE gantry.tool_descriptors d SET status=$3 FROM gantry.tool_servers s WHERE d.id=$1 AND s.id=d.server_id AND s.organization_id=$2`, validToolTransition)
+}
+
+type statusTransition func(string, string) bool
+
+func (s *Service) setOrganizationAssetStatus(ctx context.Context, actor identity.Principal, resourceType, assetID, target, reason, selectSQL, updateSQL string, transition statusTransition) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var current string
+	if err := tx.QueryRow(ctx, selectSQL, assetID, actor.OrganizationID).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if current == target {
+		return tx.Commit(ctx)
+	}
+	if !transition(current, target) {
+		return ErrInvalidInput
+	}
+	if _, err := tx.Exec(ctx, updateSQL, assetID, actor.OrganizationID, target); err != nil {
+		return err
+	}
+	if err := appendAudit(ctx, tx, actor.OrganizationID, actor.ID, resourceType, assetID, current, target, reason); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func validSkillTransition(current, target string) bool {
+	return (current == "available" && (target == "deprecated" || target == "retired")) ||
+		(current == "deprecated" && (target == "available" || target == "retired"))
+}
+
+func validPluginTransition(current, target string) bool {
+	return (current == "active" && (target == "deprecated" || target == "retired")) ||
+		(current == "deprecated" && (target == "active" || target == "retired"))
+}
+
+func validToolTransition(current, target string) bool {
+	return (current == "proposed" && target == "active") ||
+		(current == "active" && (target == "deprecated" || target == "retired")) ||
+		(current == "deprecated" && (target == "active" || target == "retired"))
+}
+
+func appendAudit(ctx context.Context, tx pgx.Tx, organizationID, actorID, resourceType, resourceID, previous, next, reason string) error {
+	payload, err := json.Marshal(map[string]string{"previous_status": previous, "status": next, "reason": strings.TrimSpace(reason)})
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO gantry.audit_events (organization_id, actor_principal_id, resource_type, resource_id, event_type, payload) VALUES ($1,$2,$3,$4,'configuration_asset.status_changed',$5::jsonb)`, organizationID, actorID, resourceType, resourceID, string(payload))
+	return err
+}
+
 func (s *Service) ListTools(ctx context.Context, actor identity.Principal) ([]Tool, error) {
-	rows, err := s.pool.Query(ctx, `SELECT d.id, s.id, s.name, s.server_type, d.fully_qualified_name, d.version, d.effect, d.idempotency, d.content_digest, d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id WHERE s.organization_id=$1 AND s.status <> 'retired' AND d.status IN ('active','proposed') ORDER BY s.name, d.fully_qualified_name, d.version DESC`, actor.OrganizationID)
+	rows, err := s.pool.Query(ctx, `SELECT d.id, s.id, s.name, s.server_type, s.endpoint_ref, d.fully_qualified_name, d.version, d.effect, d.idempotency, d.content_digest, d.schema_json, d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id WHERE s.organization_id=$1 AND s.status <> 'retired' ORDER BY s.name, d.fully_qualified_name, d.version DESC`, actor.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +458,72 @@ func (s *Service) ListTools(ctx context.Context, actor identity.Principal) ([]To
 	items := make([]Tool, 0)
 	for rows.Next() {
 		var item Tool
-		if err := rows.Scan(&item.ID, &item.ServerID, &item.ServerName, &item.ServerType, &item.FullyQualifiedName, &item.Version, &item.Effect, &item.Idempotency, &item.ContentDigest, &item.Status); err != nil {
+		if err := rows.Scan(&item.ID, &item.ServerID, &item.ServerName, &item.ServerType, &item.EndpointRef, &item.FullyQualifiedName, &item.Version, &item.Effect, &item.Idempotency, &item.ContentDigest, &item.Schema, &item.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) GetTool(ctx context.Context, actor identity.Principal, toolID string) (Tool, error) {
+	var item Tool
+	err := s.pool.QueryRow(ctx, `
+		SELECT d.id, s.id, s.name, s.server_type, s.endpoint_ref, d.fully_qualified_name,
+			d.version, d.effect, d.idempotency, d.content_digest, d.schema_json, d.status
+		FROM gantry.tool_descriptors d
+		JOIN gantry.tool_servers s ON s.id=d.server_id
+		WHERE d.id=$1 AND s.organization_id=$2`, toolID, actor.OrganizationID).Scan(
+		&item.ID, &item.ServerID, &item.ServerName, &item.ServerType, &item.EndpointRef,
+		&item.FullyQualifiedName, &item.Version, &item.Effect, &item.Idempotency,
+		&item.ContentDigest, &item.Schema, &item.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Tool{}, ErrNotFound
+	}
+	if err != nil {
+		return Tool{}, err
+	}
+	return item, nil
+}
+
+func (s *Service) ListToolUsage(ctx context.Context, actor identity.Principal, toolID string) ([]AssetUsage, error) {
+	if _, err := s.GetTool(ctx, actor, toolID); err != nil {
+		return nil, err
+	}
+	return s.listUsage(ctx, actor, toolID, "", "tool_bindings", "descriptor_id")
+}
+
+func (s *Service) listUsage(ctx context.Context, actor identity.Principal, assetID, workspaceID, path, bindingField string) ([]AssetUsage, error) {
+	query := `
+		SELECT a.id, a.display_name, a.workspace_id, 'draft' AS reference_kind, d.revision AS reference_index
+		FROM gantry.agent_drafts d
+		JOIN gantry.agents a ON a.id=d.agent_id
+		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2)
+		  AND d.spec_json->'` + path + `' @> jsonb_build_array(jsonb_build_object('` + bindingField + `', $3::text))
+		  AND (
+			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
+			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
+		  )
+		UNION ALL
+		SELECT a.id, a.display_name, a.workspace_id, 'revision' AS reference_kind, v.version AS reference_index
+		FROM gantry.agent_versions v
+		JOIN gantry.agents a ON a.id=v.agent_id
+		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2)
+		  AND v.spec_json->'` + path + `' @> jsonb_build_array(jsonb_build_object('` + bindingField + `', $3::text))
+		  AND (
+			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
+			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
+		  )
+		ORDER BY display_name, reference_kind, reference_index DESC, id`
+	rows, err := s.pool.Query(ctx, query, actor.OrganizationID, workspaceID, assetID, actor.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]AssetUsage, 0)
+	for rows.Next() {
+		var item AssetUsage
+		if err := rows.Scan(&item.AgentID, &item.AgentName, &item.WorkspaceID, &item.ReferenceKind, &item.ReferenceIndex); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -249,7 +555,7 @@ func (s *Service) CreateTool(ctx context.Context, actor identity.Principal, requ
 	if err != nil {
 		return Tool{}, err
 	}
-	item := Tool{ID: newID("tool"), ServerID: serverID, ServerName: request.ServerName, ServerType: serverType, FullyQualifiedName: request.FullyQualifiedName, Version: request.Version, Effect: request.Effect, Idempotency: request.Idempotency, ContentDigest: request.ContentDigest, Status: "active"}
+	item := Tool{ID: newID("tool"), ServerID: serverID, ServerName: request.ServerName, ServerType: serverType, EndpointRef: strings.TrimSpace(request.EndpointRef), FullyQualifiedName: request.FullyQualifiedName, Version: request.Version, Effect: request.Effect, Idempotency: request.Idempotency, ContentDigest: request.ContentDigest, Schema: json.RawMessage(`{}`), Status: "active"}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tool_descriptors (id, server_id, fully_qualified_name, version, effect, idempotency, content_digest, status) VALUES ($1,$2,$3,$4,$5,$6,$7,'active')`, item.ID, serverID, item.FullyQualifiedName, item.Version, item.Effect, item.Idempotency, item.ContentDigest); err != nil {
 		return Tool{}, err
 	}

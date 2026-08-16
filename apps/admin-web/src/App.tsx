@@ -7,7 +7,7 @@ import { LoadingState } from './components/AsyncState';
 import { AgentsPage } from './features/agents/AgentsPage';
 import { AgentDetailPage } from './features/agents/AgentDetailPage';
 import { NewAgentPage } from './features/agents/NewAgentPage';
-import { PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
+import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -47,8 +47,11 @@ export default function App() {
         <Route path="agents/new" element={<NewAgentPage />} />
         <Route path="agents/:agentId" element={<AgentDetailPage />} />
         <Route path="skills" element={<SkillsPage />} />
+        <Route path="skills/:assetId" element={<AssetDetailPage kind="skills" />} />
         <Route path="plugins" element={<PluginsPage />} />
+        <Route path="plugins/:assetId" element={<AssetDetailPage kind="plugins" />} />
         <Route path="tools" element={<ToolsPage />} />
+        <Route path="tools/:assetId" element={<AssetDetailPage kind="tools" />} />
         <Route path="*" element={<AgentsPage />} />
       </Route>
     </Routes>

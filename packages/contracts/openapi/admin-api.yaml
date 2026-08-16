@@ -83,6 +83,28 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "422": {$ref: "#/components/responses/InvalidInput"}
+  /skills/{skill_id}:
+    get:
+      operationId: getSkill
+      summary: Inspect one imported Skill artifact
+      tags: [Skills]
+      parameters: [{name: skill_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Skill artifact, content: {application/json: {schema: {$ref: "#/components/schemas/Skill"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /skills/{skill_id}/usage:
+    get:
+      operationId: listSkillUsage
+      summary: List Agent drafts and revisions using a Skill artifact
+      tags: [Skills]
+      parameters: [{name: skill_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Skill usage, content: {application/json: {schema: {$ref: "#/components/schemas/AssetUsageList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /plugins:
     get:
       operationId: listPlugins
@@ -104,6 +126,28 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}:
+    get:
+      operationId: getPlugin
+      summary: Inspect a Plugin version and workspace enablement
+      tags: [Plugins]
+      parameters: [{name: plugin_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Plugin detail, content: {application/json: {schema: {$ref: "#/components/schemas/PluginDetail"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /plugins/{plugin_id}/usage:
+    get:
+      operationId: listPluginUsage
+      summary: List Agent drafts and revisions using a Plugin version
+      tags: [Plugins]
+      parameters: [{name: plugin_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Plugin usage, content: {application/json: {schema: {$ref: "#/components/schemas/AssetUsageList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /tools:
     get:
       operationId: listTools
@@ -125,6 +169,28 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "422": {$ref: "#/components/responses/InvalidInput"}
+  /tools/{tool_id}:
+    get:
+      operationId: getTool
+      summary: Inspect a Tool descriptor, server, and input schema
+      tags: [Tools]
+      parameters: [{name: tool_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Tool descriptor, content: {application/json: {schema: {$ref: "#/components/schemas/Tool"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /tools/{tool_id}/usage:
+    get:
+      operationId: listToolUsage
+      summary: List Agent drafts and revisions using a Tool descriptor
+      tags: [Tools]
+      parameters: [{name: tool_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Tool usage, content: {application/json: {schema: {$ref: "#/components/schemas/AssetUsageList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /plugins/{plugin_id}/enable:
     post:
       operationId: enablePluginForWorkspace
@@ -143,6 +209,145 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /skills/{skill_id}:activate:
+    post:
+      operationId: activateSkill
+      summary: Activate an imported Skill artifact
+      tags: [Skills]
+      parameters:
+        - name: skill_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Skill activated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /skills/{skill_id}:deprecate:
+    post:
+      operationId: deprecateSkill
+      summary: Deprecate an imported Skill artifact
+      tags: [Skills]
+      parameters: [{name: skill_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Skill deprecated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /skills/{skill_id}:retire:
+    post:
+      operationId: retireSkill
+      summary: Retire an imported Skill artifact
+      tags: [Skills]
+      parameters: [{name: skill_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Skill retired}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}:activate:
+    post:
+      operationId: activatePlugin
+      summary: Activate an installed Plugin version
+      tags: [Plugins]
+      parameters: [{name: plugin_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Plugin activated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}:deprecate:
+    post:
+      operationId: deprecatePlugin
+      summary: Deprecate an installed Plugin version
+      tags: [Plugins]
+      parameters: [{name: plugin_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Plugin deprecated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}:retire:
+    post:
+      operationId: retirePlugin
+      summary: Retire an installed Plugin version
+      tags: [Plugins]
+      parameters: [{name: plugin_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Plugin retired}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /tools/{tool_id}:activate:
+    post:
+      operationId: activateTool
+      summary: Activate a proposed Tool descriptor
+      tags: [Tools]
+      parameters: [{name: tool_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Tool activated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /tools/{tool_id}:deprecate:
+    post:
+      operationId: deprecateTool
+      summary: Deprecate a Tool descriptor
+      tags: [Tools]
+      parameters: [{name: tool_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Tool deprecated}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /tools/{tool_id}:retire:
+    post:
+      operationId: retireTool
+      summary: Retire a Tool descriptor
+      tags: [Tools]
+      parameters: [{name: tool_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/AssetStatusRequest"}}}
+      responses:
+        "204": {description: Tool retired}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
   /agents/{agent_id}:
     get:
       operationId: getAgent
@@ -401,6 +606,21 @@ components:
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/Skill"}}
         page_info: {$ref: "#/components/schemas/PageInfo"}
+    AssetUsage:
+      type: object
+      required: [agent_id, agent_name, workspace_id, reference_kind, reference_index]
+      properties:
+        agent_id: {type: string}
+        agent_name: {type: string}
+        workspace_id: {type: string}
+        reference_kind: {type: string, enum: [draft, revision]}
+        reference_index: {type: integer}
+    AssetUsageList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AssetUsage"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
     RegisterSkillRequest:
       type: object
       required: [workspace_id, slug, display_name, source_type, source_ref, content_digest]
@@ -430,6 +650,19 @@ components:
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/Plugin"}}
         page_info: {$ref: "#/components/schemas/PageInfo"}
+    PluginWorkspace:
+      type: object
+      required: [id, display_name]
+      properties:
+        id: {type: string}
+        display_name: {type: string}
+    PluginDetail:
+      allOf:
+        - $ref: "#/components/schemas/Plugin"
+        - type: object
+          required: [workspaces]
+          properties:
+            workspaces: {type: array, items: {$ref: "#/components/schemas/PluginWorkspace"}}
     RegisterPluginRequest:
       type: object
       required: [slug, display_name, version, content_digest]
@@ -444,19 +677,26 @@ components:
       required: [workspace_id]
       properties:
         workspace_id: {type: string}
+    AssetStatusRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason: {type: string, maxLength: 4000}
     Tool:
       type: object
-      required: [id, server_id, server_name, server_type, fully_qualified_name, version, effect, idempotency, content_digest, status]
+      required: [id, server_id, server_name, server_type, endpoint_ref, fully_qualified_name, version, effect, idempotency, content_digest, schema_json, status]
       properties:
         id: {type: string}
         server_id: {type: string}
         server_name: {type: string}
         server_type: {type: string, enum: [builtin, mcp, cli]}
+        endpoint_ref: {type: string}
         fully_qualified_name: {type: string}
         version: {type: string}
         effect: {type: string, enum: [read, write, external_side_effect, administrative]}
         idempotency: {type: string, enum: [read_only, idempotent, compensatable, non_repeatable]}
         content_digest: {type: string}
+        schema_json: {type: object}
         status: {type: string, enum: [active, proposed, deprecated, retired]}
     ToolList:
       type: object

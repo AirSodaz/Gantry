@@ -11,6 +11,8 @@ export type DiffEntry = Components['schemas']['DiffEntry'];
 export type Skill = Components['schemas']['Skill'];
 export type Plugin = Components['schemas']['Plugin'];
 export type Tool = Components['schemas']['Tool'];
+export type AssetUsage = Components['schemas']['AssetUsage'];
+export type PluginDetail = Components['schemas']['PluginDetail'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';
