@@ -46,6 +46,8 @@ export type ModelProvider = Components['schemas']['ModelProvider'];
 export type ProviderRoute = Components['schemas']['ProviderRoute'];
 export type RunnerPool = Components['schemas']['RunnerPool'];
 export type Runner = Components['schemas']['Runner'];
+export type CredentialReference = Components['schemas']['CredentialReference'];
+export type DataClassification = Components['schemas']['DataClassification'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';

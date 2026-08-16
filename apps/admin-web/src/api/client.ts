@@ -1,4 +1,4 @@
-import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, CreatePolicyInput, EvaluationCase, EvaluationRun, EvaluationSuite, EvaluationSuiteVersion, NamedAgentDraft, Plugin, PluginDetail, Policy, PolicyBinding, PolicyDraft, PolicySimulation, PolicyVersion, Skill, Tool, Workspace, Integration, IntegrationClient, AgentPublication, WebhookEndpoint, WebhookDelivery, ModelProvider, ProviderRoute, RunnerPool, Runner } from './types';
+import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, CreatePolicyInput, EvaluationCase, EvaluationRun, EvaluationSuite, EvaluationSuiteVersion, NamedAgentDraft, Plugin, PluginDetail, Policy, PolicyBinding, PolicyDraft, PolicySimulation, PolicyVersion, Skill, Tool, Workspace, Integration, IntegrationClient, AgentPublication, WebhookEndpoint, WebhookDelivery, ModelProvider, ProviderRoute, RunnerPool, Runner, CredentialReference, DataClassification } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -115,6 +115,11 @@ export class AdminApi {
   listRunners(poolId: string) { return this.request<{ items: Runner[] }>(`/platform/runner-pools/${encodeURIComponent(poolId)}/runners`); }
   drainRunnerPool(poolId: string) { return this.request<RunnerPool>(`/platform/runner-pools/${encodeURIComponent(poolId)}:drain`, { method: 'POST', body: '{}' }); }
   quarantineRunnerPool(poolId: string) { return this.request<RunnerPool>(`/platform/runner-pools/${encodeURIComponent(poolId)}:quarantine`, { method: 'POST', body: '{}' }); }
+  listPlatformCredentials() { return this.request<{ items: CredentialReference[] }>('/platform/credentials'); }
+  rotatePlatformCredential(id: string) { return this.request<CredentialReference>(`/platform/credentials/${encodeURIComponent(id)}:rotate`, { method: 'POST', body: '{}' }); }
+  revokePlatformCredential(id: string) { return this.request<CredentialReference>(`/platform/credentials/${encodeURIComponent(id)}:revoke`, { method: 'POST', body: '{}' }); }
+  listDataClassifications() { return this.request<{ items: DataClassification[] }>('/platform/data-classifications'); }
+  createDataClassification(input: { label: string; handling: DataClassification['handling']; retention_class: string; allowed_provider_ids: string[]; allowed_tool_classes: string[] }) { return this.request<DataClassification>('/platform/data-classifications', { method: 'POST', body: JSON.stringify(input) }); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

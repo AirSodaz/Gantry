@@ -161,6 +161,11 @@ type platformService interface {
 	CreateRunnerPool(context.Context, identity.Principal, adminplatform.CreateRunnerPoolRequest) (adminplatform.RunnerPool, error)
 	ListRunners(context.Context, identity.Principal, string) ([]adminplatform.Runner, error)
 	SetPoolState(context.Context, identity.Principal, string, string) (adminplatform.RunnerPool, error)
+	ListCredentials(context.Context, identity.Principal) ([]adminplatform.CredentialReference, error)
+	RotateCredential(context.Context, identity.Principal, string) (adminplatform.CredentialReference, error)
+	RevokeCredential(context.Context, identity.Principal, string) (adminplatform.CredentialReference, error)
+	ListClassifications(context.Context, identity.Principal) ([]adminplatform.DataClassification, error)
+	CreateClassification(context.Context, identity.Principal, adminplatform.CreateDataClassificationRequest) (adminplatform.DataClassification, error)
 }
 
 type Handler struct {
@@ -303,6 +308,10 @@ func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service 
 		mux.Handle("POST /platform/runner-pools", h.withActor(h.createRunnerPool))
 		mux.Handle("GET /platform/runner-pools/{poolID}/runners", h.withActor(h.listRunners))
 		mux.Handle("POST /platform/runner-pools/{poolID}", h.withActor(h.runnerPoolCommand))
+		mux.Handle("GET /platform/credentials", h.withActor(h.listPlatformCredentials))
+		mux.Handle("POST /platform/credentials/{credentialID}", h.withActor(h.platformCredentialCommand))
+		mux.Handle("GET /platform/data-classifications", h.withActor(h.listDataClassifications))
+		mux.Handle("POST /platform/data-classifications", h.withActor(h.createDataClassification))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)

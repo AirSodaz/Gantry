@@ -670,3 +670,32 @@ CREATE TABLE IF NOT EXISTS gantry.platform_runners (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS platform_runners_pool_idx ON gantry.platform_runners (pool_id, state, id);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_credential_references (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  target_service text NOT NULL,
+  state text NOT NULL CHECK (state IN ('active', 'rotating', 'expired', 'revoked', 'disabled')),
+  classification text NOT NULL,
+  allowed_modes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  secret_version text,
+  expires_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS platform_credential_references_org_idx ON gantry.platform_credential_references (organization_id, state, target_service);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_data_classifications (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  label text NOT NULL,
+  handling text NOT NULL CHECK (handling IN ('public', 'internal', 'confidential', 'restricted')),
+  retention_class text NOT NULL,
+  allowed_provider_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+  allowed_tool_classes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  etag bigint NOT NULL DEFAULT 1 CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, label)
+);
+CREATE INDEX IF NOT EXISTS platform_data_classifications_org_idx ON gantry.platform_data_classifications (organization_id, label);

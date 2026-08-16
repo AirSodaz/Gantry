@@ -1219,6 +1219,38 @@ paths:
       tags: [Platform]
       parameters: [{name: pool_id, in: path, required: true, schema: {type: string}}]
       responses: {"200": {description: Quarantined pool, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerPool"}}}}}
+  /platform/credentials:
+    get:
+      operationId: listPlatformCredentials
+      summary: List non-secret credential references
+      tags: [Platform]
+      responses: {"200": {description: Credential references, content: {application/json: {schema: {$ref: "#/components/schemas/CredentialReferenceList"}}}}}
+  /platform/credentials/{credential_id}:rotate:
+    post:
+      operationId: rotatePlatformCredential
+      summary: Start broker-owned credential rotation
+      tags: [Platform]
+      parameters: [{name: credential_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Credential reference, content: {application/json: {schema: {$ref: "#/components/schemas/CredentialReference"}}}}}
+  /platform/credentials/{credential_id}:revoke:
+    post:
+      operationId: revokePlatformCredential
+      summary: Revoke a credential reference
+      tags: [Platform]
+      parameters: [{name: credential_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Credential reference, content: {application/json: {schema: {$ref: "#/components/schemas/CredentialReference"}}}}}
+  /platform/data-classifications:
+    get:
+      operationId: listDataClassifications
+      summary: List data classifications
+      tags: [Platform]
+      responses: {"200": {description: Data classifications, content: {application/json: {schema: {$ref: "#/components/schemas/DataClassificationList"}}}}}
+    post:
+      operationId: createDataClassification
+      summary: Create a data classification definition
+      tags: [Platform]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateDataClassificationRequest"}}}}
+      responses: {"201": {description: Data classification, content: {application/json: {schema: {$ref: "#/components/schemas/DataClassification"}}}}}
 
 components:
   securitySchemes:
@@ -2351,3 +2383,46 @@ components:
       required: [items]
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/Runner"}}
+    CredentialReference:
+      type: object
+      required: [id, organization_id, target_service, state, classification, allowed_modes]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        target_service: {type: string}
+        state: {type: string, enum: [active, rotating, expired, revoked, disabled]}
+        classification: {type: string}
+        allowed_modes: {type: array, items: {type: string}}
+        secret_version: {type: string, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+    CredentialReferenceList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/CredentialReference"}}
+    DataClassification:
+      type: object
+      required: [id, organization_id, label, handling, retention_class, allowed_provider_ids, allowed_tool_classes, etag]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        label: {type: string}
+        handling: {type: string, enum: [public, internal, confidential, restricted]}
+        retention_class: {type: string}
+        allowed_provider_ids: {type: array, items: {type: string}}
+        allowed_tool_classes: {type: array, items: {type: string}}
+        etag: {type: string}
+    DataClassificationList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/DataClassification"}}
+    CreateDataClassificationRequest:
+      type: object
+      required: [label, handling, retention_class, allowed_provider_ids, allowed_tool_classes]
+      properties:
+        label: {type: string}
+        handling: {type: string, enum: [public, internal, confidential, restricted]}
+        retention_class: {type: string}
+        allowed_provider_ids: {type: array, items: {type: string}}
+        allowed_tool_classes: {type: array, items: {type: string}}

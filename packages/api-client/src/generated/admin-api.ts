@@ -1362,6 +1362,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List non-secret credential references */
+        get: operations["listPlatformCredentials"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/credentials/{credential_id}:rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start broker-owned credential rotation */
+        post: operations["rotatePlatformCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/credentials/{credential_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a credential reference */
+        post: operations["revokePlatformCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/data-classifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List data classifications */
+        get: operations["listDataClassifications"];
+        put?: never;
+        /** Create a data classification definition */
+        post: operations["createDataClassification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2387,6 +2456,43 @@ export interface components {
         };
         RunnerList: {
             items: components["schemas"]["Runner"][];
+        };
+        CredentialReference: {
+            id: string;
+            organization_id: string;
+            target_service: string;
+            /** @enum {string} */
+            state: "active" | "rotating" | "expired" | "revoked" | "disabled";
+            classification: string;
+            allowed_modes: string[];
+            secret_version?: string | null;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        CredentialReferenceList: {
+            items: components["schemas"]["CredentialReference"][];
+        };
+        DataClassification: {
+            id: string;
+            organization_id: string;
+            label: string;
+            /** @enum {string} */
+            handling: "public" | "internal" | "confidential" | "restricted";
+            retention_class: string;
+            allowed_provider_ids: string[];
+            allowed_tool_classes: string[];
+            etag: string;
+        };
+        DataClassificationList: {
+            items: components["schemas"]["DataClassification"][];
+        };
+        CreateDataClassificationRequest: {
+            label: string;
+            /** @enum {string} */
+            handling: "public" | "internal" | "confidential" | "restricted";
+            retention_class: string;
+            allowed_provider_ids: string[];
+            allowed_tool_classes: string[];
         };
     };
     responses: {
@@ -5134,6 +5240,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    listPlatformCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential references */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReferenceList"];
+                };
+            };
+        };
+    };
+    rotatePlatformCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReference"];
+                };
+            };
+        };
+    };
+    revokePlatformCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReference"];
+                };
+            };
+        };
+    };
+    listDataClassifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Data classifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataClassificationList"];
+                };
+            };
+        };
+    };
+    createDataClassification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDataClassificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Data classification */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataClassification"];
                 };
             };
         };

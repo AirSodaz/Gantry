@@ -234,6 +234,107 @@ func (s *Service) SetPoolState(ctx context.Context, actor identity.Principal, po
 	return item, nil
 }
 
+func (s *Service) ListCredentials(ctx context.Context, actor identity.Principal) ([]CredentialReference, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id,organization_id,target_service,state,classification,allowed_modes,secret_version,expires_at FROM gantry.platform_credential_references WHERE organization_id=$1 ORDER BY target_service,id`, actor.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]CredentialReference, 0)
+	for rows.Next() {
+		var item CredentialReference
+		var modes []byte
+		var expires *time.Time
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.TargetService, &item.State, &item.Classification, &modes, &item.SecretVersion, &expires); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(modes, &item.AllowedModes)
+		if item.AllowedModes == nil {
+			item.AllowedModes = []string{}
+		}
+		if expires != nil {
+			value := expires.UTC().Format(time.RFC3339)
+			item.ExpiresAt = &value
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) RotateCredential(ctx context.Context, actor identity.Principal, id string) (CredentialReference, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return CredentialReference{}, err
+	}
+	return s.updateCredentialState(ctx, actor, id, "rotating")
+}
+
+func (s *Service) RevokeCredential(ctx context.Context, actor identity.Principal, id string) (CredentialReference, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return CredentialReference{}, err
+	}
+	return s.updateCredentialState(ctx, actor, id, "revoked")
+}
+
+func (s *Service) updateCredentialState(ctx context.Context, actor identity.Principal, id, state string) (CredentialReference, error) {
+	var item CredentialReference
+	var modes []byte
+	var expires *time.Time
+	err := s.pool.QueryRow(ctx, `UPDATE gantry.platform_credential_references SET state=$3,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING id,organization_id,target_service,state,classification,allowed_modes,secret_version,expires_at`, id, actor.OrganizationID, state).Scan(&item.ID, &item.OrganizationID, &item.TargetService, &item.State, &item.Classification, &modes, &item.SecretVersion, &expires)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return CredentialReference{}, ErrNotFound
+	}
+	if err != nil {
+		return CredentialReference{}, err
+	}
+	_ = json.Unmarshal(modes, &item.AllowedModes)
+	if expires != nil {
+		value := expires.UTC().Format(time.RFC3339)
+		item.ExpiresAt = &value
+	}
+	return item, nil
+}
+
+func (s *Service) ListClassifications(ctx context.Context, actor identity.Principal) ([]DataClassification, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id,organization_id,label,handling,retention_class,allowed_provider_ids,allowed_tool_classes,etag::text FROM gantry.platform_data_classifications WHERE organization_id=$1 ORDER BY label,id`, actor.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]DataClassification, 0)
+	for rows.Next() {
+		var item DataClassification
+		var providers, tools []byte
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Label, &item.Handling, &item.RetentionClass, &providers, &tools, &item.ETag); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(providers, &item.AllowedProviderIDs)
+		_ = json.Unmarshal(tools, &item.AllowedToolClasses)
+		if item.AllowedProviderIDs == nil {
+			item.AllowedProviderIDs = []string{}
+		}
+		if item.AllowedToolClasses == nil {
+			item.AllowedToolClasses = []string{}
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) CreateClassification(ctx context.Context, actor identity.Principal, req CreateDataClassificationRequest) (DataClassification, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return DataClassification{}, err
+	}
+	req.Label, req.RetentionClass = strings.TrimSpace(req.Label), strings.TrimSpace(req.RetentionClass)
+	if req.Label == "" || req.RetentionClass == "" || !validHandling(req.Handling) {
+		return DataClassification{}, ErrInvalidInput
+	}
+	providers, _ := json.Marshal(req.AllowedProviderIDs)
+	tools, _ := json.Marshal(req.AllowedToolClasses)
+	item := DataClassification{ID: newID("class"), OrganizationID: actor.OrganizationID, Label: req.Label, Handling: req.Handling, RetentionClass: req.RetentionClass, AllowedProviderIDs: req.AllowedProviderIDs, AllowedToolClasses: req.AllowedToolClasses, ETag: "1"}
+	_, err := s.pool.Exec(ctx, `INSERT INTO gantry.platform_data_classifications(id,organization_id,label,handling,retention_class,allowed_provider_ids,allowed_tool_classes,etag) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,1)`, item.ID, item.OrganizationID, item.Label, item.Handling, item.RetentionClass, string(providers), string(tools))
+	return item, err
+}
+
 func (s *Service) providerVisible(ctx context.Context, actor identity.Principal, providerID string) error {
 	var ok bool
 	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gantry.platform_model_providers WHERE id=$1 AND organization_id=$2)`, providerID, actor.OrganizationID).Scan(&ok)
@@ -246,6 +347,9 @@ func (s *Service) providerVisible(ctx context.Context, actor identity.Principal,
 	return nil
 }
 func validRouteState(v string) bool { return v == "active" || v == "degraded" || v == "disabled" }
+func validHandling(v string) bool {
+	return v == "public" || v == "internal" || v == "confidential" || v == "restricted"
+}
 func newID(prefix string) string {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
