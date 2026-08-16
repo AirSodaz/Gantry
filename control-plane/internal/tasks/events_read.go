@@ -53,10 +53,11 @@ func (s *Service) Events(ctx context.Context, actor identity.Principal, taskID s
 	if err != nil {
 		return EventPage{}, err
 	}
-	page.Runs, err = s.ListRuns(ctx, actor, taskID, 100)
+	runs, err := s.ListRuns(ctx, actor, taskID, nil, 100)
 	if err != nil {
 		return EventPage{}, err
 	}
+	page.Runs = runs.Items
 	if s.approvals != nil {
 		page.Approvals, err = s.approvals.ListTask(ctx, actor, taskID, 100)
 		if err != nil {

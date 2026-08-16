@@ -51,7 +51,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 		afterCreatedAt, afterID = &after.CreatedAt, after.ID
 	}
 	pageLimit := boundedLimit(limit)
-	rows, err := s.pool.Query(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) AND ($6::timestamptz IS NULL OR t.created_at < $6 OR (t.created_at = $6 AND t.id < $7)) ORDER BY t.created_at DESC, t.id DESC LIMIT $8`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, afterCreatedAt, afterID, pageLimit+1)
+	rows, err := s.pool.Query(ctx, `SELECT t.id, t.requester_principal_id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at, COALESCE((SELECT tm.content FROM gantry.task_messages tm WHERE tm.task_id=t.id AND tm.role='requester' ORDER BY tm.task_sequence, tm.created_at, tm.id LIMIT 1), ''), GREATEST(t.created_at, COALESCE((SELECT MAX(re.created_at) FROM gantry.run_events re JOIN gantry.runs history ON history.id=re.run_id WHERE history.task_id=t.id), t.created_at), COALESCE((SELECT MAX(ar.created_at) FROM gantry.artifacts ar WHERE ar.task_id=t.id), t.created_at)) FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) AND ($6::timestamptz IS NULL OR t.created_at < $6 OR (t.created_at = $6 AND t.id < $7)) ORDER BY t.created_at DESC, t.id DESC LIMIT $8`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, afterCreatedAt, afterID, pageLimit+1)
 	if err != nil {
 		return TaskPage{}, err
 	}
@@ -59,10 +59,11 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 	items := make([]Task, 0)
 	for rows.Next() {
 		var task Task
-		if err := rows.Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt); err != nil {
+		if err := rows.Scan(&task.ID, &task.RequesterID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt, &task.Title, &task.UpdatedAt); err != nil {
 			return TaskPage{}, err
 		}
 		task.Status = publicStatus(task.Status)
+		task.RequesterAction = requesterAction(task.Status)
 		task.CurrentRun.Status = publicStatus(task.CurrentRun.Status)
 		items = append(items, task)
 		if s.store != nil {
@@ -100,22 +101,38 @@ func (s *Service) Get(ctx context.Context, actor identity.Principal, taskID stri
 	return task, nil
 }
 
-func (s *Service) ListRuns(ctx context.Context, actor identity.Principal, taskID string, limit int) ([]RunAttempt, error) {
-	rows, err := s.pool.Query(ctx, `SELECT r.id, r.attempt_number, r.status, r.status_reason, r.created_at, r.started_at, r.completed_at FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.task_id=$1 AND t.requester_principal_id=$2 ORDER BY r.attempt_number DESC LIMIT $3`, taskID, actor.ID, boundedLimit(limit))
+func (s *Service) ListRuns(ctx context.Context, actor identity.Principal, taskID string, after *RunCursor, limit int) (RunPage, error) {
+	if _, err := loadTask(ctx, s.pool, actor, taskID); err != nil {
+		return RunPage{}, err
+	}
+	var afterAttempt *int
+	var afterID string
+	if after != nil {
+		afterAttempt, afterID = &after.Attempt, after.ID
+	}
+	pageLimit := boundedLimit(limit)
+	rows, err := s.pool.Query(ctx, `SELECT r.id, r.attempt_number, r.status, r.status_reason, r.created_at, r.started_at, r.completed_at FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.task_id=$1 AND t.requester_principal_id=$2 AND ($3::integer IS NULL OR r.attempt_number < $3 OR (r.attempt_number=$3 AND r.id<$4)) ORDER BY r.attempt_number DESC, r.id DESC LIMIT $5`, taskID, actor.ID, afterAttempt, afterID, pageLimit+1)
 	if err != nil {
-		return nil, err
+		return RunPage{}, err
 	}
 	defer rows.Close()
 	items := make([]RunAttempt, 0)
 	for rows.Next() {
 		var item RunAttempt
 		if err := rows.Scan(&item.ID, &item.Attempt, &item.Status, &item.Reason, &item.CreatedAt, &item.StartedAt, &item.CompletedAt); err != nil {
-			return nil, err
+			return RunPage{}, err
 		}
 		item.Status = publicStatus(item.Status)
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return RunPage{}, err
+	}
+	page := RunPage{Items: items, HasMore: len(items) > pageLimit}
+	if page.HasMore {
+		page.Items = page.Items[:pageLimit]
+	}
+	return page, nil
 }
 
 func (s *Service) listMessages(ctx context.Context, actor identity.Principal, taskID string) ([]Message, error) {
@@ -153,7 +170,7 @@ func loadTask(ctx context.Context, querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, actor identity.Principal, taskID string) (Task, error) {
 	var task Task
-	err := querier.QueryRow(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2`, taskID, actor.ID).Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt)
+	err := querier.QueryRow(ctx, `SELECT t.id, t.requester_principal_id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at, COALESCE((SELECT tm.content FROM gantry.task_messages tm WHERE tm.task_id=t.id AND tm.role='requester' ORDER BY tm.task_sequence, tm.created_at, tm.id LIMIT 1), ''), GREATEST(t.created_at, COALESCE((SELECT MAX(re.created_at) FROM gantry.run_events re JOIN gantry.runs history ON history.id=re.run_id WHERE history.task_id=t.id), t.created_at), COALESCE((SELECT MAX(ar.created_at) FROM gantry.artifacts ar WHERE ar.task_id=t.id), t.created_at)) FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2`, taskID, actor.ID).Scan(&task.ID, &task.RequesterID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt, &task.Title, &task.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -161,6 +178,18 @@ func loadTask(ctx context.Context, querier interface {
 		return Task{}, err
 	}
 	task.Status = publicStatus(task.Status)
+	task.RequesterAction = requesterAction(task.Status)
 	task.CurrentRun.Status = publicStatus(task.CurrentRun.Status)
 	return task, nil
+}
+
+func requesterAction(status string) string {
+	switch status {
+	case "awaiting_approval":
+		return "approval"
+	case "awaiting_requester_input":
+		return "input"
+	default:
+		return "none"
+	}
 }

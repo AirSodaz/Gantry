@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Send, Timer, XCircle } from 'lucide-react';
 import { Button, StatusMark } from '@gantry/design-system';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import type { Approval, Artifact, TaskEventFrame as ApiTaskEventFrame, TaskEventSnapshot } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
@@ -76,9 +76,11 @@ export function TaskPage() {
     },
   });
   const task = taskQuery.data;
-  const runsQuery = useQuery({
+  const runsQuery = useInfiniteQuery({
     queryKey: ['task-runs', taskId],
-    queryFn: () => api.listTaskRuns(taskId),
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => api.listTaskRuns(taskId, pageParam),
+    getNextPageParam: (page) => page?.page_info?.has_more ? page.page_info.next_cursor ?? undefined : undefined,
     enabled: Boolean(taskId),
   });
   const approvalsQuery = useQuery({
@@ -247,7 +249,7 @@ export function TaskPage() {
             const result = await api.requestArtifactDownload(artifact.id);
             if (result.download_url) window.open(result.download_url, '_blank', 'noopener,noreferrer');
           }} />)}</div> : null}
-          {runsQuery.data?.items.length ? <section className="run-attempts"><h2>Run attempts</h2>{runsQuery.data.items.map((run) => <div className="run-attempt-row" key={run.id}><span>Attempt {run.attempt_number}</span><StatusMark status={run.status} /><span>{run.status_reason || formatDate(run.completed_at ?? run.started_at ?? run.created_at)}</span></div>)}</section> : null}
+          {runsQuery.data?.pages.some((page) => page?.items?.length) ? <section className="run-attempts"><h2>Run attempts</h2>{runsQuery.data.pages.flatMap((page) => page?.items ?? []).map((run) => <div className="run-attempt-row" key={run.id}><span>Attempt {run.attempt_number}</span><StatusMark status={run.status} /><span>{run.status_reason || formatDate(run.completed_at ?? run.started_at ?? run.created_at)}</span></div>)}{runsQuery.hasNextPage ? <Button variant="quiet" disabled={runsQuery.isFetchingNextPage} onClick={() => void runsQuery.fetchNextPage()}>{runsQuery.isFetchingNextPage ? 'Loading attempts...' : 'Load more run attempts'}</Button> : null}</section> : null}
         </section>
         <aside className="run-inspector">
           <span className="context-kicker">Run inspector</span>
@@ -305,7 +307,7 @@ function applySnapshot(snapshot: SnapshotFrame, taskId: string, queryClient: Ret
 	outputMessageIDRef.current = null;
   setOutput('');
   queryClient.setQueryData(['task', taskId], snapshot.task);
-  queryClient.setQueryData(['task-runs', taskId], { items: snapshot.runs });
+  queryClient.setQueryData(['task-runs', taskId], { pages: [{ items: snapshot.runs, page_info: { has_more: false } }], pageParams: [''] });
   queryClient.setQueryData(['task-approvals', taskId], { items: snapshot.approvals });
 }
 

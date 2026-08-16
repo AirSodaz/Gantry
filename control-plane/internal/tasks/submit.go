@@ -81,7 +81,8 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if err := tx.Commit(ctx); err != nil {
 		return Task{}, false, err
 	}
-	return Task{ID: taskID, AgentID: request.AgentID, AgentDisplayName: displayName, Status: "queued", CurrentRun: Run{ID: runID, Status: "queued"}, ConversationRevision: 1, CreatedAt: time.Now().UTC()}, false, nil
+	now := time.Now().UTC()
+	return Task{ID: taskID, RequesterID: actor.ID, AgentID: request.AgentID, AgentDisplayName: displayName, Title: strings.TrimSpace(request.Message), Status: "queued", RequesterAction: "none", CurrentRun: Run{ID: runID, Status: "queued"}, ConversationRevision: 1, CreatedAt: now, UpdatedAt: now}, false, nil
 }
 
 func resolveProductionAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, deploymentID, revisionID, displayName string, err error) {

@@ -113,6 +113,22 @@ describe('TaskPage', () => {
 		await waitFor(() => expect(screen.getByText('Live output').closest('.run-output')).not.toHaveTextContent('Provisional reply'));
 	});
 
+  it('loads additional compact run attempts from the next cursor', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'completed', current_run: { id: 'run_2', status: 'completed' } });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.listTaskRuns
+      .mockResolvedValueOnce({ items: [{ id: 'run_2', attempt_number: 2, status: 'completed', created_at: '2026-08-14T08:02:00Z' }], page_info: { has_more: true, next_cursor: 'run_cursor_1' } })
+      .mockResolvedValueOnce({ items: [{ id: 'run_1', attempt_number: 1, status: 'failed', created_at: '2026-08-14T08:00:00Z' }], page_info: { has_more: false } });
+    const user = userEvent.setup();
+    renderTask();
+
+    expect(await screen.findByText('Attempt 2')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Load more run attempts' }));
+
+    await waitFor(() => expect(mocked.api.listTaskRuns).toHaveBeenLastCalledWith('tsk_1', 'run_cursor_1'));
+    expect(await screen.findByText('Attempt 1')).toBeInTheDocument();
+  });
+
   it('replaces the task projection and cursor from a stream snapshot', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
     mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });

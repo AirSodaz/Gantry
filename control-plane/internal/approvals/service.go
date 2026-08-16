@@ -204,16 +204,20 @@ func (s *Service) Propose(ctx context.Context, tx pgx.Tx, action policy.Action, 
 	return Request{ID: approvalID, RunID: canonical.RunID, ActionID: actionID, ActionDigest: digest, Revision: 1, ToolName: canonical.ToolName, Operation: canonical.Operation, Target: canonical.Target, Effect: canonical.Effect, ActionPreview: previewMap(canonical), RiskClass: riskClass(canonical.Effect), Status: "pending", RequestedBy: canonical.RequestedBy, AssignedTo: canonical.RequestedBy, ExpiresAt: expiresAt}, evaluation, nil
 }
 
-func (s *Service) List(ctx context.Context, actor identity.Principal, after *Cursor, limit int) (Page, error) {
+func (s *Service) List(ctx context.Context, actor identity.Principal, state string, after *Cursor, limit int) (Page, error) {
 	if limit < 1 || limit > 100 {
 		limit = 25
+	}
+	state = strings.TrimSpace(state)
+	if state == "" {
+		state = "pending"
 	}
 	var afterCreatedAt *time.Time
 	var afterID string
 	if after != nil {
 		afterCreatedAt, afterID = &after.CreatedAt, after.ID
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) AND ($2::timestamptz IS NULL OR ar.created_at > $2 OR (ar.created_at = $2 AND ar.id > $3)) ORDER BY ar.created_at, ar.id LIMIT $4`, actor.ID, afterCreatedAt, afterID, limit+1)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.status=$2 AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) AND ($3::timestamptz IS NULL OR ar.created_at > $3 OR (ar.created_at = $3 AND ar.id > $4)) ORDER BY ar.created_at, ar.id LIMIT $5`, actor.ID, state, afterCreatedAt, afterID, limit+1)
 	if err != nil {
 		return Page{}, err
 	}

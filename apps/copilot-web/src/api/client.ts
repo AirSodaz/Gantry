@@ -1,4 +1,4 @@
-import type { AgentList, AppendTaskMessageInput, Approval, ApprovalList, Artifact, ArtifactDownloadGrant, ArtifactList, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task, TaskList } from './types';
+import type { AgentList, AppendTaskMessageInput, Approval, ApprovalList, Artifact, ArtifactDownloadGrant, ArtifactList, Attachment, CreateAttachmentInput, EventsTicket, RunAttemptList, RunStatus, SubmitTaskInput, Task, TaskList } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
@@ -37,9 +37,10 @@ export class CopilotApi {
     return this.request<TaskList>(`/tasks?${params.toString()}`);
   }
 
-  listApprovals(cursor = '') {
+  listApprovals(cursor = '', state = '') {
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
+    if (state) params.set('state', state);
     return this.request<ApprovalList>(`/approvals?${params.toString()}`);
   }
 
@@ -63,8 +64,10 @@ export class CopilotApi {
     });
   }
 
-  listTaskRuns(taskId: string) {
-    return this.request<{ items: RunAttempt[] }>(`/tasks/${encodeURIComponent(taskId)}/runs`);
+  listTaskRuns(taskId: string, cursor = '') {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.request<RunAttemptList>(`/tasks/${encodeURIComponent(taskId)}/runs?${params.toString()}`);
   }
 
   createEventsTicket(taskId: string, lastCursor?: string) {
@@ -82,11 +85,12 @@ export class CopilotApi {
     return this.request<ArtifactDownloadGrant>(`/artifacts/${encodeURIComponent(artifactId)}:download`, { method: 'POST' });
   }
 
-  listArtifacts(taskId = '', classification = '', cursor = '') {
+  listArtifacts(taskId = '', classification = '', cursor = '', state = '') {
     const params = new URLSearchParams();
     if (taskId) params.set('task_id', taskId);
     if (classification) params.set('classification', classification);
     if (cursor) params.set('cursor', cursor);
+	if (state) params.set('state', state);
     return this.request<ArtifactList>(`/artifacts?${params.toString()}`);
   }
 

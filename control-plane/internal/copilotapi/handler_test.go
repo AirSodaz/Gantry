@@ -2,6 +2,7 @@ package copilotapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
@@ -28,8 +29,8 @@ type fakeTaskService struct {
 	list               func(context.Context, identity.Principal, tasks.ListFilter, *tasks.TaskCursor, int) (tasks.TaskPage, error)
 	get                func(context.Context, identity.Principal, string) (tasks.Task, error)
 	append             func(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
-	runs               func(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
-	artifacts          func(context.Context, identity.Principal, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
+	runs               func(context.Context, identity.Principal, string, *tasks.RunCursor, int) (tasks.RunPage, error)
+	artifacts          func(context.Context, identity.Principal, string, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
 	downloadArtifact   func(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error)
 	createAttachment   func(context.Context, identity.Principal, tasks.CreateAttachmentRequest) (tasks.Attachment, error)
 	getAttachment      func(context.Context, identity.Principal, string) (tasks.Attachment, error)
@@ -40,7 +41,7 @@ type fakeTaskService struct {
 }
 
 type fakeApprovalService struct {
-	list   func(context.Context, identity.Principal, *approvals.Cursor, int) (approvals.Page, error)
+	list   func(context.Context, identity.Principal, string, *approvals.Cursor, int) (approvals.Page, error)
 	get    func(context.Context, identity.Principal, string) (approvals.Request, error)
 	expire func(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	decide func(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
@@ -59,9 +60,9 @@ func (s fakeApprovalService) Expire(ctx context.Context, actor identity.Principa
 	return nil, nil
 }
 
-func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, after *approvals.Cursor, limit int) (approvals.Page, error) {
+func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, state string, after *approvals.Cursor, limit int) (approvals.Page, error) {
 	if s.list != nil {
-		return s.list(ctx, actor, after, limit)
+		return s.list(ctx, actor, state, after, limit)
 	}
 	return approvals.Page{}, nil
 }
@@ -104,16 +105,16 @@ func (s fakeTaskService) AppendMessage(ctx context.Context, actor identity.Princ
 	return tasks.Task{}, false, tasks.ErrNotFound
 }
 
-func (s fakeTaskService) ListRuns(ctx context.Context, actor identity.Principal, taskID string, limit int) ([]tasks.RunAttempt, error) {
+func (s fakeTaskService) ListRuns(ctx context.Context, actor identity.Principal, taskID string, after *tasks.RunCursor, limit int) (tasks.RunPage, error) {
 	if s.runs != nil {
-		return s.runs(ctx, actor, taskID, limit)
+		return s.runs(ctx, actor, taskID, after, limit)
 	}
-	return nil, tasks.ErrNotFound
+	return tasks.RunPage{}, tasks.ErrNotFound
 }
 
-func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, after *tasks.ArtifactCursor, limit int) (tasks.ArtifactPage, error) {
+func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification, state string, after *tasks.ArtifactCursor, limit int) (tasks.ArtifactPage, error) {
 	if s.artifacts != nil {
-		return s.artifacts(ctx, actor, taskID, classification, after, limit)
+		return s.artifacts(ctx, actor, taskID, classification, state, after, limit)
 	}
 	return tasks.ArtifactPage{}, nil
 }
@@ -514,11 +515,11 @@ func TestAppendMessageUsesHeaderIdempotencyKeyAndDispatchesNewRun(t *testing.T) 
 func TestListRunsAndApprovalDetailAreRequesterScoped(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{runs: func(_ context.Context, _ identity.Principal, taskID string, _ int) ([]tasks.RunAttempt, error) {
+		fakeTaskService{runs: func(_ context.Context, _ identity.Principal, taskID string, _ *tasks.RunCursor, _ int) (tasks.RunPage, error) {
 			if taskID != "tsk_1" {
 				t.Fatalf("task ID = %q", taskID)
 			}
-			return []tasks.RunAttempt{{ID: "run_1", Attempt: 1, Status: "failed"}}, nil
+			return tasks.RunPage{Items: []tasks.RunAttempt{{ID: "run_1", Attempt: 1, Status: "failed"}}}, nil
 		}},
 		fakeApprovalService{get: func(_ context.Context, _ identity.Principal, approvalID string) (approvals.Request, error) {
 			if approvalID != "apr_1" {
@@ -540,27 +541,101 @@ func TestListRunsAndApprovalDetailAreRequesterScoped(t *testing.T) {
 	}
 }
 
-func TestListArtifactsPassesOnlyRequesterFilters(t *testing.T) {
-	var taskID, classification string
+func TestListRunsReturnsTaskBoundNextCursor(t *testing.T) {
+	var after *tasks.RunCursor
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{artifacts: func(_ context.Context, _ identity.Principal, task, class string, _ *tasks.ArtifactCursor, _ int) (tasks.ArtifactPage, error) {
-			taskID, classification = task, class
-			return tasks.ArtifactPage{Items: []tasks.Artifact{{ID: "art_1", TaskID: task, Classification: class}}}, nil
+		fakeTaskService{runs: func(_ context.Context, _ identity.Principal, taskID string, cursor *tasks.RunCursor, _ int) (tasks.RunPage, error) {
+			if taskID != "tsk_1" {
+				t.Fatalf("task ID = %q", taskID)
+			}
+			after = cursor
+			if cursor != nil {
+				return tasks.RunPage{Items: []tasks.RunAttempt{{ID: "run_1", Attempt: 1, Status: "failed"}}}, nil
+			}
+			return tasks.RunPage{Items: []tasks.RunAttempt{{ID: "run_2", Attempt: 2, Status: "completed"}}, HasMore: true}, nil
 		}},
 		nil,
 		&fakeDispatcher{},
 		nil,
 	)
-	request := httptest.NewRequest(http.MethodGet, "/artifacts?task_id=tsk_1&classification=internal", nil)
+	request := httptest.NewRequest(http.MethodGet, "/tasks/tsk_1/runs?limit=1", nil)
 	request.Header.Set("Authorization", "Bearer access-token")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
-	if taskID != "tsk_1" || classification != "internal" {
-		t.Fatalf("filters task=%q classification=%q", taskID, classification)
+	var first struct {
+		PageInfo struct {
+			HasMore    bool   `json:"has_more"`
+			NextCursor string `json:"next_cursor"`
+		} `json:"page_info"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &first); err != nil {
+		t.Fatal(err)
+	}
+	if !first.PageInfo.HasMore || first.PageInfo.NextCursor == "" {
+		t.Fatalf("page info = %#v", first.PageInfo)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/tasks/tsk_1/runs?cursor="+first.PageInfo.NextCursor, nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("next page status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if after == nil || after.Attempt != 2 || after.ID != "run_2" {
+		t.Fatalf("after = %#v", after)
+	}
+}
+
+func TestListApprovalsPassesStateFilter(t *testing.T) {
+	var receivedState string
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{},
+		fakeApprovalService{list: func(_ context.Context, _ identity.Principal, state string, _ *approvals.Cursor, _ int) (approvals.Page, error) {
+			receivedState = state
+			return approvals.Page{}, nil
+		}},
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/approvals?state=rejected", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if receivedState != "rejected" {
+		t.Fatalf("state = %q", receivedState)
+	}
+}
+
+func TestListArtifactsPassesOnlyRequesterFilters(t *testing.T) {
+	var taskID, classification, state string
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{artifacts: func(_ context.Context, _ identity.Principal, task, class, artifactState string, _ *tasks.ArtifactCursor, _ int) (tasks.ArtifactPage, error) {
+			taskID, classification, state = task, class, artifactState
+			return tasks.ArtifactPage{Items: []tasks.Artifact{{ID: "art_1", TaskID: task, Classification: class}}}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/artifacts?task_id=tsk_1&classification=internal&state=available", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if taskID != "tsk_1" || classification != "internal" || state != "available" {
+		t.Fatalf("filters task=%q classification=%q state=%q", taskID, classification, state)
 	}
 }
 

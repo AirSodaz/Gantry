@@ -64,6 +64,39 @@ describe('CopilotApi', () => {
     expect(init.body).toBe(JSON.stringify({ last_cursor: 'cur_1' }));
   });
 
+  it('includes a run history cursor when loading more attempts', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], page_info: { has_more: false } }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.listTaskRuns('tsk_1', 'run_cursor_1');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/tasks/tsk_1/runs?cursor=run_cursor_1');
+  });
+
+  it('passes an artifact state filter without omitting its cursor scope', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], page_info: { has_more: false } }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.listArtifacts('tsk_1', 'internal', 'artifact_cursor_1', 'available');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/artifacts?task_id=tsk_1&classification=internal&cursor=artifact_cursor_1&state=available');
+  });
+
+  it('passes a non-pending approval state while preserving pagination', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], page_info: { has_more: false } }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.listApprovals('approval_cursor_1', 'rejected');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/approvals?cursor=approval_cursor_1&state=rejected');
+  });
+
   it('requests download references through the audited artifact command', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ artifact_id: 'art_1', download_url: 'https://downloads.example.test/art_1', expires_at: '2026-08-17T01:00:00Z' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

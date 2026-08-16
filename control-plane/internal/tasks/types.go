@@ -73,14 +73,18 @@ type Run struct {
 
 type Task struct {
 	ID                   string     `json:"id"`
+	RequesterID          string     `json:"requester_id"`
 	AgentID              string     `json:"agent_id"`
 	AgentDisplayName     string     `json:"agent_display_name,omitempty"`
+	Title                string     `json:"title,omitempty"`
 	Status               string     `json:"status"`
+	RequesterAction      string     `json:"requester_action"`
 	CurrentRun           Run        `json:"current_run"`
 	Messages             []Message  `json:"messages,omitempty"`
 	Artifacts            []Artifact `json:"artifacts,omitempty"`
 	ConversationRevision int64      `json:"conversation_revision"`
 	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 func (t Task) ConversationETag() string {
@@ -122,6 +126,16 @@ type RunAttempt struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+type RunCursor struct {
+	Attempt int
+	ID      string
+}
+
+type RunPage struct {
+	Items   []RunAttempt
+	HasMore bool
 }
 
 type SubmitRequest struct {

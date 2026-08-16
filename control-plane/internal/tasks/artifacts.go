@@ -48,7 +48,7 @@ func (s *Service) ListArtifacts(ctx context.Context, actor identity.Principal, t
 // ListMyArtifacts returns only artifacts belonging to tasks initiated by the
 // current requester. A Copilot artifact browser never becomes a workspace file
 // inventory, even when an artifact has broader runtime visibility.
-func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, after *ArtifactCursor, limit int) (ArtifactPage, error) {
+func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification, state string, after *ArtifactCursor, limit int) (ArtifactPage, error) {
 	if s.store == nil {
 		return ArtifactPage{Items: []Artifact{}}, nil
 	}
@@ -58,7 +58,7 @@ func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal,
 		afterCreatedAt, afterID = &after.CreatedAt, after.ID
 	}
 	pageLimit := boundedLimit(limit)
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE t.requester_principal_id=$1 AND ($2='' OR ar.task_id=$2) AND ($3='' OR ar.classification=$3) AND ($4::timestamptz IS NULL OR ar.created_at < $4 OR (ar.created_at = $4 AND ar.id < $5)) ORDER BY ar.created_at DESC, ar.id DESC LIMIT $6`, actor.ID, strings.TrimSpace(taskID), strings.TrimSpace(classification), afterCreatedAt, afterID, pageLimit+1)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE t.requester_principal_id=$1 AND ($2='' OR ar.task_id=$2) AND ($3='' OR ar.classification=$3) AND ($4='' OR ar.state=$4) AND ($5::timestamptz IS NULL OR ar.created_at < $5 OR (ar.created_at = $5 AND ar.id < $6)) ORDER BY ar.created_at DESC, ar.id DESC LIMIT $7`, actor.ID, strings.TrimSpace(taskID), strings.TrimSpace(classification), strings.TrimSpace(state), afterCreatedAt, afterID, pageLimit+1)
 	if err != nil {
 		return ArtifactPage{}, err
 	}

@@ -250,6 +250,7 @@ paths:
       tags: [Tasks]
       parameters:
         - $ref: "#/components/parameters/TaskIdParam"
+        - $ref: "#/components/parameters/CursorParam"
         - $ref: "#/components/parameters/LimitParam"
       responses:
         "200":
@@ -350,6 +351,11 @@ paths:
       parameters:
         - $ref: "#/components/parameters/CursorParam"
         - $ref: "#/components/parameters/LimitParam"
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [pending, satisfied, rejected, expired, superseded]
       responses:
         "200":
           description: Pending approvals
@@ -483,6 +489,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [declared, uploading, quarantined, available, rejected, expired, deleted]
       responses:
         "200":
           description: Requester-scoped artifact list
@@ -594,17 +605,24 @@ components:
 
     TaskResponse:
       type: object
-      required: [id, agent_id, status, conversation_revision]
+      required: [id, requester_id, agent_id, status, requester_action, conversation_revision, created_at, updated_at]
       properties:
         id:
+          type: string
+        requester_id:
           type: string
         agent_id:
           type: string
         agent_display_name:
           type: string
+        title:
+          type: string
         status:
           type: string
           enum: [queued, provisioning, running, awaiting_approval, awaiting_requester_input, suspended, canceling, completed, failed, canceled]
+        requester_action:
+          type: string
+          enum: [none, approval, input]
         conversation_revision:
           type: integer
           format: int64
@@ -620,6 +638,8 @@ components:
           items:
             $ref: "#/components/schemas/TaskMessage"
         created_at:
+          $ref: "#/components/schemas/Timestamp"
+        updated_at:
           $ref: "#/components/schemas/Timestamp"
 
     TaskMessage:

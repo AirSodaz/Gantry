@@ -57,8 +57,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   exact Plugin Version remains independently enabled or disabled per workspace.
 - Copilot catalog, task submission, requester follow-up messages after a
   rejected action, idempotency for submission/follow-up/cancel/retry commands,
-  Task message projection, compact Run history, server-authorized Task history
-  filters (status, Agent, time, requester action), cancellation, retry, live
+  Task message projection, intent-oriented Task history rows (first request,
+  last activity, requester action, and Artifact availability), compact paged
+  Run history, server-authorized Task history filters (status, Agent, time,
+  requester action), cancellation, retry, live
   task events, requester-scoped approval list/detail/decision, Artifact
   browse/detail, artifact download, requester-owned attachment upload and
   validation before Task binding, and URL-preserved Agent search/category filters
@@ -73,9 +75,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   include that same projection in their error envelope, so the Copilot page
   replaces local controls with durable server evidence. Approval queue and Task
   stream projections include the Agent display name and Task context.
-- Copilot Task, approval, Artifact, and Agent lists use requester- and
+- Copilot Task, Run, approval, Artifact, and Agent lists use requester- and
   filter-bound signed keyset cursors, with stable ordering and incremental
-  loading in the Web client.
+  loading in the Web client. Artifact and approval APIs support their current
+  persisted-state filters; the approval queue remains pending-only by design.
 - Persistent tasks, runs, ordered semantic events, bounded content segments,
   artifacts, durable action records, approval requests, and approval decisions.
 - Runner V1 agent loop with deterministic and development provider adapters,

@@ -28,7 +28,7 @@ type taskService interface {
 	List(context.Context, identity.Principal, tasks.ListFilter, *tasks.TaskCursor, int) (tasks.TaskPage, error)
 	Get(context.Context, identity.Principal, string) (tasks.Task, error)
 	AppendMessage(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
-	ListRuns(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
+	ListRuns(context.Context, identity.Principal, string, *tasks.RunCursor, int) (tasks.RunPage, error)
 	Cancel(context.Context, identity.Principal, string, string, string) (tasks.CancelResult, error)
 	Retry(context.Context, identity.Principal, string, bool, string, int64) (tasks.Task, error)
 }
@@ -48,7 +48,7 @@ type dispatcher interface {
 }
 
 type approvalService interface {
-	List(context.Context, identity.Principal, *approvals.Cursor, int) (approvals.Page, error)
+	List(context.Context, identity.Principal, string, *approvals.Cursor, int) (approvals.Page, error)
 	Get(context.Context, identity.Principal, string) (approvals.Request, error)
 	Expire(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	Decide(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
@@ -212,12 +212,23 @@ func (h Handler) appendMessage(w http.ResponseWriter, r *http.Request, actor ide
 	writeJSON(w, status, task)
 }
 func (h Handler) listRuns(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.tasks.ListRuns(r.Context(), actor, r.PathValue("taskID"), limit(r))
+	taskID := r.PathValue("taskID")
+	after, ok := h.parseRunListCursor(r.URL.Query().Get("cursor"), actor, taskID)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "cursor_invalid", "The run cursor is not valid for this requester or task.")
+		return
+	}
+	page, err := h.tasks.ListRuns(r.Context(), actor, taskID, after, limit(r))
 	if err != nil {
 		writeTaskError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+	pageInfo := map[string]any{"has_more": page.HasMore}
+	if page.HasMore {
+		last := page.Items[len(page.Items)-1]
+		pageInfo["next_cursor"] = h.encodeRunListCursor(actor, taskID, tasks.RunCursor{Attempt: last.Attempt, ID: last.ID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }
 func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	if h.approvals == nil {
@@ -228,12 +239,13 @@ func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor ide
 		writeInternal(w, errors.New("approval expiry processing failed"))
 		return
 	}
-	after, ok := h.parseApprovalListCursor(r.URL.Query().Get("cursor"), actor)
+	state := r.URL.Query().Get("state")
+	after, ok := h.parseApprovalListCursor(r.URL.Query().Get("cursor"), actor, state)
 	if !ok {
 		writeError(w, http.StatusBadRequest, "cursor_invalid", "The approval cursor is not valid for this requester.")
 		return
 	}
-	page, err := h.approvals.List(r.Context(), actor, after, limit(r))
+	page, err := h.approvals.List(r.Context(), actor, state, after, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
@@ -241,7 +253,7 @@ func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor ide
 	pageInfo := map[string]any{"has_more": page.HasMore}
 	if page.HasMore {
 		last := page.Items[len(page.Items)-1]
-		pageInfo["next_cursor"] = h.encodeApprovalListCursor(actor, approvals.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		pageInfo["next_cursor"] = h.encodeApprovalListCursor(actor, state, approvals.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }

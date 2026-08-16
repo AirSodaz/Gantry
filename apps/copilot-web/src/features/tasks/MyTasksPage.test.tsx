@@ -38,4 +38,13 @@ describe('MyTasksPage', () => {
 		await waitFor(() => expect(mocked.api.listTasks).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'task-page-2' })));
 		await waitFor(() => expect(screen.getAllByText('agt_1')).toHaveLength(2));
 	});
+
+	it('renders the employee-facing task history projection', async () => {
+		mocked.api.listTasks.mockResolvedValue({ items: [{ id: 'tsk_1', agent_id: 'agt_1', agent_display_name: 'Support agent', title: 'Update my account contact', status: 'awaiting_approval', requester_action: 'approval', created_at: '2026-08-17T01:00:00Z', updated_at: '2026-08-17T02:00:00Z', artifacts: [{ state: 'available', scan_status: 'passed' }] }], page_info: { has_more: false } });
+		renderPage();
+
+		expect(await screen.findByText('Update my account contact')).toBeInTheDocument();
+		expect(screen.getByText(/Approval needed/, { selector: '.task-row-meta' })).toBeInTheDocument();
+		expect(screen.getByText(/Artifacts ready/, { selector: '.task-row-meta' })).toBeInTheDocument();
+	});
 });

@@ -102,7 +102,8 @@ export function MyTasksPage() {
             </span>
             <span className="task-row-copy">
               <strong>{task.agent_display_name ?? task.agent_id}</strong>
-              <span>{formatDate(task.created_at)}</span>
+					<span className="task-row-title">{task.title || 'Untitled request'}</span>
+					<span className="task-row-meta">{formatDate(task.updated_at ?? task.created_at)} · {requesterActionLabel(task.requester_action)} · {artifactAvailability(task.artifacts)}</span>
             </span>
             <StatusMark status={task.status} />
             <ArrowUpRight size={16} className="task-row-arrow" aria-hidden="true" />
@@ -126,4 +127,15 @@ function formatDate(value?: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
     new Date(value)
   );
+}
+
+function requesterActionLabel(action?: string) {
+	if (action === 'approval') return 'Approval needed';
+	if (action === 'input') return 'Input needed';
+	return 'No action needed';
+}
+
+function artifactAvailability(artifacts?: Array<{ state?: string; scan_status?: string }>) {
+	if (!artifacts?.length) return 'No artifacts';
+	return artifacts.every((artifact) => artifact.state === 'available' && artifact.scan_status === 'passed') ? 'Artifacts ready' : 'Artifacts processing';
 }

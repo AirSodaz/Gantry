@@ -60,13 +60,13 @@ func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request, actor ide
 		writeInternal(w, errors.New("artifact service is unavailable"))
 		return
 	}
-	taskID, classification := r.URL.Query().Get("task_id"), r.URL.Query().Get("classification")
-	after, ok := h.parseArtifactListCursor(r.URL.Query().Get("cursor"), actor, taskID, classification)
+	taskID, classification, state := r.URL.Query().Get("task_id"), r.URL.Query().Get("classification"), r.URL.Query().Get("state")
+	after, ok := h.parseArtifactListCursor(r.URL.Query().Get("cursor"), actor, taskID, classification, state)
 	if !ok {
 		writeError(w, http.StatusBadRequest, "cursor_invalid", "The artifact cursor is not valid for this requester or filter.")
 		return
 	}
-	page, err := reader.ListMyArtifacts(r.Context(), actor, taskID, classification, after, limit(r))
+	page, err := reader.ListMyArtifacts(r.Context(), actor, taskID, classification, state, after, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
@@ -74,7 +74,7 @@ func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request, actor ide
 	pageInfo := map[string]any{"has_more": page.HasMore}
 	if page.HasMore {
 		last := page.Items[len(page.Items)-1]
-		pageInfo["next_cursor"] = h.encodeArtifactListCursor(actor, taskID, classification, tasks.ArtifactCursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		pageInfo["next_cursor"] = h.encodeArtifactListCursor(actor, taskID, classification, state, tasks.ArtifactCursor{CreatedAt: last.CreatedAt, ID: last.ID})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }
@@ -84,7 +84,7 @@ var _ interface {
 } = (*tasks.Service)(nil)
 
 type artifactListReader interface {
-	ListMyArtifacts(context.Context, identity.Principal, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
+	ListMyArtifacts(context.Context, identity.Principal, string, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
 }
 
 type artifactDownloadService interface {

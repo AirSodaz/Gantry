@@ -9,6 +9,7 @@ export type TaskList = components['schemas']['TaskList'];
 export type TaskStatus = Task['status'];
 export type RunStatus = components['schemas']['RunStatus'];
 export type RunAttempt = components['schemas']['RunAttempt'];
+export type RunAttemptList = components['schemas']['RunAttemptList'];
 export type TaskMessage = components['schemas']['TaskMessage'];
 export type Approval = components['schemas']['CopilotApproval'];
 export type ApprovalList = components['schemas']['CopilotApprovalList'];

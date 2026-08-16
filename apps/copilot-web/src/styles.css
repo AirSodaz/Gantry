@@ -1051,6 +1051,13 @@ a {
   font-size: 12px;
 }
 
+.task-row-copy .task-row-title,
+.task-row-copy .task-row-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .task-row-arrow {
   color: var(--ds-text-dim);
   transition: color var(--ds-duration) var(--ds-ease);

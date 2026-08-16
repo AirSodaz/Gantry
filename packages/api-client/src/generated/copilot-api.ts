@@ -343,16 +343,21 @@ export interface components {
         };
         TaskResponse: {
             id: string;
+            requester_id: string;
             agent_id: string;
             agent_display_name?: string;
+            title?: string;
             /** @enum {string} */
             status: "queued" | "provisioning" | "running" | "awaiting_approval" | "awaiting_requester_input" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
+            /** @enum {string} */
+            requester_action: "none" | "approval" | "input";
             /** Format: int64 */
             conversation_revision: number;
             current_run?: components["schemas"]["RunStatus"];
             artifacts?: components["schemas"]["ArtifactResponse"][];
             messages?: components["schemas"]["TaskMessage"][];
-            created_at?: components["schemas"]["Timestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
         };
         TaskMessage: {
             id: string;
@@ -860,6 +865,7 @@ export interface operations {
     listTaskRuns: {
         parameters: {
             query?: {
+                cursor?: components["parameters"]["CursorParam"];
                 limit?: components["parameters"]["LimitParam"];
             };
             header?: never;
@@ -974,6 +980,7 @@ export interface operations {
             query?: {
                 cursor?: components["parameters"]["CursorParam"];
                 limit?: components["parameters"]["LimitParam"];
+                state?: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
             };
             header?: never;
             path?: never;
@@ -1146,6 +1153,7 @@ export interface operations {
                 limit?: components["parameters"]["LimitParam"];
                 task_id?: string;
                 classification?: string;
+                state?: "declared" | "uploading" | "quarantined" | "available" | "rejected" | "expired" | "deleted";
             };
             header?: never;
             path?: never;
