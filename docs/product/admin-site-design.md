@@ -10,6 +10,11 @@ route exists today. Each page is labeled by delivery status:
 - **Next:** required for the next Admin configuration slice.
 - **Later:** target product behavior after the next slice.
 
+“Later” describes delivery order only. A page remains in scope when its
+executable API, persistence, authorization, and verification contracts are
+available; a target without those contracts is reported as a delivery gap
+rather than implemented by inference.
+
 The existing visual language and shared design-system components remain the
 foundation. Detailed visual mockups and frontend implementation follow this
 page/function specification.

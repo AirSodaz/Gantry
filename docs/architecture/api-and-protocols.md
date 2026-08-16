@@ -51,6 +51,10 @@ Current and planned resources:
   support registration/listing, status changes, usage projections, and explicit
   Plugin enablement. This slice does not yet provide complete package
   materialization, Tool Server management, or full binding constraints.
+- Implemented: `/api/admin/v1/runs` and `/api/admin/v1/runs/{runId}` provide the
+  authorized read-only operational Run workbench, including exact Deployment
+  and manifest identity, ordered event evidence, tool actions, requester
+  approvals, and artifact metadata.
 - Target extension: Skill marketplace/direct-locator/upload/local import with
   complete artifact inspection; Plugin contained-asset inspection; Tool Server
   discovery/health; descriptor authoring; and CLI Command Profiles. Gantry still
@@ -58,8 +62,8 @@ Current and planned resources:
 - Planned: per-Agent access-grant resources that independently authorize safe
   metadata, configuration read, Draft edit, Review, deployment, run inspection,
   execution, and ACL management.
-- Planned: `/api/admin/v1/runs` for the organization or Workspace-scoped
-  operational Run workbench and richer diagnostic event projection;
+- Planned Run mutations and richer diagnostic projections remain separate from
+  the implemented read-only Run workbench. Planned resources include
   `/evaluation-suites`, `/integrations`,
   `/policies`, `/audit-events`, `/retention-policies`, `/legal-holds`, and
   `/platform/runner-pools`, `/retention-deletion-jobs`, `/platform/settings`,

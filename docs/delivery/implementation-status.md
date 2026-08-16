@@ -66,6 +66,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   lease-fenced artifact upload.
 - Local Compose and host smoke paths for runner, Copilot, Admin, approval, live
   event, and artifact lifecycle behavior.
+- Admin Runs workbench: authorized cross-workspace Run list and filters, exact
+  Run detail, immutable timeline, tool-action and requester-approval evidence,
+  artifact metadata, Deployment/manifest identity, and rendered Admin routes.
 
 ### Partial
 
@@ -101,9 +104,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   operation-level narrow binding constraints are implemented for the current
   catalog model; broader schema compatibility and authority checks remain.
 - **Admin lifecycle UX:** The Draft/Revision/Deployment core lifecycle is usable.
-  Policies, evaluations,
-  run operations, audit search, integrations, and platform administration are
-  not complete product areas.
+  The read-only Run evidence workbench is implemented; Run mutations, Policies,
+  evaluations, audit search, integrations, and platform administration are not
+  complete product areas.
 
 ### Designed, Not Yet Implemented
 
@@ -111,7 +114,7 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
-- Detailed deployment history, policy projections, evaluations, run operations,
+- Detailed deployment history, Run mutations, policy projections, evaluations,
   audit search, integrations, and platform administration remain designed but
   are not complete product areas.
 - Per-Agent ACLs with independent metadata read, configuration read, Draft edit,
@@ -126,8 +129,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   webhooks, and delegated-user authority.
 - Evaluation suites, VCR replay, filesystem/database assertions, publication
   gates, and trajectory export.
-- Admin run explorer, audit search, runner-pool operations, emergency controls,
-  integration management, and policy administration.
+- Audit search, runner-pool operations, emergency controls, integration
+  management, and policy administration.
 - Production deployment, gVisor isolation, Helm, scaling, SLOs, retention
   deletion jobs, Legal Hold matching, Audit Event/Export Package integrity,
   backup/restore, SBOM, signing, and release gates.
