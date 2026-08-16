@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, ArrowLeft, Cable, CircleSlash, Database, Package, Plus, RotateCcw } from 'lucide-react';
+import { Archive, ArrowLeft, Cable, CircleSlash, Database, Package, Plus, RotateCcw, Unplug } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Select, type SelectOption, StatusMark } from '@gantry/design-system';
 import { useAdminApi } from '../../api/ApiProvider';
@@ -23,6 +23,7 @@ export function ToolsPage() { return <AssetCatalog kind="tools" />; }
 
 export function AssetDetailPage({ kind }: { kind: AssetKind }) {
   const api = useAdminApi();
+  const queryClient = useQueryClient();
   const { assetId = '' } = useParams<{ assetId: string }>();
   const detail = useQuery<Skill | PluginDetail | Tool>({
     queryKey: ['admin-asset', kind, assetId],
@@ -33,6 +34,10 @@ export function AssetDetailPage({ kind }: { kind: AssetKind }) {
     queryKey: ['admin-asset-usage', kind, assetId],
     queryFn: () => kind === 'skills' ? api.listSkillUsage(assetId) : kind === 'plugins' ? api.listPluginUsage(assetId) : api.listToolUsage(assetId),
     enabled: assetId !== '' && detail.isSuccess,
+  });
+  const disablePlugin = useMutation({
+    mutationFn: (workspaceID: string) => api.disablePlugin(assetId, workspaceID),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['admin-asset', kind, assetId] }); },
   });
   const title = kind === 'skills' ? 'Skill artifact' : kind === 'plugins' ? 'Plugin version' : 'Tool descriptor';
   if (detail.isLoading) return <LoadingState label={`Loading ${title.toLowerCase()}`} />;
@@ -45,7 +50,7 @@ export function AssetDetailPage({ kind }: { kind: AssetKind }) {
     <header className="admin-page-heading"><div><h1>{name}</h1><p>{title} · {version}</p></div><StatusMark status={item.status} /></header>
     <div className="admin-detail-grid">
       <section className="admin-detail-block"><h2>Identity</h2><DetailField label="Catalog ID" value={item.id} /><DetailField label="Content digest" value={item.content_digest} />{ 'source_ref' in item ? <><DetailField label="Source type" value={item.source_type} /><DetailField label="Source reference" value={item.source_ref} /></> : null }{ 'server_name' in item ? <><DetailField label="Server" value={`${item.server_name} · ${item.server_type}`} /><DetailField label="Endpoint reference" value={item.endpoint_ref || 'Not configured'} /><DetailField label="Effect" value={item.effect} /><DetailField label="Idempotency" value={item.idempotency} /></> : null }</section>
-      { 'workspaces' in item ? <section className="admin-detail-block"><h2>Enabled workspaces</h2>{item.workspaces.length === 0 ? <p className="admin-muted">No workspace enablements.</p> : <ul className="admin-detail-list">{item.workspaces.map((workspace) => <li key={workspace.id}><strong>{workspace.display_name}</strong><span>{workspace.id}</span></li>)}</ul>}</section> : null }
+      { 'workspaces' in item ? <section className="admin-detail-block"><h2>Enabled workspaces</h2>{item.workspaces.length === 0 ? <p className="admin-muted">No workspace enablements.</p> : <ul className="admin-detail-list">{item.workspaces.map((workspace) => <li key={workspace.id}><div className="admin-overview-highlight"><strong>{workspace.display_name}</strong><Button size="sm" variant="quiet" disabled={disablePlugin.isPending} title={`Disable in ${workspace.display_name}`} onClick={() => disablePlugin.mutate(workspace.id)}><Unplug size={14} /> Disable</Button></div><span>{workspace.id}</span></li>)}</ul>}{disablePlugin.error ? <p className="admin-error" role="alert">{disablePlugin.error.message}</p> : null}</section> : null }
       { 'schema_json' in item ? <section className="admin-detail-block"><h2>Input and output schema</h2><pre className="admin-json-block">{JSON.stringify(item.schema_json, null, 2)}</pre></section> : null }
       { 'metadata_json' in item ? <section className="admin-detail-block"><h2>Normalized artifact metadata</h2><pre className="admin-json-block">{JSON.stringify(item.metadata_json, null, 2)}</pre></section> : null }
       { 'manifest_json' in item ? <section className="admin-detail-block"><h2>Contained assets and manifest</h2><pre className="admin-json-block">{JSON.stringify(item.manifest_json, null, 2)}</pre></section> : null }

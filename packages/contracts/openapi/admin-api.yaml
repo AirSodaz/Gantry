@@ -248,6 +248,25 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}/disable:
+    post:
+      operationId: disablePlugin
+      summary: Disable a Plugin version in a workspace
+      tags: [Plugins]
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/EnablePluginRequest"}}}
+      responses:
+        "204": {description: Plugin disabled}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
   /skills/{skill_id}:deprecate:
     post:
       operationId: deprecateSkill

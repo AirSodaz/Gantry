@@ -341,6 +341,46 @@ func (s *Service) EnablePlugin(ctx context.Context, actor identity.Principal, pl
 	return err
 }
 
+func (s *Service) DisablePlugin(ctx context.Context, actor identity.Principal, pluginID, workspaceID string) error {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return err
+	}
+	pluginID = strings.TrimSpace(pluginID)
+	workspaceID = strings.TrimSpace(workspaceID)
+	if pluginID == "" || workspaceID == "" {
+		return ErrInvalidInput
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var organizationID string
+	if err := tx.QueryRow(ctx, `SELECT organization_id FROM gantry.plugins WHERE id=$1`, pluginID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if organizationID != actor.OrganizationID {
+		return ErrNotFound
+	}
+	command, err := tx.Exec(ctx, `DELETE FROM gantry.workspace_plugin_enablements WHERE plugin_id=$1 AND workspace_id=$2`, pluginID, workspaceID)
+	if err != nil {
+		return err
+	}
+	if command.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	payload, err := json.Marshal(map[string]string{"workspace_id": workspaceID, "plugin_id": pluginID})
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.audit_events (organization_id, actor_principal_id, resource_type, resource_id, event_type, payload) VALUES ($1,$2,'plugin',$3,'configuration_asset.workspace_disabled',$4::jsonb)`, actor.OrganizationID, actor.ID, pluginID, string(payload)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Service) ActivateSkill(ctx context.Context, actor identity.Principal, skillID, reason string) error {
 	return s.setSkillStatus(ctx, actor, skillID, "available", reason)
 }

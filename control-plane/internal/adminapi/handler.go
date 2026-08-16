@@ -53,6 +53,7 @@ type assetService interface {
 	ListPluginUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error)
 	EnablePlugin(context.Context, identity.Principal, string, string) error
+	DisablePlugin(context.Context, identity.Principal, string, string) error
 	ListTools(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Tool, error)
 	GetTool(context.Context, identity.Principal, string) (configassets.Tool, error)
 	ListToolUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
@@ -110,6 +111,7 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 		mux.Handle("GET /plugins/{pluginID}/usage", h.withActor(h.listPluginUsage))
 		mux.Handle("POST /plugins", h.withActor(h.createPlugin))
 		mux.Handle("POST /plugins/{pluginID}/enable", h.withActor(h.enablePlugin))
+		mux.Handle("POST /plugins/{pluginID}/disable", h.withActor(h.disablePlugin))
 		mux.Handle("GET /tools", h.withActor(h.listTools))
 		mux.Handle("GET /tools/{toolID}", h.withActor(h.getTool))
 		mux.Handle("GET /tools/{toolID}/usage", h.withActor(h.listToolUsage))
@@ -211,6 +213,19 @@ func (h Handler) enablePlugin(w http.ResponseWriter, r *http.Request, actor iden
 		return
 	}
 	if err := h.assets.EnablePlugin(r.Context(), actor, r.PathValue("pluginID"), request.WorkspaceID); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h Handler) disablePlugin(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request configassets.EnablePluginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	if err := h.assets.DisablePlugin(r.Context(), actor, r.PathValue("pluginID"), request.WorkspaceID); err != nil {
 		h.writeServiceError(w, err)
 		return
 	}

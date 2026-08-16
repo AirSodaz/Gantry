@@ -33,6 +33,9 @@ export class AdminApi {
   enablePlugin(pluginId: string, workspaceId: string) {
     return this.request<void>(`/plugins/${encodeURIComponent(pluginId)}/enable`, { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId }) });
   }
+  disablePlugin(pluginId: string, workspaceId: string) {
+    return this.request<void>(`/plugins/${encodeURIComponent(pluginId)}/disable`, { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId }) });
+  }
   activateSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:activate`, reason); }
   deprecateSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:deprecate`, reason); }
   retireSkill(skillId: string, reason = '') { return this.assetStatus(`/skills/${encodeURIComponent(skillId)}:retire`, reason); }

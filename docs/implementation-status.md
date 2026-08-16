@@ -42,6 +42,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   enforced as the upper bound for Agent bindings.
 - Asset inspection metadata: Skill artifact metadata and Plugin manifest JSON
   are persisted and rendered read-only in catalog detail views.
+- Plugin workspace enablement now supports explicit, audited disablement; each
+  exact Plugin Version remains independently enabled or disabled per workspace.
 - Copilot catalog, task submission, idempotency, task history, cancellation,
   retry, live task events, action approvals assigned to the requester, and
   artifact download.

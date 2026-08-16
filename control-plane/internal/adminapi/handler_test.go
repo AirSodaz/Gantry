@@ -40,6 +40,7 @@ type fakeLifecycleService struct {
 type fakeAssetService struct {
 	createSkill   func(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
 	enablePlugin  func(context.Context, identity.Principal, string, string) error
+	disablePlugin func(context.Context, identity.Principal, string, string) error
 	getSkill      func(string) (configassets.Skill, error)
 	skillUsage    func(string) ([]configassets.AssetUsage, error)
 	listSkillOpts func(configassets.ListOptions)
@@ -87,6 +88,12 @@ func (s fakeAssetService) EnablePlugin(ctx context.Context, actor identity.Princ
 		return configassets.ErrNotFound
 	}
 	return s.enablePlugin(ctx, actor, pluginID, workspaceID)
+}
+func (s fakeAssetService) DisablePlugin(ctx context.Context, actor identity.Principal, pluginID, workspaceID string) error {
+	if s.disablePlugin == nil {
+		return configassets.ErrNotFound
+	}
+	return s.disablePlugin(ctx, actor, pluginID, workspaceID)
 }
 func (fakeAssetService) ListTools(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Tool, error) {
 	return nil, nil
@@ -334,6 +341,21 @@ func TestSkillRegistrationAndPluginEnablementRoutesForwardScopedRequests(t *test
 	handler.ServeHTTP(enableResponse, enable)
 	if createResponse.Code != http.StatusCreated || enableResponse.Code != http.StatusNoContent || !created || !enabled {
 		t.Fatalf("create=%d enable=%d created=%t enabled=%t", createResponse.Code, enableResponse.Code, created, enabled)
+	}
+}
+
+func TestPluginDisablementRouteForwardsWorkspace(t *testing.T) {
+	called := false
+	assets := fakeAssetService{disablePlugin: func(_ context.Context, _ identity.Principal, pluginID, workspaceID string) error {
+		called = pluginID == "plugin_1" && workspaceID == "ws_1"
+		return nil
+	}}
+	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
+	request := httptest.NewRequest(http.MethodPost, "/plugins/plugin_1/disable", strings.NewReader(`{"workspace_id":"ws_1"}`))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent || !called {
+		t.Fatalf("status=%d called=%t", response.Code, called)
 	}
 }
 

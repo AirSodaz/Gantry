@@ -229,6 +229,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plugins/{plugin_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable a Plugin version in a workspace */
+        post: operations["disablePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/skills/{skill_id}:deprecate": {
         parameters: {
             query?: never;
@@ -1324,6 +1341,34 @@ export interface operations {
         };
         responses: {
             /** @description Skill activated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    disablePlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnablePluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin disabled */
             204: {
                 headers: {
                     [name: string]: unknown;
