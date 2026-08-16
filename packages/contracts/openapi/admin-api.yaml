@@ -26,6 +26,49 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /runs:
+    get:
+      operationId: listAdminRuns
+      summary: List durable Runs in the authorized operational scope
+      tags: [Runs]
+      parameters:
+        - name: workspace_id
+          in: query
+          schema: {type: string}
+        - name: agent_id
+          in: query
+          schema: {type: string}
+        - name: revision_hash
+          in: query
+          schema: {type: string}
+        - name: status
+          in: query
+          schema: {type: string, enum: [queued, assigned, accepted, awaiting_approval, canceling, completed, failed, canceled]}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        "200": {description: Runs, content: {application/json: {schema: {$ref: "#/components/schemas/AdminRunList"}}}}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /runs/{run_id}:
+    get:
+      operationId: getAdminRun
+      summary: Inspect one durable Run and its read-only operational evidence
+      tags: [Runs]
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: Run detail, content: {application/json: {schema: {$ref: "#/components/schemas/AdminRunDetail"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /workspaces:
     get:
       operationId: listManagedWorkspaces
@@ -647,6 +690,9 @@ components:
     NotFound:
       description: Resource was not found.
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    InvalidRequest:
+      description: Request syntax or query parameters are invalid.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
     InvalidInput:
       description: Request is invalid.
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
@@ -987,6 +1033,94 @@ components:
         test_deployments: {type: array, items: {$ref: "#/components/schemas/AgentDeployment"}}
         revision_count: {type: integer}
         recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
+    AdminRun:
+      type: object
+      required: [id, task_id, workspace_id, workspace_name, agent_id, agent_name, revision_hash, requester_id, requester_name, status, attempt_number, action_count, approval_count, created_at]
+      properties:
+        id: {type: string}
+        task_id: {type: string}
+        workspace_id: {type: string}
+        workspace_name: {type: string}
+        agent_id: {type: string}
+        agent_name: {type: string}
+        revision_hash: {type: string}
+        deployment_id: {type: string}
+        deployment_name: {type: string}
+        requester_id: {type: string}
+        requester_name: {type: string}
+        status: {type: string, enum: [queued, assigned, accepted, awaiting_approval, canceling, completed, failed, canceled]}
+        status_reason: {type: string}
+        runner_id: {type: string}
+        attempt_number: {type: integer, minimum: 1}
+        manifest_digest: {type: string}
+        action_count: {type: integer, minimum: 0}
+        approval_count: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time}
+        completed_at: {type: string, format: date-time}
+        last_event_at: {type: string, format: date-time}
+    AdminRunList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AdminRun"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    AdminRunEvent:
+      type: object
+      required: [sequence, type, payload, created_at]
+      properties:
+        sequence: {type: integer, minimum: 1}
+        type: {type: string}
+        payload: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+    AdminRunAction:
+      type: object
+      required: [id, tool_name, operation, effect, state, action_digest, created_at, updated_at]
+      properties:
+        id: {type: string}
+        tool_name: {type: string}
+        operation: {type: string}
+        target: {type: string}
+        effect: {type: string, enum: [read, write, destructive]}
+        state: {type: string}
+        action_digest: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AdminRunApproval:
+      type: object
+      required: [id, action_id, action_digest, risk_class, status, requested_by, expires_at, created_at]
+      properties:
+        id: {type: string}
+        action_id: {type: string}
+        action_digest: {type: string}
+        risk_class: {type: string}
+        status: {type: string, enum: [pending, satisfied, rejected, expired, superseded]}
+        requested_by: {type: string}
+        expires_at: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+        decided_at: {type: string, format: date-time}
+    AdminRunArtifact:
+      type: object
+      required: [id, filename, media_type, size_bytes, digest, classification, scan_status, state, created_at]
+      properties:
+        id: {type: string}
+        filename: {type: string}
+        media_type: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        digest: {type: string}
+        classification: {type: string}
+        scan_status: {type: string, enum: [pending, passed, failed]}
+        state: {type: string, enum: [declared, uploaded, available, rejected]}
+        created_at: {type: string, format: date-time}
+    AdminRunDetail:
+      type: object
+      required: [run, events, actions, approvals, artifacts]
+      properties:
+        run: {$ref: "#/components/schemas/AdminRun"}
+        events: {type: array, items: {$ref: "#/components/schemas/AdminRunEvent"}}
+        actions: {type: array, items: {$ref: "#/components/schemas/AdminRunAction"}}
+        approvals: {type: array, items: {$ref: "#/components/schemas/AdminRunApproval"}}
+        artifacts: {type: array, items: {$ref: "#/components/schemas/AdminRunArtifact"}}
     UpdateDraftRequest:
       type: object
       required: [spec]

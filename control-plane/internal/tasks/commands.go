@@ -65,8 +65,8 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, err
 	}
 	defer tx.Rollback(ctx)
-	var agentID, workspaceID, revisionID, oldRunID, oldStatus string
-	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &oldRunID, &oldStatus)
+	var agentID, workspaceID, revisionID, deploymentID, oldRunID, oldStatus string
+	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &deploymentID, &oldRunID, &oldStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -77,7 +77,7 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, ErrInvalidState
 	}
 	if useLatest {
-		err = tx.QueryRow(ctx, `SELECT d.revision_id FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.workspace_id=$3`, actor.ID, agentID, workspaceID).Scan(&revisionID)
+		err = tx.QueryRow(ctx, `SELECT d.id, d.revision_id FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.workspace_id=$3`, actor.ID, agentID, workspaceID).Scan(&deploymentID, &revisionID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Task{}, ErrNotFound
 		}
@@ -85,12 +85,19 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 			return Task{}, err
 		}
 	}
+	if deploymentID == "" {
+		return Task{}, ErrInvalidState
+	}
+	manifestDigest, err := manifestDigestForRevision(ctx, tx, revisionID)
+	if err != nil {
+		return Task{}, err
+	}
 	var attempt int
 	if err := tx.QueryRow(ctx, `SELECT attempt_number+1 FROM gantry.runs WHERE id=$1`, oldRunID).Scan(&attempt); err != nil {
 		return Task{}, err
 	}
 	runID := newID("run")
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, attempt_number, status) VALUES ($1,$2,$3,$4,'queued')`, runID, taskID, revisionID, attempt); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, deployment_id, manifest_digest, attempt_number, status) VALUES ($1,$2,$3,$4,$5,$6,'queued')`, runID, taskID, revisionID, deploymentID, manifestDigest, attempt); err != nil {
 		return Task{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued' WHERE id=$1`, taskID, runID); err != nil {

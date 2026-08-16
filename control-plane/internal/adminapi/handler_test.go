@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/configassets"
@@ -43,6 +44,25 @@ type fakeAssetService struct {
 
 type fakeOverviewService struct {
 	get func(context.Context, identity.Principal, string) (adminoverview.Overview, error)
+}
+
+type fakeRunService struct {
+	list func(adminruns.ListOptions) ([]adminruns.Run, error)
+	get  func(string) (adminruns.Detail, error)
+}
+
+func (s fakeRunService) List(_ context.Context, _ identity.Principal, options adminruns.ListOptions) ([]adminruns.Run, error) {
+	if s.list == nil {
+		return nil, adminruns.ErrNotFound
+	}
+	return s.list(options)
+}
+
+func (s fakeRunService) Get(_ context.Context, _ identity.Principal, runID string) (adminruns.Detail, error) {
+	if s.get == nil {
+		return adminruns.Detail{}, adminruns.ErrNotFound
+	}
+	return s.get(runID)
 }
 
 func (s fakeOverviewService) Get(ctx context.Context, actor identity.Principal, workspaceID string) (adminoverview.Overview, error) {
@@ -295,5 +315,31 @@ func TestSkillListForwardsCatalogFilters(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/skills?workspace_id=ws_1&search=search&status=deprecated", nil))
 	if response.Code != http.StatusOK || options != (configassets.ListOptions{WorkspaceID: "ws_1", Search: "search", Status: "deprecated"}) {
 		t.Fatalf("status=%d options=%+v", response.Code, options)
+	}
+}
+
+func TestRunListForwardsOperationalFilters(t *testing.T) {
+	var options adminruns.ListOptions
+	handler := newHandler(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, nil, nil, nil, fakeRunService{
+		list: func(value adminruns.ListOptions) ([]adminruns.Run, error) {
+			options = value
+			return []adminruns.Run{{ID: "run_1", Status: "failed"}}, nil
+		},
+	}, nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/runs?workspace_id=ws_1&agent_id=agt_1&revision_hash=sha256%3Aabc&status=failed&limit=20", nil))
+	if response.Code != http.StatusOK || options != (adminruns.ListOptions{WorkspaceID: "ws_1", AgentID: "agt_1", RevisionHash: "sha256:abc", Status: "failed", Limit: 20}) {
+		t.Fatalf("status=%d options=%+v", response.Code, options)
+	}
+}
+
+func TestRunRoutesRejectInvalidLimitAndHideUnavailableRun(t *testing.T) {
+	handler := newHandler(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, nil, nil, nil, fakeRunService{}, nil)
+	invalid := httptest.NewRecorder()
+	handler.ServeHTTP(invalid, httptest.NewRequest(http.MethodGet, "/runs?limit=101", nil))
+	missing := httptest.NewRecorder()
+	handler.ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/runs/run_other", nil))
+	if invalid.Code != http.StatusBadRequest || missing.Code != http.StatusNotFound {
+		t.Fatalf("invalid=%d missing=%d", invalid.Code, missing.Code)
 	}
 }

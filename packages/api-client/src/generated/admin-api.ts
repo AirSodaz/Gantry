@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List durable Runs in the authorized operational scope */
+        get: operations["listAdminRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one durable Run and its read-only operational evidence */
+        get: operations["getAdminRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -927,6 +961,99 @@ export interface components {
             revision_count: number;
             recent_activity: components["schemas"]["ActivityItem"][];
         };
+        AdminRun: {
+            id: string;
+            task_id: string;
+            workspace_id: string;
+            workspace_name: string;
+            agent_id: string;
+            agent_name: string;
+            revision_hash: string;
+            deployment_id?: string;
+            deployment_name?: string;
+            requester_id: string;
+            requester_name: string;
+            /** @enum {string} */
+            status: "queued" | "assigned" | "accepted" | "awaiting_approval" | "canceling" | "completed" | "failed" | "canceled";
+            status_reason?: string;
+            runner_id?: string;
+            attempt_number: number;
+            manifest_digest?: string;
+            action_count: number;
+            approval_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            last_event_at?: string;
+        };
+        AdminRunList: {
+            items: components["schemas"]["AdminRun"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AdminRunEvent: {
+            sequence: number;
+            type: string;
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminRunAction: {
+            id: string;
+            tool_name: string;
+            operation: string;
+            target?: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "destructive";
+            state: string;
+            action_digest: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminRunApproval: {
+            id: string;
+            action_id: string;
+            action_digest: string;
+            risk_class: string;
+            /** @enum {string} */
+            status: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
+            requested_by: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            decided_at?: string;
+        };
+        AdminRunArtifact: {
+            id: string;
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+            /** @enum {string} */
+            scan_status: "pending" | "passed" | "failed";
+            /** @enum {string} */
+            state: "declared" | "uploaded" | "available" | "rejected";
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminRunDetail: {
+            run: components["schemas"]["AdminRun"];
+            events: components["schemas"]["AdminRunEvent"][];
+            actions: components["schemas"]["AdminRunAction"][];
+            approvals: components["schemas"]["AdminRunApproval"][];
+            artifacts: components["schemas"]["AdminRunArtifact"][];
+        };
         UpdateDraftRequest: {
             spec: Record<string, never>;
         };
@@ -1048,6 +1175,15 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
+        /** @description Request syntax or query parameters are invalid. */
+        InvalidRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description Request is invalid. */
         InvalidInput: {
             headers: {
@@ -1105,6 +1241,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminRuns: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                agent_id?: string;
+                revision_hash?: string;
+                status?: "queued" | "assigned" | "accepted" | "awaiting_approval" | "canceling" | "completed" | "failed" | "canceled";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRunList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getAdminRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Run detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRunDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];

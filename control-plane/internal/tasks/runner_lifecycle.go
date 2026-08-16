@@ -20,9 +20,9 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 		return Assignment{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	var runID string
+	var runID, storedManifestDigest string
 	var spec json.RawMessage
-	err = tx.QueryRow(ctx, `SELECT r.id, v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.status='queued' ORDER BY r.created_at, r.id FOR UPDATE OF r SKIP LOCKED LIMIT 1`).Scan(&runID, &spec)
+	err = tx.QueryRow(ctx, `SELECT r.id, r.manifest_digest, v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.status='queued' ORDER BY r.created_at, r.id FOR UPDATE OF r SKIP LOCKED LIMIT 1`).Scan(&runID, &storedManifestDigest, &spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Assignment{}, false, nil
 	}
@@ -32,6 +32,9 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 	manifest, digest, err := executionManifest(spec)
 	if err != nil {
 		return Assignment{}, false, err
+	}
+	if storedManifestDigest == "" || digest != storedManifestDigest {
+		return Assignment{}, false, ErrInvalidState
 	}
 	var epoch uint64
 	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET status='assigned', runner_id=$2, lease_epoch=lease_epoch+1, started_at=COALESCE(started_at, now()) WHERE id=$1 RETURNING lease_epoch`, runID, runnerID).Scan(&epoch); err != nil {
@@ -55,8 +58,9 @@ func (s *Service) Accept(ctx context.Context, runnerID, runID string, epoch uint
 		return err
 	}
 	defer tx.Rollback(ctx)
+	var storedManifestDigest string
 	var spec json.RawMessage
-	err = tx.QueryRow(ctx, `SELECT v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 AND r.status='assigned' FOR UPDATE OF r`, runID, runnerID, epoch).Scan(&spec)
+	err = tx.QueryRow(ctx, `SELECT r.manifest_digest, v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 AND r.status='assigned' FOR UPDATE OF r`, runID, runnerID, epoch).Scan(&storedManifestDigest, &spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -67,7 +71,7 @@ func (s *Service) Accept(ctx context.Context, runnerID, runID string, epoch uint
 	if err != nil {
 		return err
 	}
-	if digest != expected {
+	if storedManifestDigest == "" || digest != storedManifestDigest || digest != expected {
 		return ErrInvalidInput
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1`, runID); err != nil {

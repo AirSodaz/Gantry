@@ -16,6 +16,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/adminapi"
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/authorization"
@@ -176,7 +177,8 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 	}
 	if adminAuth != nil {
 		overviewService := adminoverview.NewService(databasePool, authorizer)
-		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithTarget(adminAuth, authorizer, agentService, agentService, assetService, overviewService, logger)))
+		runService := adminruns.NewService(databasePool, authorizer)
+		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithTarget(adminAuth, authorizer, agentService, agentService, assetService, overviewService, runService, logger)))
 	}
 	// Product routes are OpenAPI-owned. Connect handlers are registered only below.
 	return &http.Server{Addr: cfg.HTTPAddress, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

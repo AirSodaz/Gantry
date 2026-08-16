@@ -46,7 +46,11 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if err != nil {
 		return Task{}, false, err
 	}
-	workspaceID, revisionID, displayName, err := resolveProductionAgent(ctx, tx, actor, request.AgentID)
+	workspaceID, deploymentID, revisionID, displayName, err := resolveProductionAgent(ctx, tx, actor, request.AgentID)
+	if err != nil {
+		return Task{}, false, err
+	}
+	manifestDigest, err := manifestDigestForRevision(ctx, tx, revisionID)
 	if err != nil {
 		return Task{}, false, err
 	}
@@ -54,7 +58,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tasks (id, organization_id, workspace_id, requester_principal_id, agent_id, input_json, current_run_id, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'queued')`, taskID, actor.OrganizationID, workspaceID, actor.ID, request.AgentID, input, runID); err != nil {
 		return Task{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, attempt_number, status) VALUES ($1,$2,$3,1,'queued')`, runID, taskID, revisionID); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, deployment_id, manifest_digest, attempt_number, status) VALUES ($1,$2,$3,$4,$5,1,'queued')`, runID, taskID, revisionID, deploymentID, manifestDigest); err != nil {
 		return Task{}, false, err
 	}
 	if err := appendEvent(ctx, tx, runID, "task.accepted"); err != nil {
@@ -69,12 +73,24 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	return Task{ID: taskID, AgentID: request.AgentID, AgentDisplayName: displayName, Status: "queued", CurrentRun: Run{ID: runID, Status: "queued"}, CreatedAt: time.Now().UTC()}, false, nil
 }
 
-func resolveProductionAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, revisionID, displayName string, err error) {
-	err = tx.QueryRow(ctx, `SELECT a.workspace_id, d.revision_id, a.display_name FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.organization_id=$3`, actor.ID, agentID, actor.OrganizationID).Scan(&workspaceID, &revisionID, &displayName)
+func resolveProductionAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, deploymentID, revisionID, displayName string, err error) {
+	err = tx.QueryRow(ctx, `SELECT a.workspace_id, d.id, d.revision_id, a.display_name FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.organization_id=$3`, actor.ID, agentID, actor.OrganizationID).Scan(&workspaceID, &deploymentID, &revisionID, &displayName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}
 	return
+}
+
+func manifestDigestForRevision(ctx context.Context, tx pgx.Tx, revisionID string) (string, error) {
+	var spec json.RawMessage
+	if err := tx.QueryRow(ctx, `SELECT spec_json FROM gantry.agent_revisions WHERE id=$1`, revisionID).Scan(&spec); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	_, digest, err := executionManifest(spec)
+	return digest, err
 }
 
 func normalizeInput(request SubmitRequest) (string, error) {

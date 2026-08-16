@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
 	"github.com/AirSodaz/gantry/internal/configassets"
@@ -82,6 +83,11 @@ type overviewService interface {
 	Get(context.Context, identity.Principal, string) (adminoverview.Overview, error)
 }
 
+type runService interface {
+	List(context.Context, identity.Principal, adminruns.ListOptions) ([]adminruns.Run, error)
+	Get(context.Context, identity.Principal, string) (adminruns.Detail, error)
+}
+
 type Handler struct {
 	auth      authenticator
 	authorize authorizer
@@ -89,36 +95,41 @@ type Handler struct {
 	target    targetLifecycleService
 	assets    assetService
 	overview  overviewService
+	runs      runService
 	logger    *slog.Logger
 }
 
 func New(auth authenticator, authorize authorizer, service lifecycleService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, nil, nil, nil, logger)
+	return newHandler(auth, authorize, service, nil, nil, nil, nil, logger)
 }
 
 func NewWithAssets(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, nil, assets, nil, logger)
+	return newHandler(auth, authorize, service, nil, assets, nil, nil, logger)
 }
 
 func NewWithAssetsAndOverview(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, nil, assets, overview, logger)
+	return newHandler(auth, authorize, service, nil, assets, overview, nil, logger)
 }
 
-func NewWithTarget(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, target, assets, overview, logger)
+func NewWithTarget(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, logger *slog.Logger) http.Handler {
+	return newHandler(auth, authorize, service, target, assets, overview, runs, logger)
 }
 
-func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
+func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /agents", h.withActor(h.createAgent))
 	mux.Handle("GET /agents/{agentID}", h.withActor(h.getAgent))
+	if runs != nil {
+		mux.Handle("GET /runs", h.withActor(h.listRuns))
+		mux.Handle("GET /runs/{runID}", h.withActor(h.getRun))
+	}
 	if target != nil {
 		h.registerTargetRoutes(mux)
 	}
@@ -142,6 +153,47 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 		mux.Handle("POST /tools/{operation...}", h.withActor(h.toolCommand))
 	}
 	return mux
+}
+
+func (h Handler) listRuns(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	limit, err := queryLimit(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "limit must be a positive integer no greater than 100.")
+		return
+	}
+	items, err := h.runs.List(r.Context(), actor, adminruns.ListOptions{
+		WorkspaceID:  r.URL.Query().Get("workspace_id"),
+		AgentID:      r.URL.Query().Get("agent_id"),
+		RevisionHash: r.URL.Query().Get("revision_hash"),
+		Status:       r.URL.Query().Get("status"),
+		Limit:        limit,
+	})
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) getRun(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	detail, err := h.runs.Get(r.Context(), actor, r.PathValue("runID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
+}
+
+func queryLimit(r *http.Request) (int, error) {
+	value := strings.TrimSpace(r.URL.Query().Get("limit"))
+	if value == "" {
+		return 50, nil
+	}
+	limit, err := strconv.Atoi(value)
+	if err != nil || limit < 1 || limit > 100 {
+		return 0, errors.New("invalid limit")
+	}
+	return limit, nil
 }
 
 func (h Handler) listSkills(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -489,12 +541,14 @@ func decodeOptionalJSON(w http.ResponseWriter, r *http.Request, destination any)
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
+	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, adminruns.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
 	case errors.Is(err, agentlifecycle.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The agent request is not valid.")
 	case errors.Is(err, configassets.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The configuration asset request is not valid.")
+	case errors.Is(err, adminruns.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The run query is not valid.")
 	case errors.Is(err, agentlifecycle.ErrRevisionConflict):
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")
 	case errors.Is(err, agentlifecycle.ErrInvalidState):

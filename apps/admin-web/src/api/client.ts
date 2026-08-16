@@ -1,4 +1,4 @@
-import type { AdminOverview, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -11,6 +11,7 @@ export class AdminApiError extends Error {
 
 type TokenProvider = () => string | null;
 export type AssetListOptions = { workspaceId?: string; search?: string; status?: string };
+export type RunListOptions = { workspaceId?: string; agentId?: string; revisionHash?: string; status?: AdminRun['status']; limit?: number };
 
 export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
@@ -20,6 +21,17 @@ export class AdminApi {
     const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
     return this.request<AdminOverview>(`/overview${query}`);
   }
+  listRuns(options: RunListOptions = {}) {
+    const query = new URLSearchParams();
+    if (options.workspaceId) query.set('workspace_id', options.workspaceId);
+    if (options.agentId) query.set('agent_id', options.agentId);
+    if (options.revisionHash) query.set('revision_hash', options.revisionHash);
+    if (options.status) query.set('status', options.status);
+    if (options.limit) query.set('limit', String(options.limit));
+    const value = query.toString();
+    return this.request<{ items: AdminRun[] }>(`/runs${value ? `?${value}` : ''}`);
+  }
+  getRun(runId: string) { return this.request<AdminRunDetail>(`/runs/${encodeURIComponent(runId)}`); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

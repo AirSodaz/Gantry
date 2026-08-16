@@ -43,4 +43,12 @@ describe('AdminApi', () => {
     await api.listTools({ search: 'data export', status: 'deprecated' });
     expect(fetchMock).toHaveBeenCalledWith('/api/admin/v1/tools?search=data+export&status=deprecated', expect.anything());
   });
+
+  it('encodes the Admin Run workbench filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listRuns({ workspaceId: 'ws_1', agentId: 'agt_1', revisionHash: 'sha256:abc', status: 'failed', limit: 20 });
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/v1/runs?workspace_id=ws_1&agent_id=agt_1&revision_hash=sha256%3Aabc&status=failed&limit=20', expect.anything());
+  });
 });

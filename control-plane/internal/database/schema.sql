@@ -253,6 +253,8 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   id text PRIMARY KEY,
   task_id text NOT NULL REFERENCES gantry.tasks(id),
   agent_revision_id text NOT NULL REFERENCES gantry.agent_revisions(id),
+  deployment_id text REFERENCES gantry.agent_deployments(id),
+  manifest_digest text NOT NULL DEFAULT '',
   attempt_number integer NOT NULL,
   status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
   status_reason text NOT NULL DEFAULT '',
@@ -265,6 +267,10 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   completed_at timestamptz,
   UNIQUE (task_id, attempt_number)
 );
+ALTER TABLE gantry.runs
+  ADD COLUMN IF NOT EXISTS deployment_id text REFERENCES gantry.agent_deployments(id);
+ALTER TABLE gantry.runs
+  ADD COLUMN IF NOT EXISTS manifest_digest text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS gantry.run_events (
   run_id text NOT NULL REFERENCES gantry.runs(id),
   sequence bigint NOT NULL,

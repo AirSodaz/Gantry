@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Cable, Database, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
+import { Activity, Bot, Cable, Database, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -92,22 +92,8 @@ export function AppShell() {
           <NavLink to="/plugins" title={isCollapsed ? 'Plugins' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Database size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Plugins</span> : null}</NavLink>
           <NavLink to="/tools" title={isCollapsed ? 'Tools' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Cable size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Tools</span> : null}</NavLink>
 
-          {!isCollapsed ? (
-            <span className="admin-nav-label admin-nav-label-spaced">Later</span>
-          ) : (
-            <div className="admin-nav-divider admin-nav-divider-spaced" />
-          )}
-
-          <span
-            className={`admin-nav-link admin-nav-link-disabled ${
-              isCollapsed ? 'admin-nav-link-collapsed' : ''
-            }`}
-            aria-disabled="true"
-            title="Not available in this release"
-          >
-            <Settings2 size={17} className="admin-nav-icon" />
-            {!isCollapsed ? <span>Operations</span> : null}
-          </span>
+          {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Operate</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
+          <NavLink to="/runs" title={isCollapsed ? 'Runs' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Activity size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Runs</span> : null}</NavLink>
         </nav>
 
         {/* Sidebar Footer with Theme Toggle and Admin Profile */}
