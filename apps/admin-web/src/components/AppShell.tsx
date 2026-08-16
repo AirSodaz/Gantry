@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
+import { Bot, Cable, Database, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -84,19 +84,12 @@ export function AppShell() {
             <div className="admin-nav-divider" />
           )}
 
-          <NavLink
-            end
-            to="/"
-            title={isCollapsed ? 'Agents' : undefined}
-            className={({ isActive }) =>
-              `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${
-                isCollapsed ? 'admin-nav-link-collapsed' : ''
-              }`
-            }
-          >
-            <PanelLeft size={17} className="admin-nav-icon" />
-            {!isCollapsed ? <span>Agents</span> : null}
-          </NavLink>
+          <NavLink end to="/" title={isCollapsed ? 'Agents' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><PanelLeft size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Agents</span> : null}</NavLink>
+
+          {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Configuration</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
+          <NavLink to="/skills" title={isCollapsed ? 'Skills' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Layers3 size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Skills</span> : null}</NavLink>
+          <NavLink to="/plugins" title={isCollapsed ? 'Plugins' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Database size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Plugins</span> : null}</NavLink>
+          <NavLink to="/tools" title={isCollapsed ? 'Tools' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Cable size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Tools</span> : null}</NavLink>
 
           {!isCollapsed ? (
             <span className="admin-nav-label admin-nav-label-spaced">Later</span>

@@ -46,6 +46,77 @@ CREATE UNIQUE INDEX IF NOT EXISTS role_bindings_organization_admin_idx
 CREATE UNIQUE INDEX IF NOT EXISTS role_bindings_workspace_role_idx
   ON gantry.role_bindings (principal_id, workspace_id, role) WHERE workspace_id IS NOT NULL;
 
+-- Configuration assets are immutable execution inputs.  The catalog records
+-- metadata and digests only; package contents and credentials stay behind
+-- trusted adapters or object storage.
+CREATE TABLE IF NOT EXISTS gantry.skills (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  slug text NOT NULL,
+  display_name text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  source_type text NOT NULL CHECK (source_type IN ('marketplace', 'locator', 'upload', 'local')),
+  source_ref text NOT NULL,
+  declared_version text NOT NULL DEFAULT '',
+  content_digest text NOT NULL,
+  status text NOT NULL CHECK (status IN ('available', 'deprecated', 'retired')),
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, slug, content_digest)
+);
+CREATE INDEX IF NOT EXISTS skills_workspace_idx ON gantry.skills (workspace_id, status, display_name);
+
+CREATE TABLE IF NOT EXISTS gantry.plugins (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  slug text NOT NULL,
+  display_name text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  version text NOT NULL,
+  content_digest text NOT NULL,
+  status text NOT NULL CHECK (status IN ('active', 'deprecated', 'retired')),
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, slug, version, content_digest)
+);
+CREATE INDEX IF NOT EXISTS plugins_org_idx ON gantry.plugins (organization_id, status, display_name);
+
+CREATE TABLE IF NOT EXISTS gantry.workspace_plugin_enablements (
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  plugin_id text NOT NULL REFERENCES gantry.plugins(id),
+  enabled_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  enabled_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (workspace_id, plugin_id)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.tool_servers (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  name text NOT NULL,
+  server_type text NOT NULL CHECK (server_type IN ('builtin', 'mcp', 'cli')),
+  endpoint_ref text NOT NULL DEFAULT '',
+  status text NOT NULL CHECK (status IN ('active', 'degraded', 'retired')),
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.tool_descriptors (
+  id text PRIMARY KEY,
+  server_id text NOT NULL REFERENCES gantry.tool_servers(id),
+  fully_qualified_name text NOT NULL,
+  version text NOT NULL,
+  effect text NOT NULL CHECK (effect IN ('read', 'write', 'external_side_effect', 'administrative')),
+  idempotency text NOT NULL CHECK (idempotency IN ('read_only', 'idempotent', 'compensatable', 'non_repeatable')),
+  schema_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  content_digest text NOT NULL,
+  status text NOT NULL CHECK (status IN ('active', 'proposed', 'deprecated', 'retired')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (server_id, fully_qualified_name, version, content_digest)
+);
+CREATE INDEX IF NOT EXISTS tool_descriptors_server_idx ON gantry.tool_descriptors (server_id, status, fully_qualified_name);
+
 CREATE TABLE IF NOT EXISTS gantry.agents (
   id text PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),

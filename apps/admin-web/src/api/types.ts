@@ -8,6 +8,9 @@ export type AgentVersion = Components['schemas']['AgentVersion'];
 export type CreateAgentInput = Components['schemas']['CreateAgentRequest'];
 export type AgentReview = Components['schemas']['AgentReview'];
 export type DiffEntry = Components['schemas']['DiffEntry'];
+export type Skill = Components['schemas']['Skill'];
+export type Plugin = Components['schemas']['Plugin'];
+export type Tool = Components['schemas']['Tool'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';
@@ -16,4 +19,7 @@ export type AgentSpec = {
   limits: { max_turns: number; max_output_bytes: number };
   checkpoint: { enabled: boolean };
   command_policy: { allow_shell: boolean };
+  skills?: { artifact_id: string }[];
+  plugins?: { plugin_version_id: string }[];
+  tool_bindings?: { descriptor_id: string; operations?: string[] }[];
 };

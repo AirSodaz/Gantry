@@ -49,6 +49,22 @@ export function AgentDetailPage() {
     queryFn: () => api.getReview(agentId),
   });
 
+  const skills = useQuery({
+    queryKey: ['admin-skills', agent.data?.workspace_id],
+    queryFn: () => api.listSkills(agent.data!.workspace_id),
+    enabled: Boolean(agent.data?.workspace_id),
+  });
+
+  const plugins = useQuery({
+    queryKey: ['admin-plugins'],
+    queryFn: () => api.listPlugins(),
+  });
+
+  const tools = useQuery({
+    queryKey: ['admin-tools'],
+    queryFn: () => api.listTools(),
+  });
+
   const [spec, setSpec] = useState<AgentSpec>(defaultSpec);
   const [releaseNotes, setReleaseNotes] = useState('');
 
@@ -137,6 +153,10 @@ export function AgentDetailPage() {
     submitReview.error ??
     decideReview.error ??
     rollback.error;
+
+  const selectBindings = (field: 'skills' | 'plugins' | 'tool_bindings', valueKey: 'artifact_id' | 'plugin_version_id' | 'descriptor_id', selected: string[]) => {
+    setSpec((current) => ({ ...current, [field]: selected.map((id) => ({ [valueKey]: id })) }));
+  };
 
   return (
     <section className="admin-page admin-detail-page">
@@ -232,6 +252,30 @@ export function AgentDetailPage() {
               <dd>{spec.kind}</dd>
             </div>
           </dl>
+
+          <div className="admin-asset-bindings">
+            <div className="admin-section-heading">
+              <div><span>Immutable references</span><h2>Configuration assets</h2></div>
+            </div>
+            <label className="admin-field">
+              <span className="admin-field-label">Skills</span>
+              <select className="ds-input admin-multiselect" multiple value={(spec.skills ?? []).map((binding) => binding.artifact_id)} onChange={(event) => selectBindings('skills', 'artifact_id', Array.from(event.currentTarget.selectedOptions, (option) => option.value))} disabled={busy || skills.isLoading}>
+                {(skills.data?.items ?? []).map((skill) => <option key={skill.id} value={skill.id}>{skill.display_name} {skill.declared_version || '未声明'}</option>)}
+              </select>
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">Plugin versions</span>
+              <select className="ds-input admin-multiselect" multiple value={(spec.plugins ?? []).map((binding) => binding.plugin_version_id)} onChange={(event) => selectBindings('plugins', 'plugin_version_id', Array.from(event.currentTarget.selectedOptions, (option) => option.value))} disabled={busy || plugins.isLoading}>
+                {(plugins.data?.items ?? []).map((plugin) => <option key={plugin.id} value={plugin.id}>{plugin.display_name} {plugin.version}</option>)}
+              </select>
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">Tool descriptors</span>
+              <select className="ds-input admin-multiselect" multiple value={(spec.tool_bindings ?? []).map((binding) => binding.descriptor_id)} onChange={(event) => selectBindings('tool_bindings', 'descriptor_id', Array.from(event.currentTarget.selectedOptions, (option) => option.value))} disabled={busy || tools.isLoading}>
+                {(tools.data?.items ?? []).map((tool) => <option key={tool.id} value={tool.id}>{tool.fully_qualified_name} {tool.version}</option>)}
+              </select>
+            </label>
+          </div>
         </section>
 
         <aside className="admin-version-panel">

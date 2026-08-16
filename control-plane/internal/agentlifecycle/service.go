@@ -119,6 +119,13 @@ func (s *Service) UpdateDraft(ctx context.Context, actor identity.Principal, age
 	}
 	canonical, findings := ValidateSpec(spec)
 	stored := spec
+	if len(findings) == 0 {
+		assetFindings, err := validateAssetBindings(ctx, s.pool, agent.WorkspaceID, spec)
+		if err != nil {
+			return Draft{}, err
+		}
+		findings = append(findings, assetFindings...)
+	}
 	status := "invalid"
 	if len(findings) == 0 {
 		stored, status = canonical, "valid"
@@ -350,6 +357,13 @@ func (s *Service) Publish(ctx context.Context, actor identity.Principal, agentID
 	canonicalDraft, currentDigest, err := canonicalDigest(draft.Spec)
 	if err != nil || currentDigest != reviewDigest {
 		return Version{}, false, ErrReviewRequired
+	}
+	assetFindings, err := validateAssetBindings(ctx, s.pool, agent.WorkspaceID, canonicalDraft)
+	if err != nil {
+		return Version{}, false, err
+	}
+	if len(assetFindings) != 0 {
+		return Version{}, false, ErrInvalidState
 	}
 	if existing, found, err := loadVersionForDraft(ctx, tx, agent.ID, draft.Revision); err != nil || found {
 		if err != nil {

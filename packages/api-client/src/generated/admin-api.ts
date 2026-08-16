@@ -39,6 +39,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List imported Skill artifacts */
+        get: operations["listSkills"];
+        put?: never;
+        /** Register an imported Skill artifact */
+        post: operations["registerSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization Plugin versions */
+        get: operations["listPlugins"];
+        put?: never;
+        /** Register an organization Plugin version */
+        post: operations["registerPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active Tool descriptors */
+        get: operations["listTools"];
+        put?: never;
+        /** Register a Tool server and descriptor version */
+        post: operations["registerTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable one active Plugin version in a workspace */
+        post: operations["enablePluginForWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}": {
         parameters: {
             query?: never;
@@ -214,6 +285,92 @@ export interface components {
         WorkspaceList: {
             items: components["schemas"]["Workspace"][];
             page_info: components["schemas"]["PageInfo"];
+        };
+        Skill: {
+            id: string;
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            /** @enum {string} */
+            source_type: "marketplace" | "locator" | "upload" | "local";
+            source_ref: string;
+            declared_version: string;
+            content_digest: string;
+            /** @enum {string} */
+            status: "available" | "deprecated" | "retired";
+        };
+        SkillList: {
+            items: components["schemas"]["Skill"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RegisterSkillRequest: {
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description?: string;
+            /** @enum {string} */
+            source_type: "marketplace" | "locator" | "upload" | "local";
+            source_ref: string;
+            declared_version?: string;
+            content_digest: string;
+        };
+        Plugin: {
+            id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            version: string;
+            content_digest: string;
+            /** @enum {string} */
+            status: "active" | "deprecated" | "retired";
+        };
+        PluginList: {
+            items: components["schemas"]["Plugin"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RegisterPluginRequest: {
+            slug: string;
+            display_name: string;
+            description?: string;
+            version: string;
+            content_digest: string;
+        };
+        EnablePluginRequest: {
+            workspace_id: string;
+        };
+        Tool: {
+            id: string;
+            server_id: string;
+            server_name: string;
+            /** @enum {string} */
+            server_type: "builtin" | "mcp" | "cli";
+            fully_qualified_name: string;
+            version: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "external_side_effect" | "administrative";
+            /** @enum {string} */
+            idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
+            content_digest: string;
+            /** @enum {string} */
+            status: "active" | "proposed" | "deprecated" | "retired";
+        };
+        ToolList: {
+            items: components["schemas"]["Tool"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RegisterToolRequest: {
+            server_name: string;
+            /** @enum {string} */
+            server_type: "builtin" | "mcp" | "cli";
+            endpoint_ref?: string;
+            fully_qualified_name: string;
+            version: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "external_side_effect" | "administrative";
+            /** @enum {string} */
+            idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
+            content_digest: string;
         };
         Agent: {
             id: string;
@@ -455,6 +612,182 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["InvalidInput"];
+        };
+    };
+    listSkills: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skills */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterSkillRequest"];
+            };
+        };
+        responses: {
+            /** @description Skill registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Skill"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listPlugins: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plugins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tools */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterToolRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tool"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    enablePluginForWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnablePluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin enabled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getAgent: {

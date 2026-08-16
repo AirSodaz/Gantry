@@ -1,6 +1,9 @@
 package agentlifecycle
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateSpecCanonicalizesSupportedManifest(t *testing.T) {
 	canonical, findings := ValidateSpec([]byte(`{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false}}`))
@@ -13,6 +16,16 @@ func TestValidateSpecRejectsMissingModel(t *testing.T) {
 	_, findings := ValidateSpec([]byte(`{"kind":"gantry.agent/v1","workspace_root":".","limits":{"max_turns":12}}`))
 	if len(findings) < 1 || findings[0].Path != "/model/provider" {
 		t.Fatalf("findings=%#v", findings)
+	}
+}
+
+func TestValidateSpecPreservesImmutableAssetReferences(t *testing.T) {
+	canonical, findings := ValidateSpec([]byte(`{"kind":"gantry.agent/v1","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":12,"max_output_bytes":131072},"checkpoint":{"enabled":false},"command_policy":{"allow_shell":false},"skills":[{"artifact_id":"skill_1"}],"plugins":[{"plugin_version_id":"plugin_1"}],"tool_bindings":[{"descriptor_id":"tool_1","operations":["search"]}]}`))
+	if len(findings) != 0 {
+		t.Fatalf("findings=%#v", findings)
+	}
+	if string(canonical) == "" || !strings.Contains(string(canonical), `"artifact_id":"skill_1"`) || !strings.Contains(string(canonical), `"descriptor_id":"tool_1"`) {
+		t.Fatalf("canonical=%s", canonical)
 	}
 }
 

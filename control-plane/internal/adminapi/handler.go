@@ -13,6 +13,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
+	"github.com/AirSodaz/gantry/internal/configassets"
 	"github.com/AirSodaz/gantry/internal/identity"
 )
 
@@ -40,18 +41,37 @@ type lifecycleService interface {
 	Rollback(context.Context, identity.Principal, string, string) error
 }
 
+type assetService interface {
+	ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error)
+	CreateSkill(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
+	ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error)
+	CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error)
+	EnablePlugin(context.Context, identity.Principal, string, string) error
+	ListTools(context.Context, identity.Principal) ([]configassets.Tool, error)
+	CreateTool(context.Context, identity.Principal, configassets.CreateToolRequest) (configassets.Tool, error)
+}
+
 type Handler struct {
 	auth      authenticator
 	authorize authorizer
 	service   lifecycleService
+	assets    assetService
 	logger    *slog.Logger
 }
 
 func New(auth authenticator, authorize authorizer, service lifecycleService, logger *slog.Logger) http.Handler {
+	return newHandler(auth, authorize, service, nil, logger)
+}
+
+func NewWithAssets(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
+	return newHandler(auth, authorize, service, assets, logger)
+}
+
+func newHandler(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, assets: assets, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
@@ -61,8 +81,99 @@ func New(auth authenticator, authorize authorizer, service lifecycleService, log
 	mux.Handle("PUT /agents/{agentID}/draft", h.withActor(h.updateDraft))
 	mux.Handle("GET /agents/{agentID}/versions", h.withActor(h.listVersions))
 	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
+	if assets != nil {
+		mux.Handle("GET /skills", h.withActor(h.listSkills))
+		mux.Handle("POST /skills", h.withActor(h.createSkill))
+		mux.Handle("GET /plugins", h.withActor(h.listPlugins))
+		mux.Handle("POST /plugins", h.withActor(h.createPlugin))
+		mux.Handle("POST /plugins/{pluginID}/enable", h.withActor(h.enablePlugin))
+		mux.Handle("GET /tools", h.withActor(h.listTools))
+		mux.Handle("POST /tools", h.withActor(h.createTool))
+	}
 	mux.Handle("POST /agents/{operation...}", h.withActor(h.command))
 	return mux
+}
+
+func (h Handler) listSkills(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListSkills(r.Context(), actor, r.URL.Query().Get("workspace_id"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) createSkill(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request configassets.CreateSkillRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	item, err := h.assets.CreateSkill(r.Context(), actor, request)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, item)
+}
+
+func (h Handler) listPlugins(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListPlugins(r.Context(), actor)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) createPlugin(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request configassets.CreatePluginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	item, err := h.assets.CreatePlugin(r.Context(), actor, request)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, item)
+}
+
+func (h Handler) enablePlugin(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request configassets.EnablePluginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	if err := h.assets.EnablePlugin(r.Context(), actor, r.PathValue("pluginID"), request.WorkspaceID); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h Handler) listTools(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.assets.ListTools(r.Context(), actor)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) createTool(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request configassets.CreateToolRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	item, err := h.assets.CreateTool(r.Context(), actor, request)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, item)
 }
 
 type actorHandler func(http.ResponseWriter, *http.Request, identity.Principal)
@@ -275,9 +386,9 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
+	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
-	case errors.Is(err, agentlifecycle.ErrInvalidInput):
+	case errors.Is(err, agentlifecycle.ErrInvalidInput), errors.Is(err, configassets.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The agent request is not valid.")
 	case errors.Is(err, agentlifecycle.ErrRevisionConflict):
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")

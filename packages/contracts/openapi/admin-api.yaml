@@ -58,6 +58,91 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/InvalidInput"}
+  /skills:
+    get:
+      operationId: listSkills
+      summary: List imported Skill artifacts
+      tags: [Skills]
+      parameters:
+        - name: workspace_id
+          in: query
+          schema: {type: string}
+      responses:
+        "200": {description: Skills, content: {application/json: {schema: {$ref: "#/components/schemas/SkillList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: registerSkill
+      summary: Register an imported Skill artifact
+      tags: [Skills]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/RegisterSkillRequest"}}}
+      responses:
+        "201": {description: Skill registered, content: {application/json: {schema: {$ref: "#/components/schemas/Skill"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins:
+    get:
+      operationId: listPlugins
+      summary: List organization Plugin versions
+      tags: [Plugins]
+      responses:
+        "200": {description: Plugins, content: {application/json: {schema: {$ref: "#/components/schemas/PluginList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: registerPlugin
+      summary: Register an organization Plugin version
+      tags: [Plugins]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/RegisterPluginRequest"}}}
+      responses:
+        "201": {description: Plugin registered, content: {application/json: {schema: {$ref: "#/components/schemas/Plugin"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /tools:
+    get:
+      operationId: listTools
+      summary: List active Tool descriptors
+      tags: [Tools]
+      responses:
+        "200": {description: Tools, content: {application/json: {schema: {$ref: "#/components/schemas/ToolList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: registerTool
+      summary: Register a Tool server and descriptor version
+      tags: [Tools]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/RegisterToolRequest"}}}
+      responses:
+        "201": {description: Tool registered, content: {application/json: {schema: {$ref: "#/components/schemas/Tool"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /plugins/{plugin_id}/enable:
+    post:
+      operationId: enablePluginForWorkspace
+      summary: Enable one active Plugin version in a workspace
+      tags: [Plugins]
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/EnablePluginRequest"}}}
+      responses:
+        "204": {description: Plugin enabled}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /agents/{agent_id}:
     get:
       operationId: getAgent
@@ -296,6 +381,101 @@ components:
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/Workspace"}}
         page_info: {$ref: "#/components/schemas/PageInfo"}
+    Skill:
+      type: object
+      required: [id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, status]
+      properties:
+        id: {type: string}
+        workspace_id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        source_type: {type: string, enum: [marketplace, locator, upload, local]}
+        source_ref: {type: string}
+        declared_version: {type: string}
+        content_digest: {type: string}
+        status: {type: string, enum: [available, deprecated, retired]}
+    SkillList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Skill"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    RegisterSkillRequest:
+      type: object
+      required: [workspace_id, slug, display_name, source_type, source_ref, content_digest]
+      properties:
+        workspace_id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        source_type: {type: string, enum: [marketplace, locator, upload, local]}
+        source_ref: {type: string}
+        declared_version: {type: string}
+        content_digest: {type: string}
+    Plugin:
+      type: object
+      required: [id, slug, display_name, description, version, content_digest, status]
+      properties:
+        id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        version: {type: string}
+        content_digest: {type: string}
+        status: {type: string, enum: [active, deprecated, retired]}
+    PluginList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Plugin"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    RegisterPluginRequest:
+      type: object
+      required: [slug, display_name, version, content_digest]
+      properties:
+        slug: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        version: {type: string}
+        content_digest: {type: string}
+    EnablePluginRequest:
+      type: object
+      required: [workspace_id]
+      properties:
+        workspace_id: {type: string}
+    Tool:
+      type: object
+      required: [id, server_id, server_name, server_type, fully_qualified_name, version, effect, idempotency, content_digest, status]
+      properties:
+        id: {type: string}
+        server_id: {type: string}
+        server_name: {type: string}
+        server_type: {type: string, enum: [builtin, mcp, cli]}
+        fully_qualified_name: {type: string}
+        version: {type: string}
+        effect: {type: string, enum: [read, write, external_side_effect, administrative]}
+        idempotency: {type: string, enum: [read_only, idempotent, compensatable, non_repeatable]}
+        content_digest: {type: string}
+        status: {type: string, enum: [active, proposed, deprecated, retired]}
+    ToolList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Tool"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    RegisterToolRequest:
+      type: object
+      required: [server_name, server_type, fully_qualified_name, version, effect, idempotency, content_digest]
+      properties:
+        server_name: {type: string}
+        server_type: {type: string, enum: [builtin, mcp, cli]}
+        endpoint_ref: {type: string}
+        fully_qualified_name: {type: string}
+        version: {type: string}
+        effect: {type: string, enum: [read, write, external_side_effect, administrative]}
+        idempotency: {type: string, enum: [read_only, idempotent, compensatable, non_repeatable]}
+        content_digest: {type: string}
     Agent:
       type: object
       required: [id, organization_id, workspace_id, slug, display_name, description, category, lifecycle_status]

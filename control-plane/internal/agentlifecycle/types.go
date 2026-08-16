@@ -23,17 +23,33 @@ var (
 )
 
 type Manifest struct {
-	Kind          string         `json:"kind"`
-	Model         ModelConfig    `json:"model"`
-	SystemPrompt  string         `json:"system_prompt,omitempty"`
-	UserInput     string         `json:"user_input,omitempty"`
-	Rules         []RuleSnapshot `json:"rules,omitempty"`
-	Tools         []string       `json:"tools,omitempty"`
-	WorkspaceRoot string         `json:"workspace_root"`
-	Limits        ResourceLimits `json:"limits"`
-	Checkpoint    Checkpoint     `json:"checkpoint"`
-	CommandPolicy CommandPolicy  `json:"command_policy"`
-	Artifacts     []ArtifactSpec `json:"artifacts,omitempty"`
+	Kind          string          `json:"kind"`
+	Model         ModelConfig     `json:"model"`
+	SystemPrompt  string          `json:"system_prompt,omitempty"`
+	UserInput     string          `json:"user_input,omitempty"`
+	Rules         []RuleSnapshot  `json:"rules,omitempty"`
+	Tools         []string        `json:"tools,omitempty"`
+	WorkspaceRoot string          `json:"workspace_root"`
+	Limits        ResourceLimits  `json:"limits"`
+	Checkpoint    Checkpoint      `json:"checkpoint"`
+	CommandPolicy CommandPolicy   `json:"command_policy"`
+	Artifacts     []ArtifactSpec  `json:"artifacts,omitempty"`
+	Skills        []SkillBinding  `json:"skills,omitempty"`
+	Plugins       []PluginBinding `json:"plugins,omitempty"`
+	ToolBindings  []ToolBinding   `json:"tool_bindings,omitempty"`
+}
+
+type SkillBinding struct {
+	ArtifactID string `json:"artifact_id"`
+}
+
+type PluginBinding struct {
+	VersionID string `json:"plugin_version_id"`
+}
+
+type ToolBinding struct {
+	DescriptorID string   `json:"descriptor_id"`
+	Operations   []string `json:"operations,omitempty"`
 }
 
 type ModelConfig struct {

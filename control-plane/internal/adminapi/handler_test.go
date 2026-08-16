@@ -11,6 +11,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
+	"github.com/AirSodaz/gantry/internal/configassets"
 	"github.com/AirSodaz/gantry/internal/identity"
 )
 
@@ -32,6 +33,39 @@ type fakeLifecycleService struct {
 	submitReview func(context.Context, identity.Principal, string, int, string) (agentlifecycle.Review, error)
 	decideReview func(context.Context, identity.Principal, string, string, string) (agentlifecycle.Review, error)
 	rollback     func(context.Context, identity.Principal, string, string) error
+}
+
+type fakeAssetService struct {
+	createSkill  func(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
+	enablePlugin func(context.Context, identity.Principal, string, string) error
+}
+
+func (fakeAssetService) ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error) {
+	return nil, nil
+}
+func (s fakeAssetService) CreateSkill(ctx context.Context, actor identity.Principal, request configassets.CreateSkillRequest) (configassets.Skill, error) {
+	if s.createSkill == nil {
+		return configassets.Skill{}, configassets.ErrNotFound
+	}
+	return s.createSkill(ctx, actor, request)
+}
+func (fakeAssetService) ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error) {
+	return nil, nil
+}
+func (fakeAssetService) CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error) {
+	return configassets.Plugin{}, configassets.ErrNotFound
+}
+func (s fakeAssetService) EnablePlugin(ctx context.Context, actor identity.Principal, pluginID, workspaceID string) error {
+	if s.enablePlugin == nil {
+		return configassets.ErrNotFound
+	}
+	return s.enablePlugin(ctx, actor, pluginID, workspaceID)
+}
+func (fakeAssetService) ListTools(context.Context, identity.Principal) ([]configassets.Tool, error) {
+	return nil, nil
+}
+func (fakeAssetService) CreateTool(context.Context, identity.Principal, configassets.CreateToolRequest) (configassets.Tool, error) {
+	return configassets.Tool{}, configassets.ErrNotFound
 }
 
 func (fakeLifecycleService) ListWorkspaces(context.Context, identity.Principal) ([]authorization.Workspace, error) {
@@ -177,5 +211,29 @@ func TestReviewDecisionAndRollbackRoutesForwardBodies(t *testing.T) {
 	handler.ServeHTTP(rollbackResponse, rollback)
 	if decisionResponse.Code != http.StatusOK || rollbackResponse.Code != http.StatusNoContent || !decisionCalled || !rollbackCalled {
 		t.Fatalf("decision=%d rollback=%d decisionCalled=%t rollbackCalled=%t", decisionResponse.Code, rollbackResponse.Code, decisionCalled, rollbackCalled)
+	}
+}
+
+func TestSkillRegistrationAndPluginEnablementRoutesForwardScopedRequests(t *testing.T) {
+	created, enabled := false, false
+	assets := fakeAssetService{
+		createSkill: func(_ context.Context, _ identity.Principal, request configassets.CreateSkillRequest) (configassets.Skill, error) {
+			created = request.WorkspaceID == "ws_1" && request.SourceType == "locator" && request.ContentDigest == "sha256:1"
+			return configassets.Skill{ID: "skill_1"}, nil
+		},
+		enablePlugin: func(_ context.Context, _ identity.Principal, pluginID, workspaceID string) error {
+			enabled = pluginID == "plugin_1" && workspaceID == "ws_1"
+			return nil
+		},
+	}
+	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
+	create := httptest.NewRequest(http.MethodPost, "/skills", strings.NewReader(`{"workspace_id":"ws_1","slug":"search","display_name":"Search","source_type":"locator","source_ref":"registry://search","content_digest":"sha256:1"}`))
+	createResponse := httptest.NewRecorder()
+	handler.ServeHTTP(createResponse, create)
+	enable := httptest.NewRequest(http.MethodPost, "/plugins/plugin_1/enable", strings.NewReader(`{"workspace_id":"ws_1"}`))
+	enableResponse := httptest.NewRecorder()
+	handler.ServeHTTP(enableResponse, enable)
+	if createResponse.Code != http.StatusCreated || enableResponse.Code != http.StatusNoContent || !created || !enabled {
+		t.Fatalf("create=%d enable=%d created=%t enabled=%t", createResponse.Code, enableResponse.Code, created, enabled)
 	}
 }

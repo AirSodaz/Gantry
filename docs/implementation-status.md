@@ -1,9 +1,9 @@
 # Implementation Status
 
 This document separates the checked-in product from the target design. It is a
-source-based snapshot of `main` at `a8ddc22` on 2026-08-15. A capability is not
-considered complete merely because a package, table, route, or UI placeholder
-exists.
+source-based snapshot of the current worktree on top of `a8ddc22` on
+2026-08-16. A capability is not considered complete merely because a package,
+table, route, or UI placeholder exists.
 
 ## Status Vocabulary
 
@@ -29,6 +29,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Workspace-scoped Admin agent lifecycle: create, edit with optimistic
   concurrency, validate, review, publish immutable versions, retire, and roll
   back.
+- Admin configuration catalog slice: register immutable Skill artifacts,
+  Plugin versions, and Tool descriptor versions; enable Plugins per workspace;
+  bind exact catalog IDs to Agent Drafts; and revalidate availability at draft
+  write and publication time.
 - Copilot catalog, task submission, idempotency, task history, cancellation,
   retry, live task events, action approvals assigned to the requester, and
   artifact download.
@@ -63,15 +67,21 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   cancellation, and runner-loss handling exist. Production runner pools,
   Kubernetes Jobs, gVisor, network enforcement, resource accounting, and
   cleanup controllers do not.
-- **Admin lifecycle UX:** The core lifecycle is usable. Tools, Skills, policies,
-  evaluations, run operations, audit search, integrations, and platform
-  administration are not complete product areas.
+- **Admin configuration UX:** Skills, Plugins, and Tools can be registered and
+  listed, and an Agent Draft can select exact catalog references. Package upload
+  materialization, artifact inspection, catalog search/filtering, Plugin
+  enablement visibility, descriptor schema editing, narrow binding constraints,
+  and asset lifecycle commands are not complete.
+- **Admin lifecycle UX:** The core lifecycle is usable. Policies, evaluations,
+  run operations, audit search, integrations, and platform administration are
+  not complete product areas.
 
 ### Designed, Not Yet Implemented
 
-- Agent-owned Prompt Snapshots plus imported Skill artifacts, versioned Plugin,
-  Tool Server, Tool Descriptor, Tool Binding, and CLI Command Profile catalogs
-  described in
+- Agent-owned Prompt Snapshot compilation, package-content ingestion and
+  inspection, Plugin asset expansion, Tool Server health/discovery, descriptor
+  schema/version lifecycle, narrow Tool Binding constraints, and CLI Command
+  Profile catalogs described in
   [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
 - Hash-identified Agent Revisions with commit messages, multiple independent named
   Drafts, multiple test Deployments, and one default Production Deployment. The

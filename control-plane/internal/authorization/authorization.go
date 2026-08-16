@@ -46,6 +46,22 @@ func (s *Service) RequireAdmin(ctx context.Context, actor identity.Principal) er
 	return nil
 }
 
+func (s *Service) RequireOrganizationAdmin(ctx context.Context, actor identity.Principal) error {
+	var allowed bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM gantry.role_bindings
+			WHERE principal_id=$1 AND role=$2 AND workspace_id IS NULL
+		)`, actor.ID, OrganizationAdmin).Scan(&allowed)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrForbidden
+	}
+	return nil
+}
+
 func (s *Service) ListWorkspaces(ctx context.Context, actor identity.Principal) ([]Workspace, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT w.id, w.slug, w.display_name

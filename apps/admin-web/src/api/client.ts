@@ -1,4 +1,4 @@
-import type { Agent, AgentReview, AgentVersion, CreateAgentInput, Draft, Workspace } from './types';
+import type { Agent, AgentReview, AgentVersion, CreateAgentInput, Draft, Plugin, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -15,6 +15,24 @@ export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
 
   listWorkspaces() { return this.request<{ items: Workspace[] }>('/workspaces'); }
+  listSkills(workspaceId = '') {
+    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
+    return this.request<{ items: Skill[] }>(`/skills${query}`);
+  }
+  registerSkill(input: Omit<Skill, 'id' | 'status'>) {
+    return this.request<Skill>('/skills', { method: 'POST', body: JSON.stringify(input) });
+  }
+  listPlugins() { return this.request<{ items: Plugin[] }>('/plugins'); }
+  registerPlugin(input: Omit<Plugin, 'id' | 'status'>) {
+    return this.request<Plugin>('/plugins', { method: 'POST', body: JSON.stringify(input) });
+  }
+  enablePlugin(pluginId: string, workspaceId: string) {
+    return this.request<void>(`/plugins/${encodeURIComponent(pluginId)}/enable`, { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId }) });
+  }
+  listTools() { return this.request<{ items: Tool[] }>('/tools'); }
+  registerTool(input: { server_name: string; server_type: string; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: string; idempotency: string; content_digest: string }) {
+    return this.request<Tool>('/tools', { method: 'POST', body: JSON.stringify(input) });
+  }
   listAgents(workspaceId = '') {
     const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
     return this.request<{ items: Agent[] }>(`/agents${query}`);
