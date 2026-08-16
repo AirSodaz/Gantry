@@ -176,9 +176,9 @@ export function AgentDetailPage() {
 
   return (
     <section className="admin-page admin-detail-page">
-      <Link className="admin-back-link" to="/">
+      <Link className="admin-back-link" to={`/agents/${agentId}`}>
         <ArrowLeft size={16} />
-        <span>Agents</span>
+        <span>Agent overview</span>
       </Link>
 
       <header className="admin-detail-heading">
@@ -335,6 +335,7 @@ export function AgentDetailPage() {
                   </div>
                   <span>Draft revision {version.source_draft_revision}</span>
                   <code>{version.spec_digest.slice(0, 19)}...</code>
+                  <Link className="admin-inline-link" to={`/agents/${agentId}/versions/${version.id}`}>Inspect version</Link>
                   {agent.data.current_published_version_id !== version.id ? (
                     <Button
                       variant="secondary"

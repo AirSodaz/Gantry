@@ -7,6 +7,8 @@ import { LoadingState } from './components/AsyncState';
 import { AgentsPage } from './features/agents/AgentsPage';
 import { AgentDetailPage } from './features/agents/AgentDetailPage';
 import { NewAgentPage } from './features/agents/NewAgentPage';
+import { AgentOverviewPage } from './features/agents/AgentOverviewPage';
+import { AgentVersionPage } from './features/agents/AgentVersionPage';
 import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
 
 export default function App() {
@@ -45,7 +47,9 @@ export default function App() {
         <Route index element={<AgentsPage />} />
         <Route path="new" element={<NewAgentPage />} />
         <Route path="agents/new" element={<NewAgentPage />} />
-        <Route path="agents/:agentId" element={<AgentDetailPage />} />
+        <Route path="agents/:agentId" element={<AgentOverviewPage />} />
+        <Route path="agents/:agentId/design" element={<AgentDetailPage />} />
+        <Route path="agents/:agentId/versions/:versionId" element={<AgentVersionPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="skills/:assetId" element={<AssetDetailPage kind="skills" />} />
         <Route path="plugins" element={<PluginsPage />} />

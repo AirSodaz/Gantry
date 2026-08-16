@@ -44,10 +44,38 @@ func validateAssetBindings(ctx context.Context, pool *pgxpool.Pool, workspaceID 
 			continue
 		}
 		var status string
-		err := pool.QueryRow(ctx, `SELECT d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id JOIN gantry.agents a ON a.organization_id=s.organization_id WHERE d.id=$1 AND a.workspace_id=$2`, binding.DescriptorID, workspaceID).Scan(&status)
+		var schemaJSON []byte
+		err := pool.QueryRow(ctx, `SELECT d.status, d.schema_json FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id JOIN gantry.agents a ON a.organization_id=s.organization_id WHERE d.id=$1 AND a.workspace_id=$2`, binding.DescriptorID, workspaceID).Scan(&status, &schemaJSON)
 		if err != nil || status != "active" {
 			findings = append(findings, Finding{Path: fmt.Sprintf("/tool_bindings/%d/descriptor_id", index), Message: "Tool descriptor is unavailable to this organization."})
+			continue
+		}
+		var descriptor struct {
+			Operations []string `json:"operations"`
+		}
+		if len(schemaJSON) > 0 && json.Unmarshal(schemaJSON, &descriptor) == nil && len(descriptor.Operations) > 0 {
+			findings = append(findings, validateToolOperations(fmt.Sprintf("/tool_bindings/%d/operations", index), descriptor.Operations, binding.Operations)...)
 		}
 	}
 	return findings, nil
+}
+
+func validateToolOperations(path string, available, selected []string) []Finding {
+	allowed := make(map[string]struct{}, len(available))
+	for _, operation := range available {
+		allowed[operation] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(selected))
+	findings := make([]Finding, 0)
+	for index, operation := range selected {
+		if _, duplicate := seen[operation]; duplicate {
+			findings = append(findings, Finding{Path: fmt.Sprintf("%s/%d", path, index), Message: "Tool operation must not be repeated."})
+			continue
+		}
+		seen[operation] = struct{}{}
+		if _, ok := allowed[operation]; !ok {
+			findings = append(findings, Finding{Path: fmt.Sprintf("%s/%d", path, index), Message: "Tool binding operation is broader than the descriptor."})
+		}
+	}
+	return findings
 }

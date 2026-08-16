@@ -33,6 +33,15 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   Plugin versions, and Tool descriptor versions; enable Plugins per workspace;
   bind exact catalog IDs to Agent Drafts; and revalidate availability at draft
   write and publication time.
+- Admin Agent workspace views: scope-authorized Agent Overview and immutable
+  Version Detail routes expose current publication, draft validation, audit
+  activity, version metadata, and the frozen Prompt Snapshot projection.
+- Prompt Snapshot compilation: published versions persist compiler version,
+  ordered prompt content, and a deterministic content digest. Tool descriptor
+  schemas can be authored at registration and declared operation lists are
+  enforced as the upper bound for Agent bindings.
+- Asset inspection metadata: Skill artifact metadata and Plugin manifest JSON
+  are persisted and rendered read-only in catalog detail views.
 - Copilot catalog, task submission, idempotency, task history, cancellation,
   retry, live task events, action approvals assigned to the requester, and
   artifact download.
@@ -72,18 +81,20 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   enablement visibility, Tool descriptor schema display, and catalog
   search/filtering are available. Agent Drafts also expose the Agent-owned
   prompt/model fields and explicit Tool operation constraints. Package upload materialization and content
-  inspection, Plugin contained-asset inspection, Tool discovery/health,
-  descriptor schema authoring, and narrow binding constraints are not complete.
+  inspection, Tool discovery/health, and package-backed import remain
+  incomplete. Skill metadata and Plugin manifest inspection is available, but
+  package materialization and full contained-asset validation are not. Descriptor schema authoring and
+  operation-level narrow binding constraints are implemented for the current
+  catalog model; broader schema compatibility and authority checks remain.
 - **Admin lifecycle UX:** The core lifecycle is usable. Policies, evaluations,
   run operations, audit search, integrations, and platform administration are
   not complete product areas.
 
 ### Designed, Not Yet Implemented
 
-- Agent-owned Prompt Snapshot compilation, package-content ingestion and
-  inspection, Plugin asset expansion, Tool Server health/discovery, descriptor
-  schema authoring/compatibility, narrow Tool Binding constraints, and CLI
-  Command Profile catalogs described in
+- Package-content ingestion and inspection, Plugin asset expansion, Tool Server
+  health/discovery, descriptor schema compatibility, broader Tool Binding
+  constraints, and CLI Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
 - Hash-identified Agent Revisions with commit messages, multiple independent named
   Drafts, multiple test Deployments, and one default Production Deployment. The

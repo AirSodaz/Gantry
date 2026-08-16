@@ -5,11 +5,13 @@ package agentlifecycle
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const ManifestKind = "gantry.agent/v1"
@@ -121,6 +123,40 @@ type Version struct {
 	SourceDraftRevision int             `json:"source_draft_revision"`
 	Spec                json.RawMessage `json:"spec"`
 	SpecDigest          string          `json:"spec_digest"`
+	CreatedAt           string          `json:"created_at,omitempty"`
+	CreatedBy           string          `json:"created_by,omitempty"`
+	Published           bool            `json:"published"`
+	PublishedAt         string          `json:"published_at,omitempty"`
+	PromptSnapshot      PromptSnapshot  `json:"prompt_snapshot"`
+}
+
+const PromptCompilerVersion = "prompt-compiler/v1"
+
+// PromptSnapshot is the immutable, Admin-visible projection of the prompt
+// inputs that are frozen with an Agent version. Runtime execution may compile
+// a narrower manifest, but it must start from this exact snapshot.
+type PromptSnapshot struct {
+	CompilerVersion string         `json:"compiler_version"`
+	ContentDigest   string         `json:"content_digest"`
+	CompiledText    string         `json:"compiled_text"`
+	SystemPrompt    string         `json:"system_prompt,omitempty"`
+	UserInput       string         `json:"user_input,omitempty"`
+	Rules           []RuleSnapshot `json:"rules,omitempty"`
+}
+
+type AgentOverview struct {
+	Agent          Agent          `json:"agent"`
+	Draft          Draft          `json:"draft"`
+	CurrentVersion *Version       `json:"current_version,omitempty"`
+	VersionCount   int            `json:"version_count"`
+	RecentActivity []ActivityItem `json:"recent_activity"`
+}
+
+type ActivityItem struct {
+	ID        int64           `json:"id"`
+	EventType string          `json:"event_type"`
+	Payload   json.RawMessage `json:"payload"`
+	CreatedAt string          `json:"created_at"`
 }
 
 type CreateRequest struct {
@@ -173,6 +209,45 @@ func ValidateSpec(spec json.RawMessage) (json.RawMessage, []Finding) {
 		panic(fmt.Sprintf("canonical manifest encoding: %v", err))
 	}
 	return canonical, nil
+}
+
+func CompilePromptSnapshot(spec json.RawMessage) (PromptSnapshot, error) {
+	var manifest Manifest
+	if err := json.Unmarshal(spec, &manifest); err != nil {
+		return PromptSnapshot{}, err
+	}
+	parts := make([]string, 0, 2+len(manifest.Rules))
+	if value := strings.TrimSpace(manifest.SystemPrompt); value != "" {
+		parts = append(parts, value)
+	}
+	if value := strings.TrimSpace(manifest.UserInput); value != "" {
+		parts = append(parts, value)
+	}
+	for _, rule := range manifest.Rules {
+		if value := strings.TrimSpace(rule.Content); value != "" {
+			parts = append(parts, value)
+		}
+	}
+	compiled := strings.Join(parts, "\n\n")
+	canonical, err := json.Marshal(struct {
+		CompilerVersion string         `json:"compiler_version"`
+		SystemPrompt    string         `json:"system_prompt,omitempty"`
+		UserInput       string         `json:"user_input,omitempty"`
+		Rules           []RuleSnapshot `json:"rules,omitempty"`
+		CompiledText    string         `json:"compiled_text"`
+	}{PromptCompilerVersion, manifest.SystemPrompt, manifest.UserInput, manifest.Rules, compiled})
+	if err != nil {
+		return PromptSnapshot{}, err
+	}
+	hash := sha256.Sum256(canonical)
+	return PromptSnapshot{
+		CompilerVersion: PromptCompilerVersion,
+		ContentDigest:   "sha256:" + hex.EncodeToString(hash[:]),
+		CompiledText:    compiled,
+		SystemPrompt:    manifest.SystemPrompt,
+		UserInput:       manifest.UserInput,
+		Rules:           manifest.Rules,
+	}, nil
 }
 
 func defaultSpec() json.RawMessage {

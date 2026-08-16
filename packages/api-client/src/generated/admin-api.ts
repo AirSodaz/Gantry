@@ -382,6 +382,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/{agent_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an agent overview and recent activity */
+        get: operations["getAgentOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}/draft": {
         parameters: {
             query?: never;
@@ -409,6 +426,23 @@ export interface paths {
         };
         /** List immutable versions */
         get: operations["listAgentVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one immutable agent version */
+        get: operations["getAgentVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -554,6 +588,9 @@ export interface components {
             content_digest: string;
             /** @enum {string} */
             status: "available" | "deprecated" | "retired";
+            metadata_json: {
+                [key: string]: unknown;
+            };
         };
         SkillList: {
             items: components["schemas"]["Skill"][];
@@ -581,6 +618,7 @@ export interface components {
             source_ref: string;
             declared_version?: string;
             content_digest: string;
+            metadata_json?: Record<string, never>;
         };
         Plugin: {
             id: string;
@@ -591,6 +629,9 @@ export interface components {
             content_digest: string;
             /** @enum {string} */
             status: "active" | "deprecated" | "retired";
+            manifest_json: {
+                [key: string]: unknown;
+            };
         };
         PluginList: {
             items: components["schemas"]["Plugin"][];
@@ -609,6 +650,9 @@ export interface components {
             description?: string;
             version: string;
             content_digest: string;
+            manifest_json?: {
+                [key: string]: unknown;
+            };
         };
         EnablePluginRequest: {
             workspace_id: string;
@@ -630,7 +674,9 @@ export interface components {
             /** @enum {string} */
             idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
             content_digest: string;
-            schema_json: Record<string, never>;
+            schema_json: {
+                [key: string]: unknown;
+            };
             /** @enum {string} */
             status: "active" | "proposed" | "deprecated" | "retired";
         };
@@ -650,6 +696,9 @@ export interface components {
             /** @enum {string} */
             idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
             content_digest: string;
+            schema_json?: {
+                [key: string]: unknown;
+            };
         };
         Agent: {
             id: string;
@@ -697,10 +746,42 @@ export interface components {
             source_draft_revision: number;
             spec: Record<string, never>;
             spec_digest: string;
+            /** Format: date-time */
+            created_at?: string;
+            created_by?: string;
+            published: boolean;
+            /** Format: date-time */
+            published_at?: string;
+            prompt_snapshot: components["schemas"]["PromptSnapshot"];
         };
         AgentVersionList: {
             items: components["schemas"]["AgentVersion"][];
             page_info: components["schemas"]["PageInfo"];
+        };
+        PromptSnapshot: {
+            compiler_version: string;
+            content_digest: string;
+            compiled_text: string;
+            system_prompt?: string;
+            user_input?: string;
+            rules?: Record<string, never>[];
+        };
+        ActivityItem: {
+            /** Format: int64 */
+            id: number;
+            event_type: string;
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
+        AgentOverview: {
+            agent: components["schemas"]["Agent"];
+            draft: components["schemas"]["AgentDraft"];
+            current_version?: components["schemas"]["AgentVersion"] | null;
+            version_count: number;
+            recent_activity: components["schemas"]["ActivityItem"][];
         };
         SubmitReviewRequest: {
             release_notes: string;
@@ -1504,6 +1585,31 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getAgentOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getAgentDraft: {
         parameters: {
             query?: never;
@@ -1581,6 +1687,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentVersionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Immutable agent version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersion"];
                 };
             };
             401: components["responses"]["Unauthorized"];

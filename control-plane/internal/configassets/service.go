@@ -23,16 +23,17 @@ var (
 )
 
 type Skill struct {
-	ID              string `json:"id"`
-	WorkspaceID     string `json:"workspace_id"`
-	Slug            string `json:"slug"`
-	DisplayName     string `json:"display_name"`
-	Description     string `json:"description"`
-	SourceType      string `json:"source_type"`
-	SourceRef       string `json:"source_ref"`
-	DeclaredVersion string `json:"declared_version"`
-	ContentDigest   string `json:"content_digest"`
-	Status          string `json:"status"`
+	ID              string          `json:"id"`
+	WorkspaceID     string          `json:"workspace_id"`
+	Slug            string          `json:"slug"`
+	DisplayName     string          `json:"display_name"`
+	Description     string          `json:"description"`
+	SourceType      string          `json:"source_type"`
+	SourceRef       string          `json:"source_ref"`
+	DeclaredVersion string          `json:"declared_version"`
+	ContentDigest   string          `json:"content_digest"`
+	Status          string          `json:"status"`
+	Metadata        json.RawMessage `json:"metadata_json"`
 }
 
 type AssetUsage struct {
@@ -54,32 +55,35 @@ type PluginDetail struct {
 }
 
 type CreateSkillRequest struct {
-	WorkspaceID     string `json:"workspace_id"`
-	Slug            string `json:"slug"`
-	DisplayName     string `json:"display_name"`
-	Description     string `json:"description"`
-	SourceType      string `json:"source_type"`
-	SourceRef       string `json:"source_ref"`
-	DeclaredVersion string `json:"declared_version"`
-	ContentDigest   string `json:"content_digest"`
+	WorkspaceID     string          `json:"workspace_id"`
+	Slug            string          `json:"slug"`
+	DisplayName     string          `json:"display_name"`
+	Description     string          `json:"description"`
+	SourceType      string          `json:"source_type"`
+	SourceRef       string          `json:"source_ref"`
+	DeclaredVersion string          `json:"declared_version"`
+	ContentDigest   string          `json:"content_digest"`
+	Metadata        json.RawMessage `json:"metadata_json"`
 }
 
 type Plugin struct {
-	ID            string `json:"id"`
-	Slug          string `json:"slug"`
-	DisplayName   string `json:"display_name"`
-	Description   string `json:"description"`
-	Version       string `json:"version"`
-	ContentDigest string `json:"content_digest"`
-	Status        string `json:"status"`
+	ID            string          `json:"id"`
+	Slug          string          `json:"slug"`
+	DisplayName   string          `json:"display_name"`
+	Description   string          `json:"description"`
+	Version       string          `json:"version"`
+	ContentDigest string          `json:"content_digest"`
+	Status        string          `json:"status"`
+	Manifest      json.RawMessage `json:"manifest_json"`
 }
 
 type CreatePluginRequest struct {
-	Slug          string `json:"slug"`
-	DisplayName   string `json:"display_name"`
-	Description   string `json:"description"`
-	Version       string `json:"version"`
-	ContentDigest string `json:"content_digest"`
+	Slug          string          `json:"slug"`
+	DisplayName   string          `json:"display_name"`
+	Description   string          `json:"description"`
+	Version       string          `json:"version"`
+	ContentDigest string          `json:"content_digest"`
+	Manifest      json.RawMessage `json:"manifest_json"`
 }
 
 type EnablePluginRequest struct {
@@ -114,14 +118,15 @@ type Tool struct {
 }
 
 type CreateToolRequest struct {
-	ServerName         string `json:"server_name"`
-	ServerType         string `json:"server_type"`
-	EndpointRef        string `json:"endpoint_ref"`
-	FullyQualifiedName string `json:"fully_qualified_name"`
-	Version            string `json:"version"`
-	Effect             string `json:"effect"`
-	Idempotency        string `json:"idempotency"`
-	ContentDigest      string `json:"content_digest"`
+	ServerName         string          `json:"server_name"`
+	ServerType         string          `json:"server_type"`
+	EndpointRef        string          `json:"endpoint_ref"`
+	FullyQualifiedName string          `json:"fully_qualified_name"`
+	Version            string          `json:"version"`
+	Effect             string          `json:"effect"`
+	Idempotency        string          `json:"idempotency"`
+	ContentDigest      string          `json:"content_digest"`
+	Schema             json.RawMessage `json:"schema_json"`
 }
 
 type Service struct {
@@ -144,7 +149,7 @@ func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, opti
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, workspace_id, slug, display_name, description, source_type, source_ref,
-			declared_version, content_digest, status
+			declared_version, content_digest, status, metadata_json
 		FROM gantry.skills
 		WHERE organization_id=$1 AND ($2='' OR workspace_id=$2) AND ($3='' OR status=$3) AND
 			($4='' OR display_name ILIKE '%' || $4 || '%' OR slug ILIKE '%' || $4 || '%') AND (
@@ -159,7 +164,7 @@ func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, opti
 	items := make([]Skill, 0)
 	for rows.Next() {
 		var item Skill
-		if err := rows.Scan(&item.ID, &item.WorkspaceID, &item.Slug, &item.DisplayName, &item.Description, &item.SourceType, &item.SourceRef, &item.DeclaredVersion, &item.ContentDigest, &item.Status); err != nil {
+		if err := rows.Scan(&item.ID, &item.WorkspaceID, &item.Slug, &item.DisplayName, &item.Description, &item.SourceType, &item.SourceRef, &item.DeclaredVersion, &item.ContentDigest, &item.Status, &item.Metadata); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -171,11 +176,11 @@ func (s *Service) GetSkill(ctx context.Context, actor identity.Principal, skillI
 	var item Skill
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, workspace_id, slug, display_name, description, source_type, source_ref,
-			declared_version, content_digest, status
+			declared_version, content_digest, status, metadata_json
 		FROM gantry.skills
 		WHERE id=$1 AND organization_id=$2`, skillID, actor.OrganizationID).Scan(
 		&item.ID, &item.WorkspaceID, &item.Slug, &item.DisplayName, &item.Description,
-		&item.SourceType, &item.SourceRef, &item.DeclaredVersion, &item.ContentDigest, &item.Status)
+		&item.SourceType, &item.SourceRef, &item.DeclaredVersion, &item.ContentDigest, &item.Status, &item.Metadata)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Skill{}, ErrNotFound
 	}
@@ -208,12 +213,20 @@ func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, req
 	if err := s.authz.RequireWorkspace(ctx, actor, request.WorkspaceID); err != nil {
 		return Skill{}, err
 	}
+	if len(request.Metadata) == 0 {
+		request.Metadata = json.RawMessage(`{}`)
+	}
+	var metadata map[string]any
+	if err := json.Unmarshal(request.Metadata, &metadata); err != nil || metadata == nil {
+		return Skill{}, ErrInvalidInput
+	}
 	var item Skill
 	item.ID = newID("skill")
 	item.WorkspaceID, item.Slug, item.DisplayName = request.WorkspaceID, request.Slug, request.DisplayName
 	item.Description, item.SourceType, item.SourceRef = strings.TrimSpace(request.Description), request.SourceType, request.SourceRef
 	item.DeclaredVersion, item.ContentDigest, item.Status = strings.TrimSpace(request.DeclaredVersion), request.ContentDigest, "available"
-	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.skills (id, organization_id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'available',$11) RETURNING id`, item.ID, actor.OrganizationID, item.WorkspaceID, item.Slug, item.DisplayName, item.Description, item.SourceType, item.SourceRef, item.DeclaredVersion, item.ContentDigest, actor.ID).Scan(&item.ID)
+	item.Metadata = request.Metadata
+	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.skills (id, organization_id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, metadata_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,'available',$12) RETURNING id`, item.ID, actor.OrganizationID, item.WorkspaceID, item.Slug, item.DisplayName, item.Description, item.SourceType, item.SourceRef, item.DeclaredVersion, item.ContentDigest, string(item.Metadata), actor.ID).Scan(&item.ID)
 	if err != nil {
 		return Skill{}, err
 	}
@@ -223,7 +236,7 @@ func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, req
 func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal, options ListOptions) ([]Plugin, error) {
 	options.Search = strings.TrimSpace(options.Search)
 	options.Status = normalizePluginStatus(options.Status)
-	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE organization_id=$1 AND ($2='' OR status=$2) AND ($3='' OR display_name ILIKE '%' || $3 || '%' OR slug ILIKE '%' || $3 || '%' OR version ILIKE '%' || $3 || '%') ORDER BY display_name, version DESC, id`, actor.OrganizationID, options.Status, options.Search)
+	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status, manifest_json FROM gantry.plugins WHERE organization_id=$1 AND ($2='' OR status=$2) AND ($3='' OR display_name ILIKE '%' || $3 || '%' OR slug ILIKE '%' || $3 || '%' OR version ILIKE '%' || $3 || '%') ORDER BY display_name, version DESC, id`, actor.OrganizationID, options.Status, options.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +244,7 @@ func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal, opt
 	items := make([]Plugin, 0)
 	for rows.Next() {
 		var item Plugin
-		if err := rows.Scan(&item.ID, &item.Slug, &item.DisplayName, &item.Description, &item.Version, &item.ContentDigest, &item.Status); err != nil {
+		if err := rows.Scan(&item.ID, &item.Slug, &item.DisplayName, &item.Description, &item.Version, &item.ContentDigest, &item.Status, &item.Manifest); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -241,8 +254,8 @@ func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal, opt
 
 func (s *Service) GetPlugin(ctx context.Context, actor identity.Principal, pluginID string) (PluginDetail, error) {
 	var item Plugin
-	err := s.pool.QueryRow(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE id=$1 AND organization_id=$2`, pluginID, actor.OrganizationID).Scan(
-		&item.ID, &item.Slug, &item.DisplayName, &item.Description, &item.Version, &item.ContentDigest, &item.Status)
+	err := s.pool.QueryRow(ctx, `SELECT id, slug, display_name, description, version, content_digest, status, manifest_json FROM gantry.plugins WHERE id=$1 AND organization_id=$2`, pluginID, actor.OrganizationID).Scan(
+		&item.ID, &item.Slug, &item.DisplayName, &item.Description, &item.Version, &item.ContentDigest, &item.Status, &item.Manifest)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PluginDetail{}, ErrNotFound
 	}
@@ -294,8 +307,15 @@ func (s *Service) CreatePlugin(ctx context.Context, actor identity.Principal, re
 	if request.Slug == "" || request.DisplayName == "" || request.Version == "" || request.ContentDigest == "" || !validSlug(request.Slug) {
 		return Plugin{}, ErrInvalidInput
 	}
-	item := Plugin{ID: newID("plugin"), Slug: request.Slug, DisplayName: request.DisplayName, Description: strings.TrimSpace(request.Description), Version: request.Version, ContentDigest: request.ContentDigest, Status: "active"}
-	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.plugins (id, organization_id, slug, display_name, description, version, content_digest, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,'active',$8) RETURNING id`, item.ID, actor.OrganizationID, item.Slug, item.DisplayName, item.Description, item.Version, item.ContentDigest, actor.ID).Scan(&item.ID)
+	if len(request.Manifest) == 0 {
+		request.Manifest = json.RawMessage(`{}`)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(request.Manifest, &manifest); err != nil || manifest == nil {
+		return Plugin{}, ErrInvalidInput
+	}
+	item := Plugin{ID: newID("plugin"), Slug: request.Slug, DisplayName: request.DisplayName, Description: strings.TrimSpace(request.Description), Version: request.Version, ContentDigest: request.ContentDigest, Manifest: request.Manifest, Status: "active"}
+	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.plugins (id, organization_id, slug, display_name, description, version, content_digest, manifest_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,'active',$9) RETURNING id`, item.ID, actor.OrganizationID, item.Slug, item.DisplayName, item.Description, item.Version, item.ContentDigest, string(item.Manifest), actor.ID).Scan(&item.ID)
 	if err != nil {
 		return Plugin{}, err
 	}
@@ -556,7 +576,14 @@ func (s *Service) CreateTool(ctx context.Context, actor identity.Principal, requ
 	request.Effect = strings.TrimSpace(request.Effect)
 	request.Idempotency = strings.TrimSpace(request.Idempotency)
 	request.ContentDigest = strings.TrimSpace(request.ContentDigest)
+	if len(request.Schema) == 0 {
+		request.Schema = json.RawMessage(`{}`)
+	}
 	if request.ServerName == "" || request.FullyQualifiedName == "" || request.Version == "" || request.ContentDigest == "" || !validServerType(request.ServerType) || !validEffect(request.Effect) || !validIdempotency(request.Idempotency) {
+		return Tool{}, ErrInvalidInput
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(request.Schema, &schema); err != nil || schema == nil {
 		return Tool{}, ErrInvalidInput
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -569,8 +596,8 @@ func (s *Service) CreateTool(ctx context.Context, actor identity.Principal, requ
 	if err != nil {
 		return Tool{}, err
 	}
-	item := Tool{ID: newID("tool"), ServerID: serverID, ServerName: request.ServerName, ServerType: serverType, EndpointRef: strings.TrimSpace(request.EndpointRef), FullyQualifiedName: request.FullyQualifiedName, Version: request.Version, Effect: request.Effect, Idempotency: request.Idempotency, ContentDigest: request.ContentDigest, Schema: json.RawMessage(`{}`), Status: "active"}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tool_descriptors (id, server_id, fully_qualified_name, version, effect, idempotency, content_digest, status) VALUES ($1,$2,$3,$4,$5,$6,$7,'active')`, item.ID, serverID, item.FullyQualifiedName, item.Version, item.Effect, item.Idempotency, item.ContentDigest); err != nil {
+	item := Tool{ID: newID("tool"), ServerID: serverID, ServerName: request.ServerName, ServerType: serverType, EndpointRef: strings.TrimSpace(request.EndpointRef), FullyQualifiedName: request.FullyQualifiedName, Version: request.Version, Effect: request.Effect, Idempotency: request.Idempotency, ContentDigest: request.ContentDigest, Schema: request.Schema, Status: "active"}
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tool_descriptors (id, server_id, fully_qualified_name, version, effect, idempotency, schema_json, content_digest, status) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'active')`, item.ID, serverID, item.FullyQualifiedName, item.Version, item.Effect, item.Idempotency, string(item.Schema), item.ContentDigest); err != nil {
 		return Tool{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

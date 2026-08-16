@@ -29,6 +29,8 @@ type fakeAuthorizer struct{ err error }
 func (a fakeAuthorizer) RequireAdmin(context.Context, identity.Principal) error { return a.err }
 
 type fakeLifecycleService struct {
+	overview     func(context.Context, identity.Principal, string) (agentlifecycle.AgentOverview, error)
+	version      func(context.Context, identity.Principal, string, string) (agentlifecycle.Version, error)
 	publish      func(context.Context, identity.Principal, string, int) (agentlifecycle.Version, bool, error)
 	submitReview func(context.Context, identity.Principal, string, int, string) (agentlifecycle.Review, error)
 	decideReview func(context.Context, identity.Principal, string, string, string) (agentlifecycle.Review, error)
@@ -144,6 +146,12 @@ func (fakeLifecycleService) Create(context.Context, identity.Principal, agentlif
 func (fakeLifecycleService) Get(context.Context, identity.Principal, string) (agentlifecycle.Agent, error) {
 	return agentlifecycle.Agent{}, agentlifecycle.ErrNotFound
 }
+func (s fakeLifecycleService) GetOverview(ctx context.Context, actor identity.Principal, id string) (agentlifecycle.AgentOverview, error) {
+	if s.overview == nil {
+		return agentlifecycle.AgentOverview{}, agentlifecycle.ErrNotFound
+	}
+	return s.overview(ctx, actor, id)
+}
 func (fakeLifecycleService) GetDraft(context.Context, identity.Principal, string) (agentlifecycle.Draft, error) {
 	return agentlifecycle.Draft{}, agentlifecycle.ErrNotFound
 }
@@ -152,6 +160,12 @@ func (fakeLifecycleService) UpdateDraft(context.Context, identity.Principal, str
 }
 func (fakeLifecycleService) ListVersions(context.Context, identity.Principal, string) ([]agentlifecycle.Version, error) {
 	return nil, agentlifecycle.ErrNotFound
+}
+func (s fakeLifecycleService) GetVersion(ctx context.Context, actor identity.Principal, agentID, versionID string) (agentlifecycle.Version, error) {
+	if s.version == nil {
+		return agentlifecycle.Version{}, agentlifecycle.ErrNotFound
+	}
+	return s.version(ctx, actor, agentID, versionID)
 }
 func (fakeLifecycleService) GetReview(context.Context, identity.Principal, string) (agentlifecycle.Review, error) {
 	return agentlifecycle.Review{}, agentlifecycle.ErrNotFound
@@ -215,6 +229,27 @@ func TestOutOfDomainResourcesAreNotEnumerated(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/agents/agt_other", nil))
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("status=%d", response.Code)
+	}
+}
+
+func TestAgentOverviewAndVersionDetailRoutesForwardIdentifiers(t *testing.T) {
+	overviewCalled, versionCalled := false, false
+	handler := New(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{
+		overview: func(_ context.Context, _ identity.Principal, id string) (agentlifecycle.AgentOverview, error) {
+			overviewCalled = id == "agt_1"
+			return agentlifecycle.AgentOverview{Agent: agentlifecycle.Agent{ID: id}, RecentActivity: []agentlifecycle.ActivityItem{}}, nil
+		},
+		version: func(_ context.Context, _ identity.Principal, agentID, versionID string) (agentlifecycle.Version, error) {
+			versionCalled = agentID == "agt_1" && versionID == "agtv_1"
+			return agentlifecycle.Version{ID: versionID, AgentID: agentID, PromptSnapshot: agentlifecycle.PromptSnapshot{ContentDigest: "sha256:test"}}, nil
+		},
+	}, nil)
+	overviewResponse := httptest.NewRecorder()
+	handler.ServeHTTP(overviewResponse, httptest.NewRequest(http.MethodGet, "/agents/agt_1/overview", nil))
+	versionResponse := httptest.NewRecorder()
+	handler.ServeHTTP(versionResponse, httptest.NewRequest(http.MethodGet, "/agents/agt_1/versions/agtv_1", nil))
+	if overviewResponse.Code != http.StatusOK || versionResponse.Code != http.StatusOK || !overviewCalled || !versionCalled {
+		t.Fatalf("overview=%d version=%d overviewCalled=%t versionCalled=%t", overviewResponse.Code, versionResponse.Code, overviewCalled, versionCalled)
 	}
 }
 

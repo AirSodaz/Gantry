@@ -29,6 +29,24 @@ func TestValidateSpecPreservesImmutableAssetReferences(t *testing.T) {
 	}
 }
 
+func TestCompilePromptSnapshotIsDeterministicAndOrdered(t *testing.T) {
+	spec := []byte(`{"kind":"gantry.agent/v1","system_prompt":"System","user_input":"Input","model":{"provider":"scripted","model":"deterministic"},"workspace_root":".","limits":{"max_turns":1,"max_output_bytes":10},"rules":[{"name":"first","content":"Rule one"},{"name":"second","content":"Rule two"}]}`)
+	first, err := CompilePromptSnapshot(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := CompilePromptSnapshot(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ContentDigest == "" || first.ContentDigest != second.ContentDigest {
+		t.Fatalf("digest is not deterministic: %#v %#v", first, second)
+	}
+	if first.CompilerVersion != PromptCompilerVersion || first.CompiledText != "System\n\nInput\n\nRule one\n\nRule two" {
+		t.Fatalf("snapshot=%#v", first)
+	}
+}
+
 func TestBuildDiffIsSortedAndClassifiesSecurityChanges(t *testing.T) {
 	diff, summary, err := buildDiff([]byte(`{"tools":{"calendar":"read"},"mode":"complete"}`), []byte(`{"tools":{"calendar":"write"},"mode":"await_cancel","new":true}`))
 	if err != nil {

@@ -30,9 +30,11 @@ type lifecycleService interface {
 	ListAgents(context.Context, identity.Principal, string) ([]agentlifecycle.Agent, error)
 	Create(context.Context, identity.Principal, agentlifecycle.CreateRequest) (agentlifecycle.Agent, error)
 	Get(context.Context, identity.Principal, string) (agentlifecycle.Agent, error)
+	GetOverview(context.Context, identity.Principal, string) (agentlifecycle.AgentOverview, error)
 	GetDraft(context.Context, identity.Principal, string) (agentlifecycle.Draft, error)
 	UpdateDraft(context.Context, identity.Principal, string, int, json.RawMessage) (agentlifecycle.Draft, error)
 	ListVersions(context.Context, identity.Principal, string) ([]agentlifecycle.Version, error)
+	GetVersion(context.Context, identity.Principal, string, string) (agentlifecycle.Version, error)
 	GetReview(context.Context, identity.Principal, string) (agentlifecycle.Review, error)
 	SubmitReview(context.Context, identity.Principal, string, int, string) (agentlifecycle.Review, error)
 	DecideReview(context.Context, identity.Principal, string, string, string) (agentlifecycle.Review, error)
@@ -92,9 +94,11 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /agents", h.withActor(h.createAgent))
 	mux.Handle("GET /agents/{agentID}", h.withActor(h.getAgent))
+	mux.Handle("GET /agents/{agentID}/overview", h.withActor(h.getAgentOverview))
 	mux.Handle("GET /agents/{agentID}/draft", h.withActor(h.getDraft))
 	mux.Handle("PUT /agents/{agentID}/draft", h.withActor(h.updateDraft))
 	mux.Handle("GET /agents/{agentID}/versions", h.withActor(h.listVersions))
+	mux.Handle("GET /agents/{agentID}/versions/{versionID}", h.withActor(h.getVersion))
 	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
 	if assets != nil {
 		mux.Handle("GET /skills", h.withActor(h.listSkills))
@@ -406,6 +410,15 @@ func (h Handler) getAgent(w http.ResponseWriter, r *http.Request, actor identity
 	writeJSON(w, http.StatusOK, agent)
 }
 
+func (h Handler) getAgentOverview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	overview, err := h.service.GetOverview(r.Context(), actor, r.PathValue("agentID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, overview)
+}
+
 func (h Handler) getDraft(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	draft, err := h.service.GetDraft(r.Context(), actor, r.PathValue("agentID"))
 	if err != nil {
@@ -443,6 +456,15 @@ func (h Handler) listVersions(w http.ResponseWriter, r *http.Request, actor iden
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
+}
+
+func (h Handler) getVersion(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	version, err := h.service.GetVersion(r.Context(), actor, r.PathValue("agentID"), r.PathValue("versionID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, version)
 }
 
 func (h Handler) getReview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {

@@ -1,4 +1,4 @@
-import type { Agent, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { Agent, AgentOverview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -21,13 +21,13 @@ export class AdminApi {
   }
   getSkill(skillId: string) { return this.request<Skill>(`/skills/${encodeURIComponent(skillId)}`); }
   listSkillUsage(skillId: string) { return this.request<{ items: AssetUsage[] }>(`/skills/${encodeURIComponent(skillId)}/usage`); }
-  registerSkill(input: Omit<Skill, 'id' | 'status'>) {
+  registerSkill(input: { workspace_id: string; slug: string; display_name: string; description?: string; source_type: Skill['source_type']; source_ref: string; declared_version?: string; content_digest: string; metadata_json?: Record<string, unknown> }) {
     return this.request<Skill>('/skills', { method: 'POST', body: JSON.stringify(input) });
   }
   listPlugins(options: AssetListOptions = {}) { return this.request<{ items: Plugin[] }>(`/plugins${this.assetListQuery(options)}`); }
   getPlugin(pluginId: string) { return this.request<PluginDetail>(`/plugins/${encodeURIComponent(pluginId)}`); }
   listPluginUsage(pluginId: string) { return this.request<{ items: AssetUsage[] }>(`/plugins/${encodeURIComponent(pluginId)}/usage`); }
-  registerPlugin(input: Omit<Plugin, 'id' | 'status'>) {
+  registerPlugin(input: { slug: string; display_name: string; description?: string; version: string; content_digest: string; manifest_json?: Record<string, unknown> }) {
     return this.request<Plugin>('/plugins', { method: 'POST', body: JSON.stringify(input) });
   }
   enablePlugin(pluginId: string, workspaceId: string) {
@@ -45,7 +45,7 @@ export class AdminApi {
   listTools(options: AssetListOptions = {}) { return this.request<{ items: Tool[] }>(`/tools${this.assetListQuery(options)}`); }
   getTool(toolId: string) { return this.request<Tool>(`/tools/${encodeURIComponent(toolId)}`); }
   listToolUsage(toolId: string) { return this.request<{ items: AssetUsage[] }>(`/tools/${encodeURIComponent(toolId)}/usage`); }
-  registerTool(input: { server_name: string; server_type: string; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: string; idempotency: string; content_digest: string }) {
+  registerTool(input: { server_name: string; server_type: Tool['server_type']; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: Tool['effect']; idempotency: Tool['idempotency']; content_digest: string; schema_json?: Record<string, unknown> }) {
     return this.request<Tool>('/tools', { method: 'POST', body: JSON.stringify(input) });
   }
   listAgents(workspaceId = '') {
@@ -53,6 +53,7 @@ export class AdminApi {
     return this.request<{ items: Agent[] }>(`/agents${query}`);
   }
   getAgent(agentId: string) { return this.request<Agent>(`/agents/${encodeURIComponent(agentId)}`); }
+  getAgentOverview(agentId: string) { return this.request<AgentOverview>(`/agents/${encodeURIComponent(agentId)}/overview`); }
   createAgent(input: CreateAgentInput) { return this.request<Agent>('/agents', { method: 'POST', body: JSON.stringify(input) }); }
   getDraft(agentId: string) { return this.request<Draft>(`/agents/${encodeURIComponent(agentId)}/draft`); }
   updateDraft(agentId: string, revision: number, spec: unknown) {
@@ -61,6 +62,7 @@ export class AdminApi {
     });
   }
   listVersions(agentId: string) { return this.request<{ items: AgentVersion[] }>(`/agents/${encodeURIComponent(agentId)}/versions`); }
+  getVersion(agentId: string, versionId: string) { return this.request<AgentVersion>(`/agents/${encodeURIComponent(agentId)}/versions/${encodeURIComponent(versionId)}`); }
   getReview(agentId: string) { return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}/review`); }
   submitReview(agentId: string, revision: number, releaseNotes: string) {
     return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}:review`, { method: 'POST', headers: { 'If-Match': String(revision) }, body: JSON.stringify({ release_notes: releaseNotes }) });

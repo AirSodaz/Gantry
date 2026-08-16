@@ -383,6 +383,21 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/overview:
+    get:
+      operationId: getAgentOverview
+      summary: Get an agent overview and recent activity
+      tags: [Agents]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200":
+          description: Agent overview
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AgentOverview"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /agents/{agent_id}/draft:
     get:
       operationId: getAgentDraft
@@ -433,6 +448,26 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/AgentVersionList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/versions/{version_id}:
+    get:
+      operationId: getAgentVersion
+      summary: Inspect one immutable agent version
+      tags: [Versions]
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - name: version_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Immutable agent version
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AgentVersion"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -608,7 +643,7 @@ components:
         page_info: {$ref: "#/components/schemas/PageInfo"}
     Skill:
       type: object
-      required: [id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, status]
+      required: [id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, status, metadata_json]
       properties:
         id: {type: string}
         workspace_id: {type: string}
@@ -620,6 +655,7 @@ components:
         declared_version: {type: string}
         content_digest: {type: string}
         status: {type: string, enum: [available, deprecated, retired]}
+        metadata_json: {type: object, additionalProperties: true}
     SkillList:
       type: object
       required: [items, page_info]
@@ -653,9 +689,10 @@ components:
         source_ref: {type: string}
         declared_version: {type: string}
         content_digest: {type: string}
+        metadata_json: {type: object}
     Plugin:
       type: object
-      required: [id, slug, display_name, description, version, content_digest, status]
+      required: [id, slug, display_name, description, version, content_digest, status, manifest_json]
       properties:
         id: {type: string}
         slug: {type: string}
@@ -664,6 +701,7 @@ components:
         version: {type: string}
         content_digest: {type: string}
         status: {type: string, enum: [active, deprecated, retired]}
+        manifest_json: {type: object, additionalProperties: true}
     PluginList:
       type: object
       required: [items, page_info]
@@ -692,6 +730,7 @@ components:
         description: {type: string}
         version: {type: string}
         content_digest: {type: string}
+        manifest_json: {type: object, additionalProperties: true}
     EnablePluginRequest:
       type: object
       required: [workspace_id]
@@ -716,7 +755,7 @@ components:
         effect: {type: string, enum: [read, write, external_side_effect, administrative]}
         idempotency: {type: string, enum: [read_only, idempotent, compensatable, non_repeatable]}
         content_digest: {type: string}
-        schema_json: {type: object}
+        schema_json: {type: object, additionalProperties: true}
         status: {type: string, enum: [active, proposed, deprecated, retired]}
     ToolList:
       type: object
@@ -736,6 +775,7 @@ components:
         effect: {type: string, enum: [read, write, external_side_effect, administrative]}
         idempotency: {type: string, enum: [read_only, idempotent, compensatable, non_repeatable]}
         content_digest: {type: string}
+        schema_json: {type: object, additionalProperties: true}
     Agent:
       type: object
       required: [id, organization_id, workspace_id, slug, display_name, description, category, lifecycle_status]
@@ -789,7 +829,7 @@ components:
         message: {type: string}
     AgentVersion:
       type: object
-      required: [id, agent_id, version, source_draft_revision, spec, spec_digest]
+      required: [id, agent_id, version, source_draft_revision, spec, spec_digest, published, prompt_snapshot]
       properties:
         id: {type: string}
         agent_id: {type: string}
@@ -797,12 +837,47 @@ components:
         source_draft_revision: {type: integer}
         spec: {type: object}
         spec_digest: {type: string}
+        created_at: {type: string, format: date-time}
+        created_by: {type: string}
+        published: {type: boolean}
+        published_at: {type: string, format: date-time}
+        prompt_snapshot: {$ref: "#/components/schemas/PromptSnapshot"}
     AgentVersionList:
       type: object
       required: [items, page_info]
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/AgentVersion"}}
         page_info: {$ref: "#/components/schemas/PageInfo"}
+    PromptSnapshot:
+      type: object
+      required: [compiler_version, content_digest, compiled_text]
+      properties:
+        compiler_version: {type: string}
+        content_digest: {type: string}
+        compiled_text: {type: string}
+        system_prompt: {type: string}
+        user_input: {type: string}
+        rules: {type: array, items: {type: object}}
+    ActivityItem:
+      type: object
+      required: [id, event_type, payload, created_at]
+      properties:
+        id: {type: integer, format: int64}
+        event_type: {type: string}
+        payload: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+    AgentOverview:
+      type: object
+      required: [agent, draft, version_count, recent_activity]
+      properties:
+        agent: {$ref: "#/components/schemas/Agent"}
+        draft: {$ref: "#/components/schemas/AgentDraft"}
+        current_version:
+          oneOf:
+            - {$ref: "#/components/schemas/AgentVersion"}
+            - {type: 'null'}
+        version_count: {type: integer}
+        recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
     SubmitReviewRequest:
       type: object
       required: [release_notes]

@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS gantry.skills (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, slug, content_digest)
 );
+ALTER TABLE gantry.skills
+  ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS skills_workspace_idx ON gantry.skills (workspace_id, status, display_name);
 
 CREATE TABLE IF NOT EXISTS gantry.plugins (
@@ -80,6 +82,8 @@ CREATE TABLE IF NOT EXISTS gantry.plugins (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id, slug, version, content_digest)
 );
+ALTER TABLE gantry.plugins
+  ADD COLUMN IF NOT EXISTS manifest_json jsonb NOT NULL DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS plugins_org_idx ON gantry.plugins (organization_id, status, display_name);
 
 CREATE TABLE IF NOT EXISTS gantry.workspace_plugin_enablements (
@@ -154,6 +158,12 @@ CREATE TABLE IF NOT EXISTS gantry.agent_versions (
   UNIQUE (agent_id, source_draft_revision),
   UNIQUE (id, agent_id)
 );
+ALTER TABLE gantry.agent_versions
+  ADD COLUMN IF NOT EXISTS prompt_snapshot_json jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE gantry.agent_versions
+  ADD COLUMN IF NOT EXISTS prompt_snapshot_digest text NOT NULL DEFAULT '';
+ALTER TABLE gantry.agent_versions
+  ADD COLUMN IF NOT EXISTS prompt_compiler_version text NOT NULL DEFAULT 'prompt-compiler/v1';
 
 CREATE TABLE IF NOT EXISTS gantry.agent_publications (
   id text PRIMARY KEY,

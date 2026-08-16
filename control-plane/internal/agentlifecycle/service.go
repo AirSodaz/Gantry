@@ -166,7 +166,14 @@ func (s *Service) ListVersions(ctx context.Context, actor identity.Principal, ag
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id, agent_id, version, source_draft_revision, spec_json, spec_digest FROM gantry.agent_versions WHERE agent_id=$1 ORDER BY version DESC`, agent.ID)
+	rows, err := s.pool.Query(ctx, `
+		SELECT v.id, v.agent_id, v.version, v.source_draft_revision, v.spec_json, v.spec_digest,
+			v.created_at, COALESCE(creator.display_name, ''),
+			(p.agent_version_id IS NOT NULL), p.created_at, v.prompt_snapshot_json
+		FROM gantry.agent_versions v
+		JOIN gantry.principals creator ON creator.id=v.created_by_principal_id
+		LEFT JOIN gantry.agent_publications p ON p.agent_version_id=v.id AND p.workspace_id=$2 AND p.status='published'
+		WHERE v.agent_id=$1 ORDER BY v.version DESC`, agent.ID, agent.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -174,12 +181,111 @@ func (s *Service) ListVersions(ctx context.Context, actor identity.Principal, ag
 	items := make([]Version, 0)
 	for rows.Next() {
 		var item Version
-		if err := rows.Scan(&item.ID, &item.AgentID, &item.Version, &item.SourceDraftRevision, &item.Spec, &item.SpecDigest); err != nil {
+		var createdAt, publishedAt *time.Time
+		var promptJSON []byte
+		if err := rows.Scan(&item.ID, &item.AgentID, &item.Version, &item.SourceDraftRevision, &item.Spec, &item.SpecDigest, &createdAt, &item.CreatedBy, &item.Published, &publishedAt, &promptJSON); err != nil {
+			return nil, err
+		}
+		if createdAt != nil {
+			item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		}
+		if publishedAt != nil {
+			item.PublishedAt = publishedAt.UTC().Format(time.RFC3339)
+		}
+		if len(promptJSON) > 0 && string(promptJSON) != "{}" {
+			if err := json.Unmarshal(promptJSON, &item.PromptSnapshot); err != nil {
+				return nil, err
+			}
+		}
+		if err := populatePromptSnapshot(&item); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (s *Service) GetVersion(ctx context.Context, actor identity.Principal, agentID, versionID string) (Version, error) {
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return Version{}, err
+	}
+	var item Version
+	var createdAt, publishedAt *time.Time
+	var promptJSON []byte
+	var published bool
+	err = s.pool.QueryRow(ctx, `
+		SELECT v.id, v.agent_id, v.version, v.source_draft_revision, v.spec_json, v.spec_digest,
+			v.created_at, COALESCE(creator.display_name, ''),
+			(p.agent_version_id IS NOT NULL), p.created_at, v.prompt_snapshot_json
+		FROM gantry.agent_versions v
+		JOIN gantry.principals creator ON creator.id=v.created_by_principal_id
+		LEFT JOIN gantry.agent_publications p ON p.agent_version_id=v.id AND p.workspace_id=$2 AND p.status='published'
+		WHERE v.id=$1 AND v.agent_id=$3`, versionID, agent.WorkspaceID, agent.ID).
+		Scan(&item.ID, &item.AgentID, &item.Version, &item.SourceDraftRevision, &item.Spec, &item.SpecDigest, &createdAt, &item.CreatedBy, &published, &publishedAt, &promptJSON)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Version{}, ErrNotFound
+	}
+	if err != nil {
+		return Version{}, err
+	}
+	item.Published = published
+	if createdAt != nil {
+		item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+	}
+	if publishedAt != nil {
+		item.PublishedAt = publishedAt.UTC().Format(time.RFC3339)
+	}
+	if len(promptJSON) > 0 && string(promptJSON) != "{}" {
+		if err := json.Unmarshal(promptJSON, &item.PromptSnapshot); err != nil {
+			return Version{}, err
+		}
+	}
+	if item.PromptSnapshot.ContentDigest == "" {
+		if err := populatePromptSnapshot(&item); err != nil {
+			return Version{}, err
+		}
+	}
+	return item, nil
+}
+
+func (s *Service) GetOverview(ctx context.Context, actor identity.Principal, agentID string) (AgentOverview, error) {
+	agent, err := s.Get(ctx, actor, agentID)
+	if err != nil {
+		return AgentOverview{}, err
+	}
+	draft, err := loadDraft(ctx, s.pool, agent.ID)
+	if err != nil {
+		return AgentOverview{}, err
+	}
+	overview := AgentOverview{Agent: agent, Draft: draft, RecentActivity: make([]ActivityItem, 0)}
+	if current, currentErr := loadCurrentVersion(ctx, s.pool, agent.ID); currentErr == nil {
+		if detailed, detailErr := s.GetVersion(ctx, actor, agent.ID, current.ID); detailErr != nil {
+			return AgentOverview{}, detailErr
+		} else {
+			overview.CurrentVersion = &detailed
+		}
+	} else if !errors.Is(currentErr, ErrNotFound) {
+		return AgentOverview{}, currentErr
+	}
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM gantry.agent_versions WHERE agent_id=$1`, agent.ID).Scan(&overview.VersionCount); err != nil {
+		return AgentOverview{}, err
+	}
+	rows, err := s.pool.Query(ctx, `SELECT id, event_type, payload, created_at FROM gantry.audit_events WHERE resource_type='agent' AND resource_id=$1 ORDER BY created_at DESC, id DESC LIMIT 12`, agent.ID)
+	if err != nil {
+		return AgentOverview{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item ActivityItem
+		var createdAt time.Time
+		if err := rows.Scan(&item.ID, &item.EventType, &item.Payload, &createdAt); err != nil {
+			return AgentOverview{}, err
+		}
+		item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		overview.RecentActivity = append(overview.RecentActivity, item)
+	}
+	return overview, rows.Err()
 }
 
 func (s *Service) GetReview(ctx context.Context, actor identity.Principal, agentID string) (Review, error) {
@@ -372,13 +478,22 @@ func (s *Service) Publish(ctx context.Context, actor identity.Principal, agentID
 		return existing, true, tx.Commit(ctx)
 	}
 	canonical := canonicalDraft
+	promptSnapshot, err := CompilePromptSnapshot(canonical)
+	if err != nil {
+		return Version{}, false, err
+	}
 	var nextVersion int
 	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0)+1 FROM gantry.agent_versions WHERE agent_id=$1`, agent.ID).Scan(&nextVersion); err != nil {
 		return Version{}, false, err
 	}
 	digest := sha256.Sum256(canonical)
 	version := Version{ID: newID("agtv"), AgentID: agent.ID, Version: nextVersion, SourceDraftRevision: draft.Revision, Spec: canonical, SpecDigest: "sha256:" + hex.EncodeToString(digest[:])}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)`, version.ID, version.AgentID, version.Version, version.SourceDraftRevision, string(version.Spec), version.SpecDigest, actor.ID); err != nil {
+	promptJSON, err := json.Marshal(promptSnapshot)
+	if err != nil {
+		return Version{}, false, err
+	}
+	version.PromptSnapshot = promptSnapshot
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id, prompt_snapshot_json, prompt_snapshot_digest, prompt_compiler_version) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8::jsonb,$9,$10)`, version.ID, version.AgentID, version.Version, version.SourceDraftRevision, string(version.Spec), version.SpecDigest, actor.ID, string(promptJSON), promptSnapshot.ContentDigest, promptSnapshot.CompilerVersion); err != nil {
 		return Version{}, false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.agent_publications SET status='retired', retired_at=now() WHERE agent_id=$1 AND workspace_id=$2 AND status='published'`, agent.ID, agent.WorkspaceID); err != nil {
@@ -497,6 +612,18 @@ func loadCurrentVersion(ctx context.Context, querier interface {
 		return Version{}, ErrNotFound
 	}
 	return version, err
+}
+
+func populatePromptSnapshot(version *Version) error {
+	if version.PromptSnapshot.ContentDigest != "" {
+		return nil
+	}
+	snapshot, err := CompilePromptSnapshot(version.Spec)
+	if err != nil {
+		return err
+	}
+	version.PromptSnapshot = snapshot
+	return nil
 }
 
 func loadReview(ctx context.Context, querier interface {
