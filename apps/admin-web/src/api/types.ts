@@ -23,6 +23,8 @@ export type Plugin = Components['schemas']['Plugin'];
 export type Tool = Components['schemas']['Tool'];
 export type AssetUsage = Components['schemas']['AssetUsage'];
 export type PluginDetail = Components['schemas']['PluginDetail'];
+export type AdminAuditEvent = Components['schemas']['AdminAuditEvent'];
+export type AdminAuditEventDetail = Components['schemas']['AdminAuditEventDetail'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';

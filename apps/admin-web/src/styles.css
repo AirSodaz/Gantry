@@ -774,6 +774,18 @@ a {
   gap: 12px;
 }
 
+.admin-audit-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.admin-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .admin-runs-table td {
   white-space: normal;
 }
@@ -996,6 +1008,7 @@ a.admin-overview-metric:hover { border-color: var(--ds-border-strong); backgroun
 
 @media (max-width: 900px) {
   .admin-run-filter-bar,
+  .admin-audit-filter-bar,
   .admin-run-detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }

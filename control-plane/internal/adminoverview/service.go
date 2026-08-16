@@ -37,11 +37,11 @@ type AttentionItem struct {
 }
 
 type Publication struct {
-	AgentID     string `json:"agent_id"`
-	AgentName   string `json:"agent_name"`
-	WorkspaceID string `json:"workspace_id"`
+	AgentID      string `json:"agent_id"`
+	AgentName    string `json:"agent_name"`
+	WorkspaceID  string `json:"workspace_id"`
 	RevisionHash string `json:"revision_hash"`
-	PublishedAt string `json:"published_at"`
+	PublishedAt  string `json:"published_at"`
 }
 
 type ActivityItem struct {
@@ -142,19 +142,19 @@ func (s *Service) loadMetrics(ctx context.Context, actor identity.Principal, wor
 func (s *Service) loadAttention(ctx context.Context, actor identity.Principal, workspaceID string, target *[]AttentionItem) error {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, kind, severity, title, description, href, created_at FROM (
-			SELECT 'invalid-draft:' || a.id, 'invalid_draft', 'high', a.display_name || ' has an invalid draft', 'Resolve validation findings before review or publication.', '/agents/' || a.id || '/design', d.updated_at
+			SELECT 'invalid-draft:' || a.id AS id, 'invalid_draft' AS kind, 'high' AS severity, a.display_name || ' has an invalid draft' AS title, 'Resolve validation findings before review or publication.' AS description, '/agents/' || a.id || '/design' AS href, d.updated_at AS created_at
 			FROM gantry.agents a JOIN gantry.agent_draft_workspaces d ON d.agent_id=a.id AND d.name='Main'
 			WHERE `+accessibleAgent+` AND d.validation_status='invalid'
 			UNION ALL
-			SELECT 'review:' || r.id, 'review', 'medium', a.display_name || ' is awaiting review', 'An approved review is required before Production deployment.', '/agents/' || a.id || '/design', r.submitted_at
+			SELECT 'review:' || r.id AS id, 'review' AS kind, 'medium' AS severity, a.display_name || ' is awaiting review' AS title, 'An approved review is required before Production deployment.' AS description, '/agents/' || a.id || '/design' AS href, r.submitted_at AS created_at
 			FROM gantry.agent_revision_reviews r JOIN gantry.agents a ON a.id=r.agent_id
 			WHERE `+accessibleAgent+` AND r.status='pending'
 			UNION ALL
-			SELECT 'approval:' || ar.id, 'approval', 'high', a.display_name || ' has a requester approval pending', 'The requester must decide the exact action before this run continues.', '/agents/' || a.id, ar.created_at
+			SELECT 'approval:' || ar.id AS id, 'approval' AS kind, 'high' AS severity, a.display_name || ' has a requester approval pending' AS title, 'The requester must decide the exact action before this run continues.' AS description, '/agents/' || a.id AS href, ar.created_at AS created_at
 			FROM gantry.approval_requests ar JOIN gantry.runs run ON run.id=ar.run_id JOIN gantry.tasks t ON t.id=run.task_id JOIN gantry.agents a ON a.id=t.agent_id
 			WHERE `+accessibleAgent+` AND ar.status='pending'
 			UNION ALL
-			SELECT 'failed-run:' || run.id, 'failed_run', 'high', a.display_name || ' has a failed run', COALESCE(NULLIF(run.status_reason, ''), 'Inspect the run status before retrying.'), '/agents/' || a.id, COALESCE(run.completed_at, run.created_at)
+			SELECT 'failed-run:' || run.id AS id, 'failed_run' AS kind, 'high' AS severity, a.display_name || ' has a failed run' AS title, COALESCE(NULLIF(run.status_reason, ''), 'Inspect the run status before retrying.') AS description, '/agents/' || a.id AS href, COALESCE(run.completed_at, run.created_at) AS created_at
 			FROM gantry.runs run JOIN gantry.tasks t ON t.id=run.task_id JOIN gantry.agents a ON a.id=t.agent_id
 			WHERE `+accessibleAgent+` AND run.status='failed' AND run.completed_at >= now() - interval '24 hours'
 		) attention

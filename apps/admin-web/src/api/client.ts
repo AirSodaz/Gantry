@@ -1,4 +1,4 @@
-import type { AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminAuditEvent, AdminAuditEventDetail, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -12,6 +12,7 @@ export class AdminApiError extends Error {
 type TokenProvider = () => string | null;
 export type AssetListOptions = { workspaceId?: string; search?: string; status?: string };
 export type RunListOptions = { workspaceId?: string; agentId?: string; revisionHash?: string; status?: AdminRun['status']; limit?: number };
+export type AuditListOptions = { workspaceId?: string; resourceType?: string; resourceId?: string; actorId?: string; eventType?: string; outcome?: string; risk?: string; correlationId?: string; runId?: string; revisionHash?: string; policyVersionId?: string; before?: string; after?: string; cursor?: string; limit?: number };
 
 export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
@@ -32,6 +33,19 @@ export class AdminApi {
     return this.request<{ items: AdminRun[] }>(`/runs${value ? `?${value}` : ''}`);
   }
   getRun(runId: string) { return this.request<AdminRunDetail>(`/runs/${encodeURIComponent(runId)}`); }
+  listAuditEvents(options: AuditListOptions = {}) {
+    const query = new URLSearchParams();
+    const entries: [string, string | undefined][] = [
+      ['workspace_id', options.workspaceId], ['resource_type', options.resourceType], ['resource_id', options.resourceId], ['actor_id', options.actorId],
+      ['event_type', options.eventType], ['outcome', options.outcome], ['risk', options.risk], ['correlation_id', options.correlationId], ['run_id', options.runId],
+      ['revision_hash', options.revisionHash], ['policy_version_id', options.policyVersionId], ['before', options.before], ['after', options.after], ['cursor', options.cursor],
+    ];
+    for (const [key, value] of entries) if (value) query.set(key, value);
+    if (options.limit) query.set('limit', String(options.limit));
+    const value = query.toString();
+    return this.request<{ items: AdminAuditEvent[]; page_info: { has_more: boolean; next_cursor?: string } }>(`/audit-events${value ? `?${value}` : ''}`);
+  }
+  getAuditEvent(eventId: string) { return this.request<AdminAuditEventDetail>(`/audit-events/${encodeURIComponent(eventId)}`); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

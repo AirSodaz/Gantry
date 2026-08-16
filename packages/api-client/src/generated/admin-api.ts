@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search immutable audit events in the authorized scope */
+        get: operations["listAdminAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one immutable audit event in the authorized scope */
+        get: operations["getAdminAuditEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -670,6 +704,7 @@ export interface components {
         };
         PageInfo: {
             has_more: boolean;
+            next_cursor?: string;
         };
         Workspace: {
             id: string;
@@ -1054,6 +1089,43 @@ export interface components {
             approvals: components["schemas"]["AdminRunApproval"][];
             artifacts: components["schemas"]["AdminRunArtifact"][];
         };
+        AdminAuditEvent: {
+            /** Format: int64 */
+            id: number;
+            actor_id: string;
+            actor_name: string;
+            resource_type: string;
+            resource_id: string;
+            event_type: string;
+            scope: string;
+            outcome: string;
+            risk: string;
+            correlation_id: string;
+            run_id: string;
+            revision_hash: string;
+            policy_version_id: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminAuditEventList: {
+            items: components["schemas"]["AdminAuditEvent"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AdminAuditEvidence: {
+            kind: string;
+            id: string;
+        };
+        AdminAuditRedactionMetadata: {
+            mode: string;
+            redacted_fields: string[];
+        };
+        AdminAuditEventDetail: components["schemas"]["AdminAuditEvent"] & {
+            payload: {
+                [key: string]: unknown;
+            };
+            evidence: components["schemas"]["AdminAuditEvidence"][];
+            redaction_metadata: components["schemas"]["AdminAuditRedactionMetadata"];
+        };
         UpdateDraftRequest: {
             spec: Record<string, never>;
         };
@@ -1297,6 +1369,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminRunDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminAuditEvents: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                resource_type?: string;
+                resource_id?: string;
+                actor_id?: string;
+                event_type?: string;
+                outcome?: string;
+                risk?: string;
+                correlation_id?: string;
+                run_id?: string;
+                revision_hash?: string;
+                policy_version_id?: string;
+                before?: string;
+                after?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit event summaries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditEventList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAdminAuditEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit event detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditEventDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];

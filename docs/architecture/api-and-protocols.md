@@ -55,6 +55,9 @@ Current and planned resources:
   authorized read-only operational Run workbench, including exact Deployment
   and manifest identity, ordered event evidence, tool actions, requester
   approvals, and artifact metadata.
+- Implemented: `/api/admin/v1/audit-events` and `/api/admin/v1/audit-events/{eventId}`
+  provide the scope-authorized immutable Audit list/detail projection. Signed
+  export lifecycle and durable outcome/risk/correlation fields remain planned.
 - Target extension: Skill marketplace/direct-locator/upload/local import with
   complete artifact inspection; Plugin contained-asset inspection; Tool Server
   discovery/health; descriptor authoring; and CLI Command Profiles. Gantry still
@@ -65,11 +68,12 @@ Current and planned resources:
 - Planned Run mutations and richer diagnostic projections remain separate from
   the implemented read-only Run workbench. Planned resources include
   `/evaluation-suites`, `/integrations`,
-  `/policies`, `/audit-events`, `/retention-policies`, `/legal-holds`, and
+  `/policies`, `/retention-policies`, `/legal-holds`, and
   `/platform/runner-pools`, `/retention-deletion-jobs`, `/platform/settings`,
   `/platform/data-classifications`, `/platform/limit-policies`, and
   `/platform/environment-profiles`. `/audit-events`
-  is the canonical cross-resource immutable event explorer; resource APIs may
+  is implemented as the canonical cross-resource immutable event explorer;
+  resource APIs may
   return a bounded Recent activity slice and a pre-filtered Audit link but do
   not create resource-specific Audit stores. `/policies` is the
   unified typed Policy resource, including Approval Policies; it owns one

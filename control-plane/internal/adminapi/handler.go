@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AirSodaz/gantry/internal/adminaudit"
 	"github.com/AirSodaz/gantry/internal/adminoverview"
 	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
@@ -88,6 +89,11 @@ type runService interface {
 	Get(context.Context, identity.Principal, string) (adminruns.Detail, error)
 }
 
+type auditService interface {
+	List(context.Context, identity.Principal, adminaudit.ListOptions) (adminaudit.ListResult, error)
+	Get(context.Context, identity.Principal, string) (adminaudit.Detail, error)
+}
+
 type Handler struct {
 	auth      authenticator
 	authorize authorizer
@@ -96,6 +102,7 @@ type Handler struct {
 	assets    assetService
 	overview  overviewService
 	runs      runService
+	audit     auditService
 	logger    *slog.Logger
 }
 
@@ -115,11 +122,19 @@ func NewWithTarget(auth authenticator, authorize authorizer, service lifecycleSe
 	return newHandler(auth, authorize, service, target, assets, overview, runs, logger)
 }
 
+func NewWithTargetAndAudit(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, logger *slog.Logger) http.Handler {
+	return newHandlerWithAudit(auth, authorize, service, target, assets, overview, runs, audit, logger)
+}
+
 func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, logger *slog.Logger) http.Handler {
+	return newHandlerWithAudit(auth, authorize, service, target, assets, overview, runs, nil, logger)
+}
+
+func newHandlerWithAudit(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, audit: audit, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
@@ -129,6 +144,10 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 	if runs != nil {
 		mux.Handle("GET /runs", h.withActor(h.listRuns))
 		mux.Handle("GET /runs/{runID}", h.withActor(h.getRun))
+	}
+	if audit != nil {
+		mux.Handle("GET /audit-events", h.withActor(h.listAuditEvents))
+		mux.Handle("GET /audit-events/{eventID}", h.withActor(h.getAuditEvent))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)
@@ -153,6 +172,34 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 		mux.Handle("POST /tools/{operation...}", h.withActor(h.toolCommand))
 	}
 	return mux
+}
+
+func (h Handler) listAuditEvents(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	limit, err := queryLimit(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "limit must be a positive integer no greater than 100.")
+		return
+	}
+	result, err := h.audit.List(r.Context(), actor, adminaudit.ListOptions{
+		WorkspaceID: r.URL.Query().Get("workspace_id"), ResourceType: r.URL.Query().Get("resource_type"), ResourceID: r.URL.Query().Get("resource_id"),
+		ActorID: r.URL.Query().Get("actor_id"), EventType: r.URL.Query().Get("event_type"), Outcome: r.URL.Query().Get("outcome"), Risk: r.URL.Query().Get("risk"),
+		CorrelationID: r.URL.Query().Get("correlation_id"), RunID: r.URL.Query().Get("run_id"), RevisionHash: r.URL.Query().Get("revision_hash"), PolicyVersionID: r.URL.Query().Get("policy_version_id"),
+		Before: r.URL.Query().Get("before"), After: r.URL.Query().Get("after"), Limit: limit, Cursor: r.URL.Query().Get("cursor"),
+	})
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h Handler) getAuditEvent(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.audit.Get(r.Context(), actor, r.PathValue("eventID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
 }
 
 func (h Handler) listRuns(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -541,7 +588,7 @@ func decodeOptionalJSON(w http.ResponseWriter, r *http.Request, destination any)
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, adminruns.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
+	case errors.Is(err, agentlifecycle.ErrNotFound), errors.Is(err, configassets.ErrNotFound), errors.Is(err, adminruns.ErrNotFound), errors.Is(err, adminaudit.ErrNotFound), errors.Is(err, authorization.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
 	case errors.Is(err, agentlifecycle.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The agent request is not valid.")
@@ -549,6 +596,8 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The configuration asset request is not valid.")
 	case errors.Is(err, adminruns.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The run query is not valid.")
+	case errors.Is(err, adminaudit.ErrInvalidInput):
+		writeError(w, http.StatusBadRequest, "invalid_request", "The audit query is not valid.")
 	case errors.Is(err, agentlifecycle.ErrRevisionConflict):
 		writeError(w, http.StatusPreconditionFailed, "revision_conflict", "The draft was changed by another administrator.")
 	case errors.Is(err, agentlifecycle.ErrInvalidState):

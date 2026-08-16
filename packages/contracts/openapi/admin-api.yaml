@@ -69,6 +69,45 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /audit-events:
+    get:
+      operationId: listAdminAuditEvents
+      summary: Search immutable audit events in the authorized scope
+      tags: [Audit]
+      parameters:
+        - {name: workspace_id, in: query, schema: {type: string}}
+        - {name: resource_type, in: query, schema: {type: string}}
+        - {name: resource_id, in: query, schema: {type: string}}
+        - {name: actor_id, in: query, schema: {type: string}}
+        - {name: event_type, in: query, schema: {type: string}}
+        - {name: outcome, in: query, schema: {type: string}}
+        - {name: risk, in: query, schema: {type: string}}
+        - {name: correlation_id, in: query, schema: {type: string}}
+        - {name: run_id, in: query, schema: {type: string}}
+        - {name: revision_hash, in: query, schema: {type: string}}
+        - {name: policy_version_id, in: query, schema: {type: string}}
+        - {name: before, in: query, schema: {type: string, format: date-time}}
+        - {name: after, in: query, schema: {type: string, format: date-time}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        "200": {description: Audit event summaries, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditEventList"}}}}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /audit-events/{event_id}:
+    get:
+      operationId: getAdminAuditEvent
+      summary: Inspect one immutable audit event in the authorized scope
+      tags: [Audit]
+      parameters:
+        - {name: event_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Audit event detail, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAuditEventDetail"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /workspaces:
     get:
       operationId: listManagedWorkspaces
@@ -718,6 +757,7 @@ components:
       required: [has_more]
       properties:
         has_more: {type: boolean}
+        next_cursor: {type: string}
     Workspace:
       type: object
       required: [id, slug, display_name]
@@ -1121,6 +1161,51 @@ components:
         actions: {type: array, items: {$ref: "#/components/schemas/AdminRunAction"}}
         approvals: {type: array, items: {$ref: "#/components/schemas/AdminRunApproval"}}
         artifacts: {type: array, items: {$ref: "#/components/schemas/AdminRunArtifact"}}
+    AdminAuditEvent:
+      type: object
+      required: [id, actor_id, actor_name, resource_type, resource_id, event_type, scope, outcome, risk, correlation_id, run_id, revision_hash, policy_version_id, created_at]
+      properties:
+        id: {type: integer, format: int64}
+        actor_id: {type: string}
+        actor_name: {type: string}
+        resource_type: {type: string}
+        resource_id: {type: string}
+        event_type: {type: string}
+        scope: {type: string}
+        outcome: {type: string}
+        risk: {type: string}
+        correlation_id: {type: string}
+        run_id: {type: string}
+        revision_hash: {type: string}
+        policy_version_id: {type: string}
+        created_at: {type: string, format: date-time}
+    AdminAuditEventList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AdminAuditEvent"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    AdminAuditEvidence:
+      type: object
+      required: [kind, id]
+      properties:
+        kind: {type: string}
+        id: {type: string}
+    AdminAuditRedactionMetadata:
+      type: object
+      required: [mode, redacted_fields]
+      properties:
+        mode: {type: string}
+        redacted_fields: {type: array, items: {type: string}}
+    AdminAuditEventDetail:
+      allOf:
+        - {$ref: "#/components/schemas/AdminAuditEvent"}
+        - type: object
+          required: [payload, evidence, redaction_metadata]
+          properties:
+            payload: {type: object, additionalProperties: true}
+            evidence: {type: array, items: {$ref: "#/components/schemas/AdminAuditEvidence"}}
+            redaction_metadata: {$ref: "#/components/schemas/AdminAuditRedactionMetadata"}
     UpdateDraftRequest:
       type: object
       required: [spec]

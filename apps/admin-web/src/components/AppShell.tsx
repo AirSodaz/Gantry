@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Bot, Cable, Database, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
+import { Activity, Bot, Cable, Database, FileSearch, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -94,6 +94,9 @@ export function AppShell() {
 
           {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Operate</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
           <NavLink to="/runs" title={isCollapsed ? 'Runs' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Activity size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Runs</span> : null}</NavLink>
+
+          {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Govern</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
+          <NavLink to="/audit" title={isCollapsed ? 'Audit' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><FileSearch size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Audit</span> : null}</NavLink>
         </nav>
 
         {/* Sidebar Footer with Theme Toggle and Admin Profile */}

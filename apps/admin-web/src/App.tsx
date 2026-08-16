@@ -13,6 +13,7 @@ import { AgentVersionsPage } from './features/agents/AgentVersionsPage';
 import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
 import { OverviewPage } from './features/overview/OverviewPage';
 import { RunDetailPage, RunsPage } from './features/runs/RunPages';
+import { AuditEventDetailPage, AuditPage } from './features/audit/AuditPages';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -63,6 +64,8 @@ export default function App() {
         <Route path="tools/:assetId" element={<AssetDetailPage kind="tools" />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="runs/:runId" element={<RunDetailPage />} />
+        <Route path="audit" element={<AuditPage />} />
+        <Route path="audit/events/:eventId" element={<AuditEventDetailPage />} />
         <Route path="*" element={<OverviewPage />} />
       </Route>
     </Routes>
