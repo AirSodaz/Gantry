@@ -55,8 +55,12 @@ export class AdminApi {
   registerTool(input: { server_name: string; server_type: Tool['server_type']; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: Tool['effect']; idempotency: Tool['idempotency']; content_digest: string; schema_json?: Record<string, unknown> }) {
     return this.request<Tool>('/tools', { method: 'POST', body: JSON.stringify(input) });
   }
-  listAgents(workspaceId = '') {
-    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
+  listAgents(workspaceId = '', search = '', status = '') {
+    const params = new URLSearchParams();
+    if (workspaceId) params.set('workspace_id', workspaceId);
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return this.request<{ items: Agent[] }>(`/agents${query}`);
   }
   getAgent(agentId: string) { return this.request<Agent>(`/agents/${encodeURIComponent(agentId)}`); }

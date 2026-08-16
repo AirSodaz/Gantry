@@ -28,7 +28,7 @@ type authorizer interface {
 
 type lifecycleService interface {
 	ListWorkspaces(context.Context, identity.Principal) ([]authorization.Workspace, error)
-	ListAgents(context.Context, identity.Principal, string) ([]agentlifecycle.Agent, error)
+	ListAgents(context.Context, identity.Principal, agentlifecycle.AgentListOptions) ([]agentlifecycle.Agent, error)
 	Create(context.Context, identity.Principal, agentlifecycle.CreateRequest) (agentlifecycle.Agent, error)
 	Get(context.Context, identity.Principal, string) (agentlifecycle.Agent, error)
 	GetOverview(context.Context, identity.Principal, string) (agentlifecycle.AgentOverview, error)
@@ -445,7 +445,7 @@ func (h Handler) getOverview(w http.ResponseWriter, r *http.Request, actor ident
 }
 
 func (h Handler) listAgents(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.service.ListAgents(r.Context(), actor, r.URL.Query().Get("workspace_id"))
+	items, err := h.service.ListAgents(r.Context(), actor, agentlifecycle.AgentListOptions{WorkspaceID: r.URL.Query().Get("workspace_id"), Search: r.URL.Query().Get("search"), Status: r.URL.Query().Get("status")})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

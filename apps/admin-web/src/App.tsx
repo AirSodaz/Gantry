@@ -9,6 +9,7 @@ import { AgentDetailPage } from './features/agents/AgentDetailPage';
 import { NewAgentPage } from './features/agents/NewAgentPage';
 import { AgentOverviewPage } from './features/agents/AgentOverviewPage';
 import { AgentVersionPage } from './features/agents/AgentVersionPage';
+import { AgentVersionsPage } from './features/agents/AgentVersionsPage';
 import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/assets/AssetPages';
 import { OverviewPage } from './features/overview/OverviewPage';
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="agents/new" element={<NewAgentPage />} />
         <Route path="agents/:agentId" element={<AgentOverviewPage />} />
         <Route path="agents/:agentId/design" element={<AgentDetailPage />} />
+        <Route path="agents/:agentId/versions" element={<AgentVersionsPage />} />
         <Route path="agents/:agentId/revisions/:revisionHash" element={<AgentVersionPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="skills/:assetId" element={<AssetDetailPage kind="skills" />} />

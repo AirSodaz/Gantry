@@ -438,6 +438,14 @@ a {
   white-space: nowrap;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Filter & Fields */
 .admin-filter-bar {
   margin-bottom: 24px;
@@ -696,6 +704,35 @@ a {
   margin: 0;
   color: var(--ds-text-muted);
   font-size: 12px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.admin-table th,
+.admin-table td {
+  border-top: 1px solid var(--ds-border);
+  padding: 11px 10px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.admin-table th {
+  color: var(--ds-text-muted);
+  font-weight: 600;
+}
+
+.admin-table td:nth-child(2) {
+  min-width: 220px;
+  white-space: normal;
 }
 
 .admin-overview-grid {

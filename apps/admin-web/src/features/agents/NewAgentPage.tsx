@@ -39,7 +39,7 @@ export function NewAgentPage() {
     mutationFn: () => api.createAgent(form),
     onSuccess(agent) {
       void queryClient.invalidateQueries({ queryKey: ['admin-agents'] });
-      navigate(`/agents/${agent.id}`);
+      navigate(`/agents/${agent.id}/design`);
     },
   });
 

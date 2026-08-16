@@ -40,6 +40,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   Design, and immutable Revision Detail routes expose Production/Test
   Deployments, draft validation, audit activity, exact hashes, and frozen
   Prompt Snapshot projections.
+- Admin Agent Versions workspace: production and active test pointers, Draft
+  latest Revision pointers, and chronological immutable Revision history are
+  available with links to exact Revision detail.
 - Admin home Overview: scope-authorized aggregation of Agent lifecycle state,
   pending reviews, invalid Drafts, active and failed runs, requester approval
   waits, recent publications, and scoped Agent audit activity. Provider health

@@ -28,9 +28,18 @@ func (s *Service) ListWorkspaces(ctx context.Context, actor identity.Principal) 
 	return s.authz.ListWorkspaces(ctx, actor)
 }
 
-func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, workspaceID string) ([]Agent, error) {
-	if workspaceID != "" {
-		if err := s.authz.RequireWorkspace(ctx, actor, workspaceID); err != nil {
+type AgentListOptions struct {
+	WorkspaceID string
+	Search      string
+	Status      string
+}
+
+func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, options AgentListOptions) ([]Agent, error) {
+	options.WorkspaceID = strings.TrimSpace(options.WorkspaceID)
+	options.Search = strings.TrimSpace(options.Search)
+	options.Status = strings.TrimSpace(options.Status)
+	if options.WorkspaceID != "" {
+		if err := s.authz.RequireWorkspace(ctx, actor, options.WorkspaceID); err != nil {
 			return nil, err
 		}
 	}
@@ -39,11 +48,13 @@ func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, work
 			COALESCE(production.status, 'draft'), COALESCE(production.revision_hash, '')
 		FROM gantry.agents a
 		LEFT JOIN gantry.agent_deployments production ON production.agent_id=a.id AND production.environment_kind='production' AND production.status='active'
-		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2) AND (
+		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2) AND
+			($4='' OR a.display_name ILIKE '%' || $4 || '%' OR a.slug ILIKE '%' || $4 || '%' OR a.description ILIKE '%' || $4 || '%' OR COALESCE(production.revision_hash, '') ILIKE '%' || $4 || '%') AND
+			($5='' OR COALESCE(production.status, 'draft')=$5) AND (
 			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
 			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
 		)
-		ORDER BY a.display_name, a.id`, actor.OrganizationID, workspaceID, actor.ID)
+		ORDER BY a.display_name, a.id`, actor.OrganizationID, options.WorkspaceID, actor.ID, options.Search, options.Status)
 	if err != nil {
 		return nil, err
 	}

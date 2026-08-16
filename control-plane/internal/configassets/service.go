@@ -227,8 +227,19 @@ func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, req
 	item.Description, item.SourceType, item.SourceRef = strings.TrimSpace(request.Description), request.SourceType, request.SourceRef
 	item.DeclaredVersion, item.ContentDigest, item.Status = strings.TrimSpace(request.DeclaredVersion), request.ContentDigest, "available"
 	item.Metadata = request.Metadata
-	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.skills (id, organization_id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, metadata_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,'available',$12) RETURNING id`, item.ID, actor.OrganizationID, item.WorkspaceID, item.Slug, item.DisplayName, item.Description, item.SourceType, item.SourceRef, item.DeclaredVersion, item.ContentDigest, string(item.Metadata), actor.ID).Scan(&item.ID)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		return Skill{}, err
+	}
+	defer tx.Rollback(ctx)
+	err = tx.QueryRow(ctx, `INSERT INTO gantry.skills (id, organization_id, workspace_id, slug, display_name, description, source_type, source_ref, declared_version, content_digest, metadata_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,'available',$12) RETURNING id`, item.ID, actor.OrganizationID, item.WorkspaceID, item.Slug, item.DisplayName, item.Description, item.SourceType, item.SourceRef, item.DeclaredVersion, item.ContentDigest, string(item.Metadata), actor.ID).Scan(&item.ID)
+	if err != nil {
+		return Skill{}, err
+	}
+	if err := appendCreatedAudit(ctx, tx, actor.OrganizationID, actor.ID, "skill", item.ID, map[string]string{"source_type": item.SourceType, "source_ref": item.SourceRef, "content_digest": item.ContentDigest}); err != nil {
+		return Skill{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return Skill{}, err
 	}
 	return item, nil
@@ -316,8 +327,19 @@ func (s *Service) CreatePlugin(ctx context.Context, actor identity.Principal, re
 		return Plugin{}, ErrInvalidInput
 	}
 	item := Plugin{ID: newID("plugin"), Slug: request.Slug, DisplayName: request.DisplayName, Description: strings.TrimSpace(request.Description), Version: request.Version, ContentDigest: request.ContentDigest, Manifest: request.Manifest, Status: "active"}
-	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.plugins (id, organization_id, slug, display_name, description, version, content_digest, manifest_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,'active',$9) RETURNING id`, item.ID, actor.OrganizationID, item.Slug, item.DisplayName, item.Description, item.Version, item.ContentDigest, string(item.Manifest), actor.ID).Scan(&item.ID)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		return Plugin{}, err
+	}
+	defer tx.Rollback(ctx)
+	err = tx.QueryRow(ctx, `INSERT INTO gantry.plugins (id, organization_id, slug, display_name, description, version, content_digest, manifest_json, status, created_by_principal_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,'active',$9) RETURNING id`, item.ID, actor.OrganizationID, item.Slug, item.DisplayName, item.Description, item.Version, item.ContentDigest, string(item.Manifest), actor.ID).Scan(&item.ID)
+	if err != nil {
+		return Plugin{}, err
+	}
+	if err := appendCreatedAudit(ctx, tx, actor.OrganizationID, actor.ID, "plugin", item.ID, map[string]string{"version": item.Version, "content_digest": item.ContentDigest}); err != nil {
+		return Plugin{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return Plugin{}, err
 	}
 	return item, nil
@@ -330,16 +352,27 @@ func (s *Service) EnablePlugin(ctx context.Context, actor identity.Principal, pl
 	if strings.TrimSpace(pluginID) == "" || strings.TrimSpace(workspaceID) == "" {
 		return ErrInvalidInput
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
 	var found bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM gantry.plugins WHERE id=$1 AND organization_id=$2 AND status='active') AND EXISTS (SELECT 1 FROM gantry.workspaces WHERE id=$3 AND organization_id=$2)`, pluginID, actor.OrganizationID, workspaceID).Scan(&found)
+	err = tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM gantry.plugins WHERE id=$1 AND organization_id=$2 AND status='active') AND EXISTS (SELECT 1 FROM gantry.workspaces WHERE id=$3 AND organization_id=$2)`, pluginID, actor.OrganizationID, workspaceID).Scan(&found)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return ErrNotFound
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO gantry.workspace_plugin_enablements (workspace_id, plugin_id, enabled_by_principal_id) VALUES ($1,$2,$3) ON CONFLICT (workspace_id,plugin_id) DO NOTHING`, workspaceID, pluginID, actor.ID)
-	return err
+	_, err = tx.Exec(ctx, `INSERT INTO gantry.workspace_plugin_enablements (workspace_id, plugin_id, enabled_by_principal_id) VALUES ($1,$2,$3) ON CONFLICT (workspace_id,plugin_id) DO NOTHING`, workspaceID, pluginID, actor.ID)
+	if err != nil {
+		return err
+	}
+	if err := appendAssetEvent(ctx, tx, actor.OrganizationID, actor.ID, "plugin", pluginID, "configuration_asset.workspace_enabled", map[string]string{"workspace_id": workspaceID}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Service) DisablePlugin(ctx context.Context, actor identity.Principal, pluginID, workspaceID string) error {
@@ -522,6 +555,19 @@ func appendAudit(ctx context.Context, tx pgx.Tx, organizationID, actorID, resour
 	return err
 }
 
+func appendCreatedAudit(ctx context.Context, tx pgx.Tx, organizationID, actorID, resourceType, resourceID string, payload any) error {
+	return appendAssetEvent(ctx, tx, organizationID, actorID, resourceType, resourceID, "configuration_asset.created", payload)
+}
+
+func appendAssetEvent(ctx context.Context, tx pgx.Tx, organizationID, actorID, resourceType, resourceID, eventType string, payload any) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO gantry.audit_events (organization_id, actor_principal_id, resource_type, resource_id, event_type, payload) VALUES ($1,$2,$3,$4,$5,$6::jsonb)`, organizationID, actorID, resourceType, resourceID, eventType, string(data))
+	return err
+}
+
 func (s *Service) ListTools(ctx context.Context, actor identity.Principal, options ListOptions) ([]Tool, error) {
 	options.Search = strings.TrimSpace(options.Search)
 	options.Status = normalizeToolStatus(options.Status)
@@ -639,6 +685,9 @@ func (s *Service) CreateTool(ctx context.Context, actor identity.Principal, requ
 	}
 	item := Tool{ID: newID("tool"), ServerID: serverID, ServerName: request.ServerName, ServerType: serverType, EndpointRef: strings.TrimSpace(request.EndpointRef), FullyQualifiedName: request.FullyQualifiedName, Version: request.Version, Effect: request.Effect, Idempotency: request.Idempotency, ContentDigest: request.ContentDigest, Schema: request.Schema, Status: "active"}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tool_descriptors (id, server_id, fully_qualified_name, version, effect, idempotency, schema_json, content_digest, status) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'active')`, item.ID, serverID, item.FullyQualifiedName, item.Version, item.Effect, item.Idempotency, string(item.Schema), item.ContentDigest); err != nil {
+		return Tool{}, err
+	}
+	if err := appendCreatedAudit(ctx, tx, actor.OrganizationID, actor.ID, "tool_descriptor", item.ID, map[string]string{"fully_qualified_name": item.FullyQualifiedName, "version": item.Version, "content_digest": item.ContentDigest}); err != nil {
 		return Tool{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

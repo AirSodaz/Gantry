@@ -1357,6 +1357,8 @@ export interface operations {
         parameters: {
             query?: {
                 workspace_id?: string;
+                search?: string;
+                status?: "draft" | "active" | "retired";
             };
             header?: never;
             path?: never;

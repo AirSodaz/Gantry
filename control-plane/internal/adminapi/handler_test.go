@@ -156,7 +156,7 @@ func (s fakeAssetService) callStatus(kind, id, operation, reason string) error {
 func (fakeLifecycleService) ListWorkspaces(context.Context, identity.Principal) ([]authorization.Workspace, error) {
 	return nil, nil
 }
-func (fakeLifecycleService) ListAgents(context.Context, identity.Principal, string) ([]agentlifecycle.Agent, error) {
+func (fakeLifecycleService) ListAgents(context.Context, identity.Principal, agentlifecycle.AgentListOptions) ([]agentlifecycle.Agent, error) {
 	return nil, nil
 }
 func (fakeLifecycleService) Create(context.Context, identity.Principal, agentlifecycle.CreateRequest) (agentlifecycle.Agent, error) {

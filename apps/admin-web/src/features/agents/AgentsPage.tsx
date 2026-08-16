@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bot, ChevronRight, Layers, Plus } from 'lucide-react';
 import { Select, type SelectOption, StatusMark } from '@gantry/design-system';
@@ -10,6 +10,8 @@ export function AgentsPage() {
   const api = useAdminApi();
   const [searchParams, setSearchParams] = useSearchParams();
   const workspaceID = searchParams.get('workspace') ?? '';
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
 
   const workspaces = useQuery({
     queryKey: ['admin-workspaces'],
@@ -17,8 +19,8 @@ export function AgentsPage() {
   });
 
   const agents = useQuery({
-    queryKey: ['admin-agents', workspaceID],
-    queryFn: () => api.listAgents(workspaceID),
+    queryKey: ['admin-agents', workspaceID, search, status],
+    queryFn: () => api.listAgents(workspaceID, search, status),
   });
 
   const workspaceOptions = useMemo<SelectOption[]>(() => {
@@ -47,6 +49,11 @@ export function AgentsPage() {
   const handleWorkspaceChange = (newVal: string) => {
     setSearchParams(newVal ? { workspace: newVal } : {});
   };
+  const statusOptions: SelectOption[] = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'active', label: 'Production active' },
+    { value: 'retired', label: 'Retired' },
+  ];
 
   return (
     <section className="admin-page">
@@ -62,6 +69,7 @@ export function AgentsPage() {
       </header>
 
       <div className="admin-filter-bar">
+        <label className="admin-filter-input"><span className="admin-field-label">Search</span><input className="ds-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, slug, description, or Revision hash" /></label>
         <div className="admin-filter-select-wrap">
           <Select
             label="Workspace"
@@ -71,6 +79,7 @@ export function AgentsPage() {
             placeholder="All manageable workspaces"
           />
         </div>
+        <Select label="Lifecycle" options={statusOptions} value={status} onChange={setStatus} placeholder="All lifecycle states" />
       </div>
 
       {agents.data?.items.length === 0 ? (
