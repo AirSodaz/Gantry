@@ -127,4 +127,12 @@ describe('AdminApi', () => {
       body: JSON.stringify({ reason: 'Incident mitigation', expires_at: '2026-08-17T00:00:00Z' }),
     }));
   });
+
+  it('encodes Evaluation Suite search and state filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], page_info: { next_cursor: null } }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listEvaluationSuites({ workspaceId: 'wsp_development', state: 'published', search: 'smoke suite' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/v1/evaluation-suites?workspace_id=wsp_development&state=published&search=smoke+suite', expect.anything());
+  });
 });

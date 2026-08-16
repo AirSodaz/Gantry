@@ -11,6 +11,11 @@ import './EvaluationPages.css';
 const DEFAULT_CASE_INPUT = '{"prompt":"hello"}';
 const DEFAULT_RUNTIME_DIGEST = 'sha256:development-evaluator';
 const DEFAULT_ENVIRONMENT_DIGEST = 'sha256:development';
+const SUITE_STATE_OPTIONS: SelectOption[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'retired', label: 'Retired' },
+];
 
 function parseCaseInput(value: string): Record<string, unknown> {
   const parsed: unknown = JSON.parse(value);
@@ -27,10 +32,17 @@ export function EvaluationsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const workspaceId = searchParams.get('workspace') ?? '';
+  const search = searchParams.get('search') ?? '';
+  const state = searchParams.get('state') ?? '';
   const [name, setName] = useState('');
   const workspaces = useQuery({ queryKey: ['admin-workspaces'], queryFn: () => api.listWorkspaces() });
-  const suites = useQuery({ queryKey: ['admin-evaluation-suites', workspaceId], queryFn: () => api.listEvaluationSuites({ workspaceId }), enabled: workspaceId !== '' });
+  const suites = useQuery({ queryKey: ['admin-evaluation-suites', workspaceId, state, search], queryFn: () => api.listEvaluationSuites({ workspaceId, state: state as EvaluationSuite['state'] || undefined, search: search || undefined }), enabled: workspaceId !== '' });
   const create = useMutation({ mutationFn: () => api.createEvaluationSuite({ workspace_id: workspaceId, name }), onSuccess: (item) => { void suites.refetch(); navigate(`/evaluations/${item.id}`); } });
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value); else next.delete(key);
+    setSearchParams(next);
+  };
   if (workspaces.isLoading || (workspaceId !== '' && suites.isLoading)) return <LoadingState label="Loading evaluations" />;
   if (workspaces.error || suites.error) return <main className="admin-page"><ErrorState message="The evaluation workspace could not be loaded." /></main>;
   const options: SelectOption[] = (workspaces.data?.items ?? []).map((item) => ({ value: item.id, label: item.display_name }));
@@ -38,7 +50,7 @@ export function EvaluationsPage() {
 
   return <main className="admin-page evaluation-page">
     <header className="admin-page-heading"><div><h1>Evaluations</h1><p>Freeze typed cases and fixture manifests before requesting comparable Runs.</p></div></header>
-    <div className="evaluation-toolbar"><Select label="Workspace" options={options} value={workspaceId} onChange={(value) => setSearchParams(value ? { workspace: value } : {})} placeholder="Choose a workspace" /></div>
+    <div className="evaluation-toolbar"><Select label="Workspace" options={options} value={workspaceId} onChange={(value) => updateFilter('workspace', value)} placeholder="Choose a workspace" /><label className="admin-field evaluation-search"><span className="admin-field-label">Search</span><input className="ds-input" value={search} onChange={(event) => updateFilter('search', event.target.value)} placeholder="Suite name" /></label><Select label="State" options={SUITE_STATE_OPTIONS} value={state} onChange={(value) => updateFilter('state', value)} placeholder="All states" /></div>
     {workspaceId ? <form className="evaluation-create" onSubmit={(event) => { event.preventDefault(); create.mutate(); }}><label className="admin-field"><span className="admin-field-label">Suite name</span><input className="ds-input" value={name} onChange={(event) => setName(event.target.value)} required /></label><Button type="submit" isLoading={create.isPending}><FilePlus2 size={15} /> Create suite</Button></form> : null}
     {workspaceId && items.length === 0 ? <div className="admin-empty"><ClipboardCheck size={22} /><strong>No Evaluation Suites</strong><span>Create a Draft to define cases and fixtures.</span></div> : null}
     {items.length > 0 ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>State</th><th>Version</th><th>Gate use</th></tr></thead><tbody>{items.map((suite) => <tr key={suite.id}><td><Link className="admin-inline-link" to={`/evaluations/${suite.id}`}>{suite.name}</Link><br /><span className="admin-muted">{suite.id}</span></td><td>{suite.state}</td><td>{suite.latest_version_id ?? 'Unpublished'}</td><td>{suite.gate_usage_count}</td></tr>)}</tbody></table></div> : null}

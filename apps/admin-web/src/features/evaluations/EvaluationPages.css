@@ -20,6 +20,12 @@
   align-items: center;
 }
 
+.evaluation-toolbar > .ds-select-wrapper,
+.evaluation-toolbar > .evaluation-search {
+  flex: 1 1 240px;
+  width: auto;
+}
+
 .evaluation-create {
   padding-bottom: 18px;
   border-bottom: 1px solid var(--ds-border);
@@ -112,6 +118,12 @@
   .evaluation-create,
   .evaluation-command {
     align-items: stretch;
+  }
+
+  .evaluation-toolbar > .ds-select-wrapper,
+  .evaluation-toolbar > .evaluation-search {
+    flex-basis: 100%;
+    width: 100%;
   }
 
   .evaluation-create > .admin-field,
