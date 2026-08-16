@@ -618,3 +618,55 @@ CREATE TABLE IF NOT EXISTS gantry.webhook_deliveries (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (endpoint_id, delivery_id, attempt)
 );
+
+CREATE TABLE IF NOT EXISTS gantry.platform_model_providers (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  name text NOT NULL,
+  state text NOT NULL CHECK (state IN ('active', 'degraded', 'disabled', 'quarantined')),
+  data_classes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  credential_reference_id text NOT NULL,
+  health jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, name)
+);
+CREATE INDEX IF NOT EXISTS platform_model_providers_org_idx ON gantry.platform_model_providers (organization_id, state, name);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_provider_routes (
+  id text PRIMARY KEY,
+  provider_id text NOT NULL REFERENCES gantry.platform_model_providers(id),
+  allowed_models jsonb NOT NULL DEFAULT '[]'::jsonb,
+  fallback_route_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+  state text NOT NULL CHECK (state IN ('active', 'degraded', 'disabled')),
+  budget_policy_id text,
+  classification_constraints jsonb NOT NULL DEFAULT '{}'::jsonb,
+  etag bigint NOT NULL DEFAULT 1 CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS platform_provider_routes_provider_idx ON gantry.platform_provider_routes (provider_id, state, id);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_runner_pools (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  isolation_tier text NOT NULL CHECK (isolation_tier IN ('development', 'gvisor', 'microvm')),
+  state text NOT NULL CHECK (state IN ('active', 'draining', 'quarantined', 'disabled')),
+  compatible_protocols jsonb NOT NULL DEFAULT '[]'::jsonb,
+  capacity jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS platform_runner_pools_org_idx ON gantry.platform_runner_pools (organization_id, state, id);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_runners (
+  id text PRIMARY KEY,
+  pool_id text NOT NULL REFERENCES gantry.platform_runner_pools(id),
+  state text NOT NULL CHECK (state IN ('ready', 'assigned', 'draining', 'quarantined', 'offline')),
+  protocol_version text NOT NULL,
+  lease_epoch bigint NOT NULL DEFAULT 0 CHECK (lease_epoch >= 0),
+  last_heartbeat_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS platform_runners_pool_idx ON gantry.platform_runners (pool_id, state, id);

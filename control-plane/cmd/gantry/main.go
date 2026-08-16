@@ -19,6 +19,7 @@ import (
 	"github.com/AirSodaz/gantry/internal/adminevaluation"
 	"github.com/AirSodaz/gantry/internal/adminintegration"
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminplatform"
 	"github.com/AirSodaz/gantry/internal/adminpolicy"
 	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
@@ -80,6 +81,7 @@ func main() {
 	policyService := adminpolicy.NewService(databasePool, authorizer)
 	evaluationService := adminevaluation.NewService(databasePool, authorizer)
 	integrationService := adminintegration.NewService(databasePool, authorizer)
+	platformService := adminplatform.NewService(databasePool, authorizer)
 	agentService := agentlifecycle.NewService(databasePool, authorizer)
 	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while a run was active")
 	if err != nil {
@@ -110,7 +112,7 @@ func main() {
 		adminAuth = identity.NewAuthenticator(verifier, identity.NewResolver(databasePool))
 	}
 
-	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, approvalService, agentService, assetService, policyService, evaluationService, integrationService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
+	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, approvalService, agentService, assetService, policyService, evaluationService, integrationService, platformService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
 	runner := runnerServer(cfg, logger, persistentScheduler)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -145,7 +147,7 @@ func serve(errCh chan<- error, name string, server *http.Server) {
 	}
 }
 
-func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, approvalService *approvals.Service, agentService *agentlifecycle.Service, assetService *configassets.Service, policyService *adminpolicy.Service, evaluationService *adminevaluation.Service, integrationService *adminintegration.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
+func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, approvalService *approvals.Service, agentService *agentlifecycle.Service, assetService *configassets.Service, policyService *adminpolicy.Service, evaluationService *adminevaluation.Service, integrationService *adminintegration.Service, platformService *adminplatform.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -187,7 +189,7 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 		runService := adminruns.NewService(databasePool, authorizer)
 		artifactStore, _ := store.(objectstore.ArtifactStore)
 		auditService := adminaudit.NewServiceWithStore(databasePool, authorizer, artifactStore)
-		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithTargetAuditPolicyEvaluationIntegrations(adminAuth, authorizer, agentService, agentService, assetService, overviewService, runService, auditService, policyService, evaluationService, integrationService, logger)))
+		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithTargetAuditPolicyEvaluationPlatform(adminAuth, authorizer, agentService, agentService, assetService, overviewService, runService, auditService, policyService, evaluationService, integrationService, platformService, logger)))
 	}
 	// Product routes are OpenAPI-owned. Connect handlers are registered only below.
 	return &http.Server{Addr: cfg.HTTPAddress, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

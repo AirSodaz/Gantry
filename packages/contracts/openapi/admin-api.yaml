@@ -1149,6 +1149,76 @@ paths:
       parameters: [{name: endpoint_id, in: path, required: true, schema: {type: string}}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RedeliverWebhookRequest"}}}}
       responses: {"202": {description: Delivery, content: {application/json: {schema: {$ref: "#/components/schemas/WebhookDelivery"}}}}}
+  /platform/model-providers:
+    get:
+      operationId: listPlatformModelProviders
+      summary: List organization model providers
+      tags: [Platform]
+      responses: {"200": {description: Model providers, content: {application/json: {schema: {$ref: "#/components/schemas/ModelProviderList"}}}}}
+    post:
+      operationId: createPlatformModelProvider
+      summary: Register provider metadata and credential reference
+      tags: [Platform]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateModelProviderRequest"}}}}
+      responses: {"201": {description: Model provider, content: {application/json: {schema: {$ref: "#/components/schemas/ModelProvider"}}}}}
+  /platform/model-providers/{provider_id}/routes:
+    get:
+      operationId: listProviderRoutes
+      summary: List provider routes
+      tags: [Platform]
+      parameters: [{name: provider_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Provider routes, content: {application/json: {schema: {$ref: "#/components/schemas/ProviderRouteList"}}}}}
+  /platform/model-providers/{provider_id}/routes/{route_id}:
+    put:
+      operationId: putProviderRoute
+      summary: Update provider route policy with ETag
+      tags: [Platform]
+      parameters:
+        - {name: provider_id, in: path, required: true, schema: {type: string}}
+        - {name: route_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PutProviderRouteRequest"}}}}
+      responses: {"200": {description: Provider route, content: {application/json: {schema: {$ref: "#/components/schemas/ProviderRoute"}}}}}
+  /platform/model-providers/{provider_id}:quarantine:
+    post:
+      operationId: quarantineModelProvider
+      summary: Quarantine a model provider
+      tags: [Platform]
+      parameters: [{name: provider_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Quarantined provider, content: {application/json: {schema: {$ref: "#/components/schemas/ModelProvider"}}}}}
+  /platform/runner-pools:
+    get:
+      operationId: listPlatformRunnerPools
+      summary: List runner pools
+      tags: [Platform]
+      responses: {"200": {description: Runner pools, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerPoolList"}}}}}
+    post:
+      operationId: createPlatformRunnerPool
+      summary: Create a runner pool definition
+      tags: [Platform]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateRunnerPoolRequest"}}}}
+      responses: {"201": {description: Runner pool, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerPool"}}}}}
+  /platform/runner-pools/{pool_id}/runners:
+    get:
+      operationId: listPlatformRunners
+      summary: List runner health metadata
+      tags: [Platform]
+      parameters: [{name: pool_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Runners, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerList"}}}}}
+  /platform/runner-pools/{pool_id}:drain:
+    post:
+      operationId: drainRunnerPool
+      summary: Drain a runner pool
+      tags: [Platform]
+      parameters: [{name: pool_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Draining pool, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerPool"}}}}}
+  /platform/runner-pools/{pool_id}:quarantine:
+    post:
+      operationId: quarantineRunnerPool
+      summary: Quarantine a runner pool
+      tags: [Platform]
+      parameters: [{name: pool_id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Quarantined pool, content: {application/json: {schema: {$ref: "#/components/schemas/RunnerPool"}}}}}
 
 components:
   securitySchemes:
@@ -2195,3 +2265,89 @@ components:
       required: [delivery_id]
       properties:
         delivery_id: {type: string}
+    ModelProvider:
+      type: object
+      required: [id, organization_id, name, state, data_classes, credential_reference_id, health]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        name: {type: string}
+        state: {type: string, enum: [active, degraded, disabled, quarantined]}
+        data_classes: {type: array, items: {type: string}}
+        credential_reference_id: {type: string}
+        health: {type: object, additionalProperties: true}
+    ModelProviderList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/ModelProvider"}}
+    CreateModelProviderRequest:
+      type: object
+      required: [name, data_classes, credential_reference_id]
+      properties:
+        name: {type: string}
+        data_classes: {type: array, items: {type: string}}
+        credential_reference_id: {type: string}
+    ProviderRoute:
+      type: object
+      required: [id, provider_id, allowed_models, fallback_route_ids, state, classification_constraints, etag]
+      properties:
+        id: {type: string}
+        provider_id: {type: string}
+        allowed_models: {type: array, items: {type: string}}
+        fallback_route_ids: {type: array, items: {type: string}}
+        state: {type: string, enum: [active, degraded, disabled]}
+        budget_policy_id: {type: string, nullable: true}
+        classification_constraints: {type: object, additionalProperties: true}
+        etag: {type: string}
+    ProviderRouteList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/ProviderRoute"}}
+    PutProviderRouteRequest:
+      type: object
+      required: [allowed_models, fallback_route_ids, state]
+      properties:
+        allowed_models: {type: array, items: {type: string}}
+        fallback_route_ids: {type: array, items: {type: string}}
+        state: {type: string, enum: [active, degraded, disabled]}
+        budget_policy_id: {type: string, nullable: true}
+        classification_constraints: {type: object, additionalProperties: true}
+    RunnerPool:
+      type: object
+      required: [id, organization_id, isolation_tier, state, compatible_protocols, capacity]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        isolation_tier: {type: string, enum: [development, gvisor, microvm]}
+        state: {type: string, enum: [active, draining, quarantined, disabled]}
+        compatible_protocols: {type: array, items: {type: string}}
+        capacity: {type: object, additionalProperties: true}
+    RunnerPoolList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/RunnerPool"}}
+    CreateRunnerPoolRequest:
+      type: object
+      required: [isolation_tier, compatible_protocols, capacity]
+      properties:
+        isolation_tier: {type: string, enum: [development, gvisor, microvm]}
+        compatible_protocols: {type: array, items: {type: string}}
+        capacity: {type: object, additionalProperties: true}
+    Runner:
+      type: object
+      required: [id, pool_id, state, protocol_version, lease_epoch]
+      properties:
+        id: {type: string}
+        pool_id: {type: string}
+        state: {type: string, enum: [ready, assigned, draining, quarantined, offline]}
+        protocol_version: {type: string}
+        lease_epoch: {type: integer, format: int64}
+        last_heartbeat_at: {type: string, format: date-time, nullable: true}
+    RunnerList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Runner"}}

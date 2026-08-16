@@ -1,4 +1,4 @@
-import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, CreatePolicyInput, EvaluationCase, EvaluationRun, EvaluationSuite, EvaluationSuiteVersion, NamedAgentDraft, Plugin, PluginDetail, Policy, PolicyBinding, PolicyDraft, PolicySimulation, PolicyVersion, Skill, Tool, Workspace, Integration, IntegrationClient, AgentPublication, WebhookEndpoint, WebhookDelivery } from './types';
+import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, CreatePolicyInput, EvaluationCase, EvaluationRun, EvaluationSuite, EvaluationSuiteVersion, NamedAgentDraft, Plugin, PluginDetail, Policy, PolicyBinding, PolicyDraft, PolicySimulation, PolicyVersion, Skill, Tool, Workspace, Integration, IntegrationClient, AgentPublication, WebhookEndpoint, WebhookDelivery, ModelProvider, ProviderRoute, RunnerPool, Runner } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -105,6 +105,16 @@ export class AdminApi {
   listIntegrationWebhooks(id: string) { return this.request<{ items: WebhookEndpoint[] }>(`/integrations/${encodeURIComponent(id)}/webhooks`); }
   createIntegrationWebhook(id: string, input: { environment: WebhookEndpoint['environment']; destination: string; signing_key_fingerprint: string; subscribed_events: string[]; retry_policy?: Record<string, unknown> }) { return this.request<WebhookEndpoint>(`/integrations/${encodeURIComponent(id)}/webhooks`, { method: 'POST', body: JSON.stringify(input) }); }
   redeliverWebhook(id: string, deliveryId: string) { return this.request<WebhookDelivery>(`/webhook-endpoints/${encodeURIComponent(id)}:redeliver`, { method: 'POST', body: JSON.stringify({ delivery_id: deliveryId }) }); }
+  listPlatformProviders() { return this.request<{ items: ModelProvider[] }>('/platform/model-providers'); }
+  createPlatformProvider(input: { name: string; data_classes: string[]; credential_reference_id: string }) { return this.request<ModelProvider>('/platform/model-providers', { method: 'POST', body: JSON.stringify(input) }); }
+  listProviderRoutes(providerId: string) { return this.request<{ items: ProviderRoute[] }>(`/platform/model-providers/${encodeURIComponent(providerId)}/routes`); }
+  putProviderRoute(providerId: string, routeId: string, etag: string, input: { allowed_models: string[]; fallback_route_ids: string[]; state: ProviderRoute['state']; budget_policy_id?: string; classification_constraints?: Record<string, unknown> }) { return this.request<ProviderRoute>(`/platform/model-providers/${encodeURIComponent(providerId)}/routes/${encodeURIComponent(routeId)}`, { method: 'PUT', headers: { 'If-Match': `"${etag.replace(/^"|"$/g, '')}"` }, body: JSON.stringify(input) }); }
+  quarantineProvider(providerId: string) { return this.request<ModelProvider>(`/platform/model-providers/${encodeURIComponent(providerId)}:quarantine`, { method: 'POST', body: '{}' }); }
+  listRunnerPools() { return this.request<{ items: RunnerPool[] }>('/platform/runner-pools'); }
+  createRunnerPool(input: { isolation_tier: RunnerPool['isolation_tier']; compatible_protocols: string[]; capacity: Record<string, unknown> }) { return this.request<RunnerPool>('/platform/runner-pools', { method: 'POST', body: JSON.stringify(input) }); }
+  listRunners(poolId: string) { return this.request<{ items: Runner[] }>(`/platform/runner-pools/${encodeURIComponent(poolId)}/runners`); }
+  drainRunnerPool(poolId: string) { return this.request<RunnerPool>(`/platform/runner-pools/${encodeURIComponent(poolId)}:drain`, { method: 'POST', body: '{}' }); }
+  quarantineRunnerPool(poolId: string) { return this.request<RunnerPool>(`/platform/runner-pools/${encodeURIComponent(poolId)}:quarantine`, { method: 'POST', body: '{}' }); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

@@ -78,4 +78,16 @@ describe('AdminApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/integrations', expect.objectContaining({ method: 'POST' }));
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/admin/v1/integrations/int_1/clients', expect.anything());
   });
+
+  it('uses the Platform provider and runner pool routes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listPlatformProviders();
+    await api.listRunnerPools();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/platform/model-providers', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/platform/runner-pools', expect.anything());
+  });
 });

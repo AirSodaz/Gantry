@@ -115,8 +115,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   metadata lifecycle, exact Revision publication, and webhook endpoint
   metadata/redelivery routes with an Admin list/detail view; invocation
   execution, signed delivery workers, usage projections, and full capability
-  authorization remain incomplete. Platform administration is not a complete
-  product area.
+  authorization remain incomplete. Platform now has provider/route and runner
+  pool/runner metadata management as a partial organization-level slice;
+  credentials, classifications, limits, environments, settings composition,
+  and production health integration remain incomplete.
 
 ### Designed, Not Yet Implemented
 
@@ -138,9 +140,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   capabilities. Current authorization is workspace-role based.
 - Production credential broker, LLM gateway, tool gateway, egress gateway, and
   secret-store integration.
-- Credential Reference/Lease, Model Provider/Route, Runner Pool/Runner,
-  attachment input lifecycle, and their production authorization/health
-  projections.
+- Credential Reference/Lease, attachment input lifecycle, and production
+  authorization/health projections. Model Provider/Route and Runner Pool/Runner
+  metadata management are implemented only as a partial Admin slice.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a
@@ -148,13 +150,14 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - VCR replay, filesystem/database assertions, publication gates, trajectory
   export, and the durable evaluator worker. Evaluation Suite authoring and
   exact Run request persistence are implemented as a partial slice.
-- Audit search, runner-pool operations, emergency controls, and the remaining
-  integration management/usage capabilities.
+- Audit search, the remaining runner-pool operational controls, emergency
+  controls, and the remaining integration management/usage capabilities.
 - The target schemas, routes, state machines, and authorization matrix for
   Evaluations, Integrations, and Platform management are documented in
   [Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md),
   Integration management routes are now checked in for the partial slice;
-  remaining target routes are not yet capabilities. Policy
+  remaining target routes are not yet capabilities. The Platform provider and
+  runner-pool routes are checked in only for the partial metadata slice. Policy
   routes are implemented only for the core Draft/Version/Binding slice above;
   capability-specific authorization and outer-policy composition remain.
 - Production deployment, gVisor isolation, Helm, scaling, SLOs, retention

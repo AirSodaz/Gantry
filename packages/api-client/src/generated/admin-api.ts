@@ -1224,6 +1224,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/model-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization model providers */
+        get: operations["listPlatformModelProviders"];
+        put?: never;
+        /** Register provider metadata and credential reference */
+        post: operations["createPlatformModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List provider routes */
+        get: operations["listProviderRoutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}/routes/{route_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update provider route policy with ETag */
+        put: operations["putProviderRoute"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}:quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine a model provider */
+        post: operations["quarantineModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List runner pools */
+        get: operations["listPlatformRunnerPools"];
+        put?: never;
+        /** Create a runner pool definition */
+        post: operations["createPlatformRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}/runners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List runner health metadata */
+        get: operations["listPlatformRunners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}:drain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drain a runner pool */
+        post: operations["drainRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}:quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine a runner pool */
+        post: operations["quarantineRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2166,6 +2304,89 @@ export interface components {
         };
         RedeliverWebhookRequest: {
             delivery_id: string;
+        };
+        ModelProvider: {
+            id: string;
+            organization_id: string;
+            name: string;
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled" | "quarantined";
+            data_classes: string[];
+            credential_reference_id: string;
+            health: {
+                [key: string]: unknown;
+            };
+        };
+        ModelProviderList: {
+            items: components["schemas"]["ModelProvider"][];
+        };
+        CreateModelProviderRequest: {
+            name: string;
+            data_classes: string[];
+            credential_reference_id: string;
+        };
+        ProviderRoute: {
+            id: string;
+            provider_id: string;
+            allowed_models: string[];
+            fallback_route_ids: string[];
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled";
+            budget_policy_id?: string | null;
+            classification_constraints: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        ProviderRouteList: {
+            items: components["schemas"]["ProviderRoute"][];
+        };
+        PutProviderRouteRequest: {
+            allowed_models: string[];
+            fallback_route_ids: string[];
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled";
+            budget_policy_id?: string | null;
+            classification_constraints?: {
+                [key: string]: unknown;
+            };
+        };
+        RunnerPool: {
+            id: string;
+            organization_id: string;
+            /** @enum {string} */
+            isolation_tier: "development" | "gvisor" | "microvm";
+            /** @enum {string} */
+            state: "active" | "draining" | "quarantined" | "disabled";
+            compatible_protocols: string[];
+            capacity: {
+                [key: string]: unknown;
+            };
+        };
+        RunnerPoolList: {
+            items: components["schemas"]["RunnerPool"][];
+        };
+        CreateRunnerPoolRequest: {
+            /** @enum {string} */
+            isolation_tier: "development" | "gvisor" | "microvm";
+            compatible_protocols: string[];
+            capacity: {
+                [key: string]: unknown;
+            };
+        };
+        Runner: {
+            id: string;
+            pool_id: string;
+            /** @enum {string} */
+            state: "ready" | "assigned" | "draining" | "quarantined" | "offline";
+            protocol_version: string;
+            /** Format: int64 */
+            lease_epoch: number;
+            /** Format: date-time */
+            last_heartbeat_at?: string | null;
+        };
+        RunnerList: {
+            items: components["schemas"]["Runner"][];
         };
     };
     responses: {
@@ -4686,6 +4907,233 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+        };
+    };
+    listPlatformModelProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProviderList"];
+                };
+            };
+        };
+    };
+    createPlatformModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateModelProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Model provider */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProvider"];
+                };
+            };
+        };
+    };
+    listProviderRoutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider routes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRouteList"];
+                };
+            };
+        };
+    };
+    putProviderRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                provider_id: string;
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderRouteRequest"];
+            };
+        };
+        responses: {
+            /** @description Provider route */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRoute"];
+                };
+            };
+        };
+    };
+    quarantineModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quarantined provider */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProvider"];
+                };
+            };
+        };
+    };
+    listPlatformRunnerPools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runner pools */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPoolList"];
+                };
+            };
+        };
+    };
+    createPlatformRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunnerPoolRequest"];
+            };
+        };
+        responses: {
+            /** @description Runner pool */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    listPlatformRunners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runners */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerList"];
+                };
+            };
+        };
+    };
+    drainRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draining pool */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    quarantineRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quarantined pool */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
                 };
             };
         };

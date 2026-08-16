@@ -42,6 +42,10 @@ export type IntegrationClient = Components['schemas']['IntegrationClient'];
 export type AgentPublication = Components['schemas']['AgentPublication'];
 export type WebhookEndpoint = Components['schemas']['WebhookEndpoint'];
 export type WebhookDelivery = Components['schemas']['WebhookDelivery'];
+export type ModelProvider = Components['schemas']['ModelProvider'];
+export type ProviderRoute = Components['schemas']['ProviderRoute'];
+export type RunnerPool = Components['schemas']['RunnerPool'];
+export type Runner = Components['schemas']['Runner'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';

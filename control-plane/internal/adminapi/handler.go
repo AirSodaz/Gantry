@@ -15,6 +15,7 @@ import (
 	"github.com/AirSodaz/gantry/internal/adminevaluation"
 	"github.com/AirSodaz/gantry/internal/adminintegration"
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminplatform"
 	"github.com/AirSodaz/gantry/internal/adminpolicy"
 	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
@@ -150,6 +151,18 @@ type integrationService interface {
 	Redeliver(context.Context, identity.Principal, string, string) (adminintegration.Delivery, error)
 }
 
+type platformService interface {
+	ListProviders(context.Context, identity.Principal) ([]adminplatform.ModelProvider, error)
+	CreateProvider(context.Context, identity.Principal, adminplatform.CreateProviderRequest) (adminplatform.ModelProvider, error)
+	ListRoutes(context.Context, identity.Principal, string) ([]adminplatform.ProviderRoute, error)
+	PutRoute(context.Context, identity.Principal, string, string, string, adminplatform.PutRouteRequest) (adminplatform.ProviderRoute, error)
+	QuarantineProvider(context.Context, identity.Principal, string) (adminplatform.ModelProvider, error)
+	ListRunnerPools(context.Context, identity.Principal) ([]adminplatform.RunnerPool, error)
+	CreateRunnerPool(context.Context, identity.Principal, adminplatform.CreateRunnerPoolRequest) (adminplatform.RunnerPool, error)
+	ListRunners(context.Context, identity.Principal, string) ([]adminplatform.Runner, error)
+	SetPoolState(context.Context, identity.Principal, string, string) (adminplatform.RunnerPool, error)
+}
+
 type Handler struct {
 	auth         authenticator
 	authorize    authorizer
@@ -162,6 +175,7 @@ type Handler struct {
 	policies     policyService
 	evaluations  evaluationService
 	integrations integrationService
+	platform     platformService
 	logger       *slog.Logger
 }
 
@@ -190,11 +204,15 @@ func NewWithTargetAuditAndPolicy(auth authenticator, authorize authorizer, servi
 }
 
 func NewWithTargetAuditPolicyEvaluation(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, logger *slog.Logger) http.Handler {
-	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, nil, logger)
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, nil, nil, logger)
 }
 
 func NewWithTargetAuditPolicyEvaluationIntegrations(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, logger *slog.Logger) http.Handler {
-	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, integrations, logger)
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, integrations, nil, logger)
+}
+
+func NewWithTargetAuditPolicyEvaluationPlatform(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, platform platformService, logger *slog.Logger) http.Handler {
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, integrations, platform, logger)
 }
 
 func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, logger *slog.Logger) http.Handler {
@@ -206,14 +224,14 @@ func newHandlerWithAudit(auth authenticator, authorize authorizer, service lifec
 }
 
 func newHandlerWithPolicy(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, logger *slog.Logger) http.Handler {
-	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, nil, nil, logger)
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, nil, nil, nil, logger)
 }
 
-func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, logger *slog.Logger) http.Handler {
+func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, platform platformService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, audit: audit, policies: policies, evaluations: evaluations, integrations: integrations, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, audit: audit, policies: policies, evaluations: evaluations, integrations: integrations, platform: platform, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
@@ -274,6 +292,17 @@ func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service 
 		mux.Handle("GET /integrations/{integrationID}/webhooks", h.withActor(h.listIntegrationWebhooks))
 		mux.Handle("POST /integrations/{integrationID}/webhooks", h.withActor(h.createIntegrationWebhook))
 		mux.Handle("POST /webhook-endpoints/{endpointID}", h.withActor(h.webhookCommand))
+	}
+	if platform != nil {
+		mux.Handle("GET /platform/model-providers", h.withActor(h.listPlatformProviders))
+		mux.Handle("POST /platform/model-providers", h.withActor(h.createPlatformProvider))
+		mux.Handle("GET /platform/model-providers/{providerID}/routes", h.withActor(h.listProviderRoutes))
+		mux.Handle("PUT /platform/model-providers/{providerID}/routes/{routeID}", h.withActor(h.putProviderRoute))
+		mux.Handle("POST /platform/model-providers/{providerID}", h.withActor(h.platformProviderCommand))
+		mux.Handle("GET /platform/runner-pools", h.withActor(h.listRunnerPools))
+		mux.Handle("POST /platform/runner-pools", h.withActor(h.createRunnerPool))
+		mux.Handle("GET /platform/runner-pools/{poolID}/runners", h.withActor(h.listRunners))
+		mux.Handle("POST /platform/runner-pools/{poolID}", h.withActor(h.runnerPoolCommand))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)
@@ -786,6 +815,14 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The integration request is not valid.")
 	case errors.Is(err, adminintegration.ErrInvalidState):
 		writeError(w, http.StatusConflict, "invalid_state", "The integration is not in a state that permits this operation.")
+	case errors.Is(err, adminplatform.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
+	case errors.Is(err, adminplatform.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The platform request is not valid.")
+	case errors.Is(err, adminplatform.ErrETagConflict):
+		writeError(w, http.StatusConflict, "etag_conflict", "The platform resource changed; reload it before editing.")
+	case errors.Is(err, adminplatform.ErrInvalidState):
+		writeError(w, http.StatusConflict, "invalid_state", "The platform resource is not in a state that permits this operation.")
 	case errors.Is(err, adminaudit.ErrExportNotReady):
 		writeError(w, http.StatusConflict, "export_not_ready", "The audit export is not ready for download.")
 	case errors.Is(err, adminaudit.ErrExportUnavailable):

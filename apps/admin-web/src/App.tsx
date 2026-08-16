@@ -17,6 +17,7 @@ import { AuditEventDetailPage, AuditPage } from './features/audit/AuditPages';
 import { PoliciesPage, PolicyDetailPage } from './features/policies/PolicyPages';
 import { EvaluationsPage, EvaluationDetailPage } from './features/evaluations/EvaluationPages';
 import { IntegrationsPage, IntegrationDetailPage } from './features/integrations/IntegrationPages';
+import { PlatformPage, ProviderRoutesPage } from './features/platform/PlatformPages';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -75,6 +76,10 @@ export default function App() {
         <Route path="evaluations/:suiteId" element={<EvaluationDetailPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="integrations/:integrationId" element={<IntegrationDetailPage />} />
+        <Route path="platform" element={<PlatformPage />} />
+        <Route path="platform/model-providers" element={<PlatformPage />} />
+        <Route path="platform/runner-pools" element={<PlatformPage />} />
+        <Route path="platform/providers/:providerId" element={<ProviderRoutesPage />} />
         <Route path="*" element={<OverviewPage />} />
       </Route>
     </Routes>

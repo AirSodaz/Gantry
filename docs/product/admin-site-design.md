@@ -38,8 +38,8 @@ not add empty section landing pages.
 | Govern | Integrations | `/integrations` | Organization | Current (management slice) |
 | Govern | Policies | `/policies` | Organization and workspace | Current (core lifecycle) |
 | Govern | Audit | `/audit` | Authorized organization/workspace scope | Later |
-| Platform | Runners | `/platform/runners` | Organization | Later |
-| Platform | Model Providers | `/platform/model-providers` | Organization | Later |
+| Platform | Runners | `/platform` | Organization | Current (pool metadata slice) |
+| Platform | Model Providers | `/platform` | Organization | Current (provider metadata slice) |
 | Platform | Credentials | `/platform/credentials` | Organization | Later |
 | Platform | Settings | `/platform/settings` | Organization | Later |
 
