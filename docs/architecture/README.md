@@ -9,6 +9,8 @@ status is authoritative in [Delivery](../delivery/README.md).
 | [System Architecture](system-architecture.md) | Components, deployment, and lifecycle |
 | [Data and Event Model](data-and-event-model.md) | Entities, state machines, events, retention, and recovery |
 | [API and Protocols](api-and-protocols.md) | Public APIs, streaming, runner protocol, and compatibility |
+| [Copilot Resource Contracts](copilot-resource-contracts.md) | Typed employee resources, commands, authorization, events, and recovery |
 | [Admin Governed Resource Contracts](admin-governed-resource-contracts.md) | Typed Admin OpenAPI target for Policies, Evaluations, Integrations, and Platform |
+| [Control-Plane Design Contract](control-plane-design.md) | Module ownership, transactions, asynchronous work, and restart recovery |
 | [Enterprise Invocation API](enterprise-integration-api.md) | Server-to-server agent invocation |
 | [Agent Runner V1](agent-runner-v1.md) | Current runner execution boundary |

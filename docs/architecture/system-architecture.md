@@ -4,6 +4,10 @@ This document defines the target architecture. See
 [Implementation Status](../delivery/implementation-status.md) for the checked-in subset and
 remaining production boundaries.
 
+Stable control-plane ownership, dependency direction, transaction groups,
+worker semantics, and restart recovery are specified in
+[Control-Plane Design Contract](control-plane-design.md).
+
 ## 1. Architectural Style
 
 Gantry begins as a modular control-plane monolith in Go, a separately deployed
@@ -153,9 +157,10 @@ effect after its lease has been lost.
 
 ### Event Service
 
-Appends ordered run events, serves cursor-based history, fans out live events,
-and produces audit and telemetry projections. It is the canonical history of a
-run, while relational tables hold queryable current state.
+Appends ordered Run events and Task-level conversation events, serves
+cursor-based history, fans out live events, and produces audit and telemetry
+projections. It is the canonical execution and conversation history, while
+relational tables hold queryable current state.
 
 The service distinguishes semantic events from high-frequency content streams.
 Lifecycle, policy, tool, approval, artifact, and stream-boundary events use the

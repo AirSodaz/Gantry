@@ -67,6 +67,11 @@ The matrix is additive to these baseline roles: a role preset never bypasses
 organization/Workspace scope, resource state, ETag checks, or action-time
 Policy.
 
+Copilot does not reuse this Admin matrix. Its requester-bound Task, Approval,
+Attachment, Artifact, and event authorization rules are defined in
+[Copilot Resource Contracts](../architecture/copilot-resource-contracts.md),
+including non-leaking direct reads and authorization inside list queries.
+
 ### Action-Time Context
 
 Tool execution considers:

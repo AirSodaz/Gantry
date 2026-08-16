@@ -6,6 +6,9 @@ This document defines the target page and function design for the employee-facin
 Gantry Copilot application. It turns the directional Copilot information
 architecture in [Frontend UX Design](frontend-ux-design.md) into an
 implementation-ready route, state, permission, and acceptance contract.
+Typed resources, HTTP preconditions, stream frames, and server-side recovery are
+defined in
+[Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
 
 Delivery labels mean:
 
@@ -78,7 +81,7 @@ authorization contract as embedded Task Detail access.
 | --- | --- | --- |
 | `queued`, `provisioning`, `running` | The Agent is working | Observe stream, cancel |
 | `awaiting_approval` | One concrete Agent action needs the requester's decision | Open approval, cancel; no duplicate decision control in Task detail |
-| `awaiting_requester_input` | The Agent needs direction after rejection, expiry, or an explicit question | Continue conversation, cancel if a Run is active |
+| `awaiting_requester_input` | The Agent needs direction after rejection, expiry, or an explicit question | Continue conversation |
 | `canceling` | Cancellation was accepted and is being reconciled | Observe; no second cancel |
 | `suspended` | Execution is paused and resumable by runtime policy | Observe status and reason |
 | `completed` | The Task produced a terminal result | Read result, download Artifacts, start a new Task |

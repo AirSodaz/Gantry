@@ -436,11 +436,17 @@ One attempt:
 
 - `id`, `task_id`, `attempt_number`
 - immutable agent and policy snapshot references
-- status and status reason
+- execution status, status reason, and terminal outcome such as
+  `requester_input_required`
 - scheduler priority, runner pool, sandbox and lease references, `lease_epoch`
 - canonical event sequence, checkpoint reference
 - start, completion, cancellation, and expiry timestamps
 - usage and cost projections
+
+`awaiting_requester_input` is a Task workflow state, not an approval outcome or
+Run execution state. After the Agent consumes a rejection or expiry result and
+reaches a safe boundary, the current Run completes with
+`requester_input_required`; the follow-up command then creates the next Run.
 
 ### Run Manifest
 
@@ -761,6 +767,12 @@ resource usage, and authorized commands. Enterprise projections are limited to
 the published Integration contract. A projection never grants access to a
 different projection or to fields omitted by its audience policy.
 
+The exact Copilot projection schemas, Task/Run relationship, and command
+preconditions are defined in
+[Copilot Resource Contracts](copilot-resource-contracts.md). Control-plane
+ownership and atomic projection updates are defined in
+[Control-Plane Design Contract](control-plane-design.md).
+
 Audit is one canonical cross-resource projection over append-only events. It
 indexes resource, actor, scope, action, outcome, risk, correlation, and linked
 immutable identities for search. Resource pages may render a small Recent
@@ -772,8 +784,9 @@ canonical Audit evidence.
 ## 14. Cursor Retention, Compaction, and Deletion
 
 The no-loss reconnect guarantee applies within the declared content-retention
-window. A durable cursor identifies its projection, run, canonical sequence,
-and content offsets. If a cursor predates available history, the API returns
+window. A durable cursor identifies its projection, Task or Run scope,
+canonical sequence, and content offsets. If a cursor predates available
+history, the API returns
 `cursor_expired` with the earliest available cursor and a current task/run
 snapshot; it never silently resumes from a newer position. The client replaces
 its projection from that snapshot and then continues from the supplied cursor.

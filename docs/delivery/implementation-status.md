@@ -172,6 +172,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   requester-bound favorites/recent use. The product design names these fields,
   but does not yet define their Admin authoring, publication, or persistence
   contract.
+- The complete Copilot target contract is documented in
+  [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
+  Current routes do not yet provide the target conversation ETag, Task-level
+  cross-Run cursor, explicit audited Artifact download command, complete typed
+  message parts, or durable background expiry/reconciliation workers.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a
@@ -192,6 +197,12 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Production deployment, gVisor isolation, Helm, scaling, SLOs, retention
   deletion jobs, Legal Hold matching, Audit Event/Export Package integrity,
   backup/restore, SBOM, signing, and release gates.
+- Control-plane target ownership, atomic command groups, idempotency, outbox/job
+  semantics, fencing, object-store reconciliation, and restart recovery are
+  documented in
+  [Control-Plane Design Contract](../architecture/control-plane-design.md).
+  Existing packages implement only part of this boundary; the document is not
+  evidence of durable workers or production recovery.
 
 ### Deferred
 

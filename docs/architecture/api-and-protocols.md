@@ -105,8 +105,13 @@ approval list/detail/decision, requester-scoped artifact browsing, and artifact
 metadata/download, plus requester attachment creation, short-lived content
 upload, completion, and scan-state reads.
 
-These target routes are not callable until they appear in the OpenAPI document,
-generated client, owning handler, and focused tests.
+The complete target schemas, command preconditions, route semantics, event
+frames, and requester-only authorization matrix are defined in
+[Copilot Resource Contracts](copilot-resource-contracts.md). Target deltas such
+as Task-level cursors, conversation ETags, header-based command idempotency, and
+an explicit audited Artifact download command are not callable until they
+appear in the OpenAPI document, generated client, owning handler, and focused
+tests.
 
 The Copilot API uses employee-oriented response types. It does not return raw
 agent specs and rely on the frontend to hide privileged fields. Task and Run
@@ -117,12 +122,13 @@ fields.
 
 Copilot Task Detail is conversation-first. The messages route appends a requester
 message only when the Task is in the `awaiting_requester_input` state after an
-action approval is rejected. The command uses an idempotency key and creates a
-new Run attempt under the same Task; it never replays or mutates the denied
-action. A pending approval keeps the composer read-only by default until the
-decision is resolved. Requester-visible approval reads process elapsed requests
-into the same input-eligible state; a production background expiry worker remains
-an incomplete runtime capability.
+action approval is rejected or expires and the Agent has reached a safe input
+boundary. The command uses an idempotency key and creates a new Run attempt under
+the same Task; it never replays or mutates the denied action. A pending approval
+keeps the composer read-only by default until the decision is resolved.
+Requester-visible approval reads currently process elapsed requests into the
+same input-eligible projection; the target relies on a durable background expiry
+worker, which remains an incomplete runtime capability.
 
 `GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
 redacted technical details, expiry state, linked Task context, and the latest
