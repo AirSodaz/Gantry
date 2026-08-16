@@ -2,10 +2,12 @@ package tasks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,7 +25,18 @@ func (s *Service) AppendMessage(ctx context.Context, actor identity.Principal, t
 	if expectedRevision < 1 {
 		return Task{}, false, ErrPreconditionRequired
 	}
-	digest := requestDigest(taskID, message)
+	attachmentIDs, err := normalizedAttachmentIDs(request.AttachmentIDs)
+	if err != nil {
+		return Task{}, false, err
+	}
+	digestInput, err := json.Marshal(struct {
+		Message       string   `json:"message"`
+		AttachmentIDs []string `json:"attachment_ids"`
+	}{Message: message, AttachmentIDs: attachmentIDs})
+	if err != nil {
+		return Task{}, false, err
+	}
+	digest := requestDigest(taskID, string(digestInput))
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Task{}, false, err
@@ -49,9 +62,9 @@ func (s *Service) AppendMessage(ctx context.Context, actor identity.Principal, t
 		return Task{}, false, err
 	}
 
-	var revisionID, deploymentID, oldRunID, oldStatus string
+	var workspaceID, revisionID, deploymentID, oldRunID, oldStatus string
 	var currentRevision int64
-	err = tx.QueryRow(ctx, `SELECT r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status, t.conversation_revision FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&revisionID, &deploymentID, &oldRunID, &oldStatus, &currentRevision)
+	err = tx.QueryRow(ctx, `SELECT t.workspace_id, r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status, t.conversation_revision FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&workspaceID, &revisionID, &deploymentID, &oldRunID, &oldStatus, &currentRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, false, ErrNotFound
 	}
@@ -83,11 +96,10 @@ func (s *Service) AppendMessage(ctx context.Context, actor identity.Principal, t
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, deployment_id, manifest_digest, attempt_number, status) VALUES ($1,$2,$3,$4,$5,$6,'queued')`, runID, taskID, revisionID, deploymentID, manifestDigest, attempt); err != nil {
 		return Task{}, false, err
 	}
-	var taskSequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&taskSequence); err != nil {
+	if err := bindAttachments(ctx, tx, actor, taskID, workspaceID, attachmentIDs); err != nil {
 		return Task{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, task_sequence, role, parts, content) VALUES ($1,$2,$3,$4,'requester',jsonb_build_array(jsonb_build_object('type','text','text',$5)),$5)`, newID("msg"), taskID, runID, taskSequence, message); err != nil {
+	if err := taskmessage.Append(ctx, tx, taskID, runID, "requester", taskmessage.Text(message)); err != nil {
 		return Task{}, false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID, runID); err != nil {

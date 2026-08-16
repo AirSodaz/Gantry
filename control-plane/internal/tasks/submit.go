@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -67,11 +68,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 		return Task{}, false, err
 	}
 	if message := strings.TrimSpace(request.Message); message != "" {
-		var taskSequence int64
-		if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&taskSequence); err != nil {
-			return Task{}, false, err
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, task_sequence, role, parts, content) VALUES ($1,$2,$3,$4,'requester',jsonb_build_array(jsonb_build_object('type','text','text',$5)),$5)`, newID("msg"), taskID, runID, taskSequence, message); err != nil {
+		if err := taskmessage.Append(ctx, tx, taskID, runID, "requester", taskmessage.Text(message)); err != nil {
 			return Task{}, false, err
 		}
 	}

@@ -668,6 +668,11 @@ components:
       properties:
         message:
           type: string
+        attachment_ids:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
 
     RunAttempt:
       type: object
@@ -723,10 +728,11 @@ components:
 
     RetryTaskRequest:
       type: object
+      required: [revision_selection]
       properties:
-        use_latest_version:
-          type: boolean
-          default: false
+        revision_selection:
+          type: string
+          enum: [original_revision, current_production_revision]
 
     # --- Approvals ---
     CopilotApproval:

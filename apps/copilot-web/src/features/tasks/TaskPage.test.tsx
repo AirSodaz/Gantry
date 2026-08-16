@@ -79,7 +79,7 @@ describe('TaskPage', () => {
     const retry = screen.getByRole('button', { name: /Retry task/ });
     await user.click(retry);
 
-    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1', expect.any(String), '"1"'));
+    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1', expect.any(String), '"1"', 'original_revision'));
   });
 
   it('accumulates event output and reconnects with the rendered cursor', async () => {
@@ -120,6 +120,22 @@ describe('TaskPage', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(mocked.api.appendTaskMessage).toHaveBeenCalledWith('tsk_1', { message: 'Use a different target' }, expect.any(String), '"4"'));
+  });
+
+  it('renders every documented task message part', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'completed', messages: [
+      { id: 'msg_text', task_sequence: 1, role: 'agent', parts: [{ type: 'text', text: 'Agent response' }], created_at: '2026-08-16T08:00:00Z' },
+      { id: 'msg_artifact', task_sequence: 2, role: 'system_summary', parts: [{ type: 'artifact', artifact_id: 'art_1', label: 'report.csv' }], created_at: '2026-08-16T08:00:01Z' },
+      { id: 'msg_action', task_sequence: 3, role: 'system_summary', parts: [{ type: 'action_summary', action_id: 'act_1', summary: 'Update customer record', state: 'succeeded' }], created_at: '2026-08-16T08:00:02Z' },
+      { id: 'msg_status', task_sequence: 4, role: 'system_summary', parts: [{ type: 'status', code: 'run.completed', message: 'Run completed.' }], created_at: '2026-08-16T08:00:03Z' },
+    ] });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    renderTask();
+
+    expect(await screen.findByText('Agent response')).toBeInTheDocument();
+    expect(screen.getByText('report.csv')).toBeInTheDocument();
+    expect(screen.getByText('Update customer record')).toBeInTheDocument();
+    expect(screen.getByText('Run completed.')).toBeInTheDocument();
   });
 });
 

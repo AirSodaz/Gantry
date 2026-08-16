@@ -29,6 +29,18 @@ describe('CopilotApi', () => {
     await expect(api.getTask('tsk_1')).resolves.toEqual(expect.objectContaining({ conversation_etag: '"3"' }));
   });
 
+  it('sends the selected retry revision under the documented request field', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'tsk_1' }), { status: 201, headers: { ETag: '"4"' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.retryTask('tsk_1', 'retry-1', '"3"', 'current_production_revision');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.headers).toEqual(expect.objectContaining({ 'Idempotency-Key': 'retry-1', 'If-Match': '"3"' }));
+    expect(init.body).toBe(JSON.stringify({ revision_selection: 'current_production_revision' }));
+  });
+
   it('requests download references through the audited artifact command', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ artifact_id: 'art_1', download_url: 'https://downloads.example.test/art_1', expires_at: '2026-08-17T01:00:00Z' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

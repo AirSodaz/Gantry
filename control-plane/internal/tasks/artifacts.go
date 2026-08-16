@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -214,9 +215,12 @@ func (s *Service) UploadArtifact(ctx context.Context, artifactID, token string, 
 	if result.RowsAffected() != 1 {
 		return ErrInvalidInput
 	}
-	var runID, taskID string
-	if err := tx.QueryRow(ctx, `SELECT run_id, task_id FROM gantry.artifacts WHERE id=$1`, artifactID).Scan(&runID, &taskID); err == nil {
+	var runID, taskID, filename string
+	if err := tx.QueryRow(ctx, `SELECT run_id, task_id, filename FROM gantry.artifacts WHERE id=$1`, artifactID).Scan(&runID, &taskID, &filename); err == nil {
 		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
+			return err
+		}
+		if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Artifact(artifactID, filename)); err != nil {
 			return err
 		}
 		if err := appendEventPayload(ctx, tx, runID, "artifact.uploaded", `{"artifact_id":"`+artifactID+`"}`); err != nil {

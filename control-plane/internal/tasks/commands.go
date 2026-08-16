@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/identity"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -60,6 +61,9 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceled', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
 			return CancelResult{}, err
 		}
+		if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status("run.canceled", "Run canceled before assignment.")); err != nil {
+			return CancelResult{}, err
+		}
 		if err := appendEvent(ctx, tx, runID, "run.canceled"); err != nil {
 			return CancelResult{}, err
 		}
@@ -69,6 +73,9 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 			return CancelResult{}, err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceling', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
+			return CancelResult{}, err
+		}
+		if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status("run.cancel_requested", "Cancellation requested.")); err != nil {
 			return CancelResult{}, err
 		}
 		if err := appendEvent(ctx, tx, runID, "run.cancel_requested"); err != nil {

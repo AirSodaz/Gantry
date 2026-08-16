@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 )
 
 const (
@@ -146,6 +148,13 @@ func (s *Service) persistContentSegment(ctx context.Context, runID, streamID str
 		return err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.run_content_segments (id, run_id, stream_id, start_offset, end_offset, object_key, digest, size_bytes, media_type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, segmentID, runID, streamID, start, end, objectKey, "sha256:"+hex.EncodeToString(digest[:]), len(data), "text/plain; charset=utf-8"); err != nil {
+		return err
+	}
+	var taskID string
+	if err := tx.QueryRow(ctx, `SELECT task_id FROM gantry.runs WHERE id=$1`, runID).Scan(&taskID); err != nil {
+		return err
+	}
+	if err := taskmessage.Append(ctx, tx, taskID, runID, "agent", taskmessage.Text(string(data))); err != nil {
 		return err
 	}
 	payload, _ := json.Marshal(map[string]any{"segment_id": segmentID, "stream_id": streamID, "start_offset": start, "end_offset": end})

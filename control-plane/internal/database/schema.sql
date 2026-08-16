@@ -337,7 +337,7 @@ CREATE TABLE IF NOT EXISTS gantry.task_messages (
   task_id text NOT NULL REFERENCES gantry.tasks(id),
   run_id text REFERENCES gantry.runs(id),
   task_sequence bigint NOT NULL,
-  role text NOT NULL CHECK (role IN ('requester', 'agent')),
+  role text NOT NULL CHECK (role IN ('requester', 'agent', 'system_summary')),
   parts jsonb NOT NULL DEFAULT '[]'::jsonb,
   content text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -353,6 +353,8 @@ ALTER TABLE gantry.task_messages
   ALTER COLUMN task_sequence SET NOT NULL;
 ALTER TABLE gantry.task_messages
   ADD COLUMN IF NOT EXISTS parts jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE gantry.task_messages DROP CONSTRAINT IF EXISTS task_messages_role_check;
+ALTER TABLE gantry.task_messages ADD CONSTRAINT task_messages_role_check CHECK (role IN ('requester', 'agent', 'system_summary'));
 CREATE INDEX IF NOT EXISTS task_messages_task_created_idx ON gantry.task_messages (task_id, created_at, id);
 
 CREATE TABLE IF NOT EXISTS gantry.run_content_segments (

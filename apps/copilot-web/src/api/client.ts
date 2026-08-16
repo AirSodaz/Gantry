@@ -143,11 +143,11 @@ export class CopilotApi {
     });
   }
 
-  retryTask(taskId: string, idempotencyKey: string, conversationETag: string) {
+  retryTask(taskId: string, idempotencyKey: string, conversationETag: string, revisionSelection: 'original_revision' | 'current_production_revision') {
     return this.requestTask(`/tasks/${encodeURIComponent(taskId)}:retry`, {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey, 'If-Match': conversationETag },
-      body: '{}',
+      body: JSON.stringify({ revision_selection: revisionSelection }),
     });
   }
 

@@ -390,6 +390,7 @@ export interface components {
         };
         AppendTaskMessageRequest: {
             message: string;
+            attachment_ids?: string[];
         };
         RunAttempt: {
             id: string;
@@ -414,8 +415,8 @@ export interface components {
             status_reason?: string;
         };
         RetryTaskRequest: {
-            /** @default false */
-            use_latest_version: boolean;
+            /** @enum {string} */
+            revision_selection: "original_revision" | "current_production_revision";
         };
         CopilotApproval: {
             id: string;

@@ -114,7 +114,8 @@ type SubmitRequest struct {
 }
 
 type AppendMessageRequest struct {
-	Message string `json:"message"`
+	Message       string   `json:"message"`
+	AttachmentIDs []string `json:"attachment_ids"`
 }
 
 type CancelResult struct {

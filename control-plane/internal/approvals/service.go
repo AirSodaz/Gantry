@@ -13,6 +13,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/policy"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -143,6 +144,12 @@ func (s *Service) expire(ctx context.Context, principalID string) ([]Resolution,
 		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_requester_input', conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
 			return nil, err
 		}
+		if err := appendActionSummary(ctx, tx, resolution.RunID, resolution.ActionID, "rejected"); err != nil {
+			return nil, err
+		}
+		if err := appendApprovalStatus(ctx, tx, resolution.RunID, "approval.expired", "Action approval expired."); err != nil {
+			return nil, err
+		}
 		if err := appendEvent(ctx, tx, resolution.RunID, "approval.expired", map[string]any{"approval_id": resolution.ApprovalID, "action_digest": resolution.ActionDigest}); err != nil {
 			return nil, err
 		}
@@ -202,6 +209,40 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 			return nil, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+// ListTask returns the full requester-authorized approval history for one
+// task. It is used only by that Task's event snapshot, not by the pending-work
+// queue, which intentionally remains limited to pending approvals.
+func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID string, limit int) ([]Request, error) {
+	if limit < 1 || limit > 100 {
+		limit = 25
+	}
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE t.id=$1 AND t.requester_principal_id=$2 ORDER BY ar.created_at, ar.id LIMIT $3`, taskID, actor.ID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]Request, 0)
+	for rows.Next() {
+		var item Request
+		var previewJSON []byte
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
+			return nil, err
+		}
+		var decision Decision
+		err := s.pool.QueryRow(ctx, `SELECT decision, reason, principal_id, created_at FROM gantry.approval_decisions WHERE approval_id=$1 ORDER BY created_at DESC LIMIT 1`, item.ID).Scan(&decision.Decision, &decision.Reason, &decision.DecidedBy, &decision.CreatedAt)
+		if err == nil {
+			item.Decision = &decision
+		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
 		}
 		items = append(items, item)
@@ -332,6 +373,16 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2, conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, runID, taskStatus); err != nil {
 		return Resolution{}, err
 	}
+	if err := appendActionSummary(ctx, tx, runID, actionID, newActionState); err != nil {
+		return Resolution{}, err
+	}
+	approvalMessage := "Action approval rejected."
+	if input.Decision == "approve" {
+		approvalMessage = "Action approval approved."
+	}
+	if err := appendApprovalStatus(ctx, tx, runID, "approval."+newStatus, approvalMessage); err != nil {
+		return Resolution{}, err
+	}
 	eventType := "approval.rejected"
 	if input.Decision == "approve" {
 		eventType = "approval.satisfied"
@@ -347,6 +398,26 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 		return Resolution{}, err
 	}
 	return resolution, nil
+}
+
+func appendActionSummary(ctx context.Context, tx pgx.Tx, runID, actionID, state string) error {
+	var taskID, toolName, operation, target string
+	if err := tx.QueryRow(ctx, `SELECT r.task_id, a.tool_name, a.operation, a.target FROM gantry.actions a JOIN gantry.runs r ON r.id=a.run_id WHERE a.id=$1 AND a.run_id=$2`, actionID, runID).Scan(&taskID, &toolName, &operation, &target); err != nil {
+		return err
+	}
+	summary := strings.TrimSpace(toolName + " " + operation)
+	if target = strings.TrimSpace(target); target != "" {
+		summary += " for " + target
+	}
+	return taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.ActionSummary(actionID, summary, state))
+}
+
+func appendApprovalStatus(ctx context.Context, tx pgx.Tx, runID, code, message string) error {
+	var taskID string
+	if err := tx.QueryRow(ctx, `SELECT task_id FROM gantry.runs WHERE id=$1`, runID).Scan(&taskID); err != nil {
+		return err
+	}
+	return taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status(code, message))
 }
 
 func appendEvent(ctx context.Context, tx pgx.Tx, runID, eventType string, payload any) error {

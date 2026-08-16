@@ -11,6 +11,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/policy"
+	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -92,9 +93,9 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 		return RecordEventsResult{}, err
 	}
 	defer tx.Rollback(ctx)
-	var status, requesterID string
+	var status, requesterID, taskID string
 	var current uint64
-	err = tx.QueryRow(ctx, `SELECT r.status, r.runner_event_sequence, t.requester_principal_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status, &current, &requesterID)
+	err = tx.QueryRow(ctx, `SELECT r.status, r.runner_event_sequence, t.requester_principal_id, r.task_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 FOR UPDATE`, runID, runnerID, epoch).Scan(&status, &current, &requesterID, &taskID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RecordEventsResult{}, ErrNotFound
 	}
@@ -130,6 +131,13 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 			}
 			request, evaluation, err := s.approvals.Propose(ctx, tx, action, time.Now().UTC().Add(15*time.Minute))
 			if err != nil {
+				return RecordEventsResult{}, err
+			}
+			actionState := "ready"
+			if evaluation.Decision == policy.RequireApproval {
+				actionState = "awaiting_approval"
+			}
+			if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.ActionSummary(request.ActionID, actionSummary(action), actionState)); err != nil {
 				return RecordEventsResult{}, err
 			}
 			if evaluation.Decision == policy.RequireApproval {
@@ -228,8 +236,8 @@ func transitionObservedAction(ctx context.Context, tx pgx.Tx, runID, callID, ter
 	if runID == "" || callID == "" || (terminalState != "succeeded" && terminalState != "failed") {
 		return ErrInvalidInput
 	}
-	var actionID, state string
-	err := tx.QueryRow(ctx, `SELECT id, state FROM gantry.actions WHERE run_id=$1 AND runner_call_id=$2 FOR UPDATE`, runID, callID).Scan(&actionID, &state)
+	var actionID, state, taskID, toolName, operation, target string
+	err := tx.QueryRow(ctx, `SELECT a.id, a.state, r.task_id, a.tool_name, a.operation, a.target FROM gantry.actions a JOIN gantry.runs r ON r.id=a.run_id WHERE a.run_id=$1 AND a.runner_call_id=$2 FOR UPDATE OF a`, runID, callID).Scan(&actionID, &state, &taskID, &toolName, &operation, &target)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
@@ -246,7 +254,15 @@ func transitionObservedAction(ctx context.Context, tx pgx.Tx, runID, callID, ter
 	if result.RowsAffected() != 1 {
 		return ErrInvalidInput
 	}
-	return nil
+	return taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.ActionSummary(actionID, actionSummary(policy.Action{ToolName: toolName, Operation: operation, Target: target}), terminalState))
+}
+
+func actionSummary(action policy.Action) string {
+	summary := strings.TrimSpace(action.ToolName + " " + action.Operation)
+	if target := strings.TrimSpace(action.Target); target != "" {
+		summary += " for " + target
+	}
+	return summary
 }
 
 func validateRunnerEvent(event RunnerEvent) error {
@@ -351,10 +367,20 @@ func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2, conversation_revision=conversation_revision+1 WHERE id=$1`, taskID, taskStatus); err != nil {
 		return err
 	}
+	if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status("run."+terminal, statusMessage(terminal, reason))); err != nil {
+		return err
+	}
 	if err := appendEvent(ctx, tx, runID, "run."+terminal); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func statusMessage(terminal, reason string) string {
+	if reason = strings.TrimSpace(reason); reason != "" {
+		return reason
+	}
+	return "Run " + terminal + "."
 }
 
 func (s *Service) FailActive(ctx context.Context, runnerID, runID, reason string) error {
@@ -378,6 +404,9 @@ func (s *Service) FailActive(ctx context.Context, runnerID, runID, reason string
 		return err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
+		return err
+	}
+	if err := taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status("run.failed", statusMessage("failed", reason))); err != nil {
 		return err
 	}
 	if err := appendEvent(ctx, tx, runID, "run.failed"); err != nil {
@@ -418,6 +447,9 @@ func (s *Service) FailInFlight(ctx context.Context, reason string) (int, error) 
 	}
 	for _, run := range failed {
 		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed', conversation_revision=conversation_revision+1 WHERE id=$1 AND current_run_id=$2`, run.taskID, run.id); err != nil {
+			return 0, err
+		}
+		if err := taskmessage.Append(ctx, tx, run.taskID, run.id, "system_summary", taskmessage.Status("run.failed", statusMessage("failed", reason))); err != nil {
 			return 0, err
 		}
 		if err := appendEvent(ctx, tx, run.id, "run.failed"); err != nil {

@@ -85,7 +85,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page))
 		return
 	}
-	if err := writeEventFrame(ctx, conn, map[string]any{"type": "snapshot", "task": page.Task, "run": page.Task.CurrentRun, "cursor": encodeCursor(h.eventKey, ticket.TaskID, lastSeq)}); err != nil {
+	if err := writeEventFrame(ctx, conn, map[string]any{"type": "snapshot", "task": page.Task, "runs": page.Runs, "approvals": page.Approvals, "cursor": encodeCursor(h.eventKey, ticket.TaskID, lastSeq)}); err != nil {
 		return
 	}
 
@@ -140,7 +140,7 @@ func cursorExpiredFrame(key []byte, page tasks.EventPage) map[string]any {
 	if page.EarliestSeq > 0 {
 		seq = page.EarliestSeq - 1
 	}
-	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Task.ID, seq), "snapshot": map[string]any{"task": page.Task, "run": page.Task.CurrentRun}}
+	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Task.ID, seq), "snapshot": map[string]any{"task": page.Task, "runs": page.Runs, "approvals": page.Approvals}}
 }
 
 func parseAfterCursor(key []byte, raw, taskID string) (uint64, bool) {

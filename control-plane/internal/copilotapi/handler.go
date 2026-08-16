@@ -305,10 +305,15 @@ func (h Handler) retryOperation(w http.ResponseWriter, r *http.Request, actor id
 		return
 	}
 	var request struct {
-		UseLatestVersion bool `json:"use_latest_version"`
+		RevisionSelection string `json:"revision_selection"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil && !errors.Is(err, io.EOF) {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	useLatest := request.RevisionSelection == "current_production_revision"
+	if request.RevisionSelection != "original_revision" && !useLatest {
+		writeError(w, http.StatusBadRequest, "invalid_request", "revision_selection must select the original or current production revision.")
 		return
 	}
 	expectedRevision, err := parseConversationETag(r.Header.Get("If-Match"))
@@ -316,7 +321,7 @@ func (h Handler) retryOperation(w http.ResponseWriter, r *http.Request, actor id
 		writeError(w, http.StatusPreconditionRequired, "conversation_etag_required", "If-Match must contain the current conversation ETag.")
 		return
 	}
-	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion, r.Header.Get("Idempotency-Key"), expectedRevision)
+	task, err := h.tasks.Retry(r.Context(), actor, taskID, useLatest, r.Header.Get("Idempotency-Key"), expectedRevision)
 	if err != nil {
 		if errors.Is(err, tasks.ErrConversationChanged) {
 			h.writeConversationChanged(w, r, actor, taskID)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Send, Timer, XCircle } from 'lucide-react';
 import { Button, StatusMark } from '@gantry/design-system';
@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import type { Artifact } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
+import { AttachmentUploadControl, type AttachmentUploadState } from './AttachmentUploadControl';
 
 const activeStatuses = new Set(['queued', 'running', 'canceling', 'provisioning', 'awaiting_approval', 'suspended']);
 
@@ -14,14 +15,18 @@ export function TaskPage() {
   const navigate = useNavigate();
   const api = useCopilotApi();
   const queryClient = useQueryClient();
-  const [output, setOutput] = useState('');
-  const [followUp, setFollowUp] = useState('');
+	const [output, setOutput] = useState('');
+	const [followUp, setFollowUp] = useState('');
+	const [followUpAttachments, setFollowUpAttachments] = useState<AttachmentUploadState>({ attachmentIDs: [], hasPending: false });
+	const [followUpComposerVersion, setFollowUpComposerVersion] = useState(0);
+	const [retryRevisionSelection, setRetryRevisionSelection] = useState<'original_revision' | 'current_production_revision'>('original_revision');
   const [streamState, setStreamState] = useState<'connecting' | 'connected' | 'reconnecting' | 'closed'>('connecting');
   const cursorRef = useRef('');
   const seenSequences = useRef(new Set<number>());
   const followUpKeyRef = useRef<string | null>(null);
   const cancelKeyRef = useRef<string | null>(null);
-  const retryKeyRef = useRef<string | null>(null);
+	const retryKeyRef = useRef<string | null>(null);
+	const onFollowUpAttachmentsChange = useCallback((state: AttachmentUploadState) => setFollowUpAttachments(state), []);
   const taskQuery = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => api.getTask(taskId),
@@ -45,7 +50,7 @@ export function TaskPage() {
 		const conversationETag = taskQuery.data?.conversation_etag;
 		if (!conversationETag) throw new Error('This task needs to be refreshed before retrying.');
       if (!retryKeyRef.current) retryKeyRef.current = crypto.randomUUID();
-      return api.retryTask(taskId, retryKeyRef.current, conversationETag);
+		return api.retryTask(taskId, retryKeyRef.current, conversationETag, retryRevisionSelection);
     },
     onSuccess: () => {
       retryKeyRef.current = null;
@@ -57,10 +62,12 @@ export function TaskPage() {
 		const conversationETag = taskQuery.data?.conversation_etag;
 		if (!conversationETag) throw new Error('This task needs to be refreshed before continuing.');
       if (!followUpKeyRef.current) followUpKeyRef.current = crypto.randomUUID();
-      return api.appendTaskMessage(taskId, { message: followUp }, followUpKeyRef.current, conversationETag);
+		return api.appendTaskMessage(taskId, { message: followUp, ...(followUpAttachments.attachmentIDs.length ? { attachment_ids: followUpAttachments.attachmentIDs } : {}) }, followUpKeyRef.current, conversationETag);
     },
     onSuccess: (nextTask) => {
-      setFollowUp('');
+		setFollowUp('');
+		setFollowUpAttachments({ attachmentIDs: [], hasPending: false });
+		setFollowUpComposerVersion((current) => current + 1);
       followUpKeyRef.current = null;
       void queryClient.setQueryData(['task', taskId], nextTask);
       void queryClient.invalidateQueries({ queryKey: ['task-runs', taskId] });
@@ -173,7 +180,7 @@ export function TaskPage() {
         <section className="conversation-panel">
           <div className="conversation-heading"><div><span className="eyebrow">Task detail</span><h1>{task.agent_display_name ?? task.agent_id}</h1><p>Task {task.id}</p></div><StatusMark status={task.status} /></div>
           <div className="conversation-messages" aria-label="Task conversation">
-            {task.messages?.map((message) => <div className={`request-message ${message.role === 'agent' ? 'agent-message' : ''}`} key={message.id}><span className="message-label">{message.role === 'agent' ? 'Agent' : 'Your request'}</span><p>{messageText(message.parts)}</p></div>)}
+            {task.messages?.map((message) => <div className={`request-message ${message.role === 'agent' ? 'agent-message' : ''}`} key={message.id}><span className="message-label">{messageLabel(message.role)}</span><p>{messageText(message.parts)}</p></div>)}
             {!task.messages?.length ? <div className="request-message"><span className="message-label">Your request</span><p>This task was submitted to {task.agent_display_name ?? task.agent_id}.</p></div> : null}
           </div>
           <div className="run-output" aria-live="polite">
@@ -184,11 +191,11 @@ export function TaskPage() {
             {timeline.map(({ label, status, Icon }) => <div className={`timeline-item ${status}`} key={label}><span className="timeline-icon"><Icon size={16} /></span><span>{label}</span></div>)}
           </div>
           {task.current_run?.status_reason ? <div className="reason-box"><strong>Run note</strong><p>{task.current_run.status_reason}</p></div> : null}
-          {canContinue ? <form className="follow-up-composer" onSubmit={(event) => { event.preventDefault(); if (followUp.trim()) followUpMutation.mutate(); }}><label htmlFor="task-follow-up">Continue this task</label><textarea id="task-follow-up" value={followUp} onChange={(event) => setFollowUp(event.target.value)} placeholder="Describe what should change before the next attempt" maxLength={8000} disabled={followUpMutation.isPending} /><Button type="submit" disabled={!followUp.trim() || followUpMutation.isPending}><Send size={16} /> {followUpMutation.isPending ? 'Starting…' : 'Continue'}</Button></form> : null}
+		  {canContinue ? <form className="follow-up-composer" onSubmit={(event) => { event.preventDefault(); if (followUp.trim() && !followUpAttachments.hasPending) followUpMutation.mutate(); }}><label htmlFor="task-follow-up">Continue this task</label><textarea id="task-follow-up" value={followUp} onChange={(event) => setFollowUp(event.target.value)} placeholder="Describe what should change before the next attempt" maxLength={8000} disabled={followUpMutation.isPending} /><AttachmentUploadControl key={followUpComposerVersion} disabled={followUpMutation.isPending} onChange={onFollowUpAttachmentsChange} /><Button type="submit" disabled={!followUp.trim() || followUpAttachments.hasPending || followUpMutation.isPending}><Send size={16} /> {followUpMutation.isPending ? 'Starting…' : 'Continue'}</Button></form> : null}
           {cancelMutation.isError || retryMutation.isError || followUpMutation.isError ? <p className="inline-error" role="alert">{(cancelMutation.error ?? retryMutation.error ?? followUpMutation.error) instanceof Error ? (cancelMutation.error ?? retryMutation.error ?? followUpMutation.error)?.message : 'The command could not be completed.'}</p> : null}
           <div className="task-actions">
             <Button variant="danger" disabled={!canCancel || cancelMutation.isPending} onClick={() => cancelMutation.mutate()}><Ban size={16} /> {cancelMutation.isPending ? 'Canceling…' : 'Cancel run'}</Button>
-            {canRetry ? <Button variant="secondary" disabled={retryMutation.isPending} onClick={() => retryMutation.mutate()}><RotateCcw size={16} /> {retryMutation.isPending ? 'Retrying…' : 'Retry task'}</Button> : null}
+			{canRetry ? <><label className="sr-only" htmlFor="retry-revision">Retry version</label><select id="retry-revision" value={retryRevisionSelection} onChange={(event) => setRetryRevisionSelection(event.target.value as typeof retryRevisionSelection)} disabled={retryMutation.isPending}><option value="original_revision">Original version</option><option value="current_production_revision">Current production version</option></select><Button variant="secondary" disabled={retryMutation.isPending} onClick={() => retryMutation.mutate()}><RotateCcw size={16} /> {retryMutation.isPending ? 'Retrying…' : 'Retry task'}</Button></> : null}
             {pendingApproval ? <Button variant="secondary" onClick={() => navigate(`/approvals/${pendingApproval.id}`)}>Open approval</Button> : null}
             <Button variant="quiet" onClick={() => navigate('/tasks')}>Back to history</Button>
           </div>
@@ -264,4 +271,10 @@ function messageText(parts: Array<Record<string, unknown>> | undefined) {
     if (part.type === 'artifact' && typeof part.label === 'string') return part.label;
     return '';
   }).filter(Boolean).join('\n');
+}
+
+function messageLabel(role: string) {
+  if (role === 'agent') return 'Agent';
+  if (role === 'system_summary') return 'Activity';
+  return 'Your request';
 }

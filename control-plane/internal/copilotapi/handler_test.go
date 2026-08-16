@@ -466,7 +466,7 @@ func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 		&fakeDispatcher{},
 		nil,
 	)
-	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1:retry", strings.NewReader(`{"use_latest_version":true}`))
+	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1:retry", strings.NewReader(`{"revision_selection":"current_production_revision"}`))
 	request.Header.Set("Authorization", "Bearer access-token")
 	request.Header.Set("Idempotency-Key", "retry-1")
 	request.Header.Set("If-Match", `"3"`)

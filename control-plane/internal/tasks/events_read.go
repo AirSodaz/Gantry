@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/jackc/pgx/v5"
 )
@@ -20,6 +21,8 @@ type Event struct {
 
 type EventPage struct {
 	Task        Task
+	Runs        []RunAttempt
+	Approvals   []approvals.Request
 	CurrentSeq  uint64
 	EarliestSeq uint64
 	Events      []Event
@@ -41,6 +44,16 @@ func (s *Service) Events(ctx context.Context, actor identity.Principal, taskID s
 	}
 	page.Task.Status = publicStatus(status)
 	page.Task.CurrentRun.Status = publicStatus(runStatus)
+	page.Runs, err = s.ListRuns(ctx, actor, taskID, 100)
+	if err != nil {
+		return EventPage{}, err
+	}
+	if s.approvals != nil {
+		page.Approvals, err = s.approvals.ListTask(ctx, actor, taskID, 100)
+		if err != nil {
+			return EventPage{}, err
+		}
+	}
 	var earliest *uint64
 	if err := s.pool.QueryRow(ctx, `SELECT MIN(e.task_sequence) FROM gantry.run_events e JOIN gantry.runs r ON r.id=e.run_id WHERE r.task_id=$1`, taskID).Scan(&earliest); err != nil {
 		return EventPage{}, err
