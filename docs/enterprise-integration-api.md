@@ -14,9 +14,12 @@ structured answer inside the HR system without loading the Gantry Copilot web
 application.
 
 The Enterprise Agent Invocation API is separate from the browser-oriented
-Copilot API. Both create the same task and run resources and use the same
-authorization, action-time execution, and audit model. A business workflow
-approval remains owned by the enterprise tool that defines that workflow.
+Copilot API. Both create the same durable Task and Run identities and use the
+same authorization, action-time execution, and audit model, but each API returns
+an independently authorized projection. Enterprise responses are limited by the
+published Integration contract and never become a shortcut to Admin diagnostics
+or the Copilot conversation. A business workflow approval remains owned by the
+enterprise tool that defines that workflow.
 
 ## 2. Integration Roles
 
@@ -270,11 +273,10 @@ event projection includes only integration-relevant states:
 Internal model deltas, PTY output, tool payloads, policy internals, and raw run
 events are not exposed through the Agent Invocation API.
 
-Approval rejection and expiry do not introduce additional task states. The
-published approval policy either resumes execution with a schema-valid
-action-denied result or transitions the run and task to `failed` with the stable
-reason `approval_rejected` or `approval_expired`. The same mapping is used by
-polling, events, and webhooks.
+Approval rejection and expiry do not introduce additional task states. Both
+resume execution with a schema-valid `action_denied` or `approval_expired`
+result and leave an interactive delegated-user task available for later
+requester input. The same projection is used by polling, events, and webhooks.
 
 ## 11. Webhooks
 
@@ -299,22 +301,23 @@ authorized task result from the API when policy requires it.
 
 An API-started task may enter `awaiting_approval`.
 
-- Application-identity calls route approval to configured people or groups.
-- Delegated-user calls may assign the subject user when policy permits, or a
-  separate approver when separation of duties is required.
+- Application-identity calls may execute only actions that policy allows without
+  human confirmation. An application credential cannot stand in for a human
+  requester or nominate an administrator as approver.
+- Delegated-user calls route any required Agent action approval only to the
+  verified subject user who initiated the task.
 - The enterprise application receives status and a safe approval reference; it
-  cannot approve by possessing the application client credential unless an
-  explicit machine-approval policy exists.
-- Agent action approvals are decided by the authenticated user or a policy-
-  selected human identity through the Copilot approval surface or a future
-  dedicated approval API. The decision is bound to the exact action digest.
+  cannot approve merely by possessing the application client credential.
+- Agent action approvals are decided only by the authenticated task requester
+  through the Copilot approval surface or a requester-authenticated approval
+  API. The decision is bound to the exact action digest.
 - Business approvals such as leave, expense, or purchase approval are initiated
   and presented by the tool's own workflow system. Gantry receives only a
   signed, idempotent external status callback and resumes the action after
   validating the external approval reference and bound digest.
-- The integration publication exposes whether an action-approval rejection or
-  expiry uses `resume_with_denial` or `fail_run`; the calling application
-  handles the resulting ordinary running or failed task state.
+- Agent action rejection and expiry always resume with a structured denial
+  result. Neither outcome creates a failed task merely because the action was
+  not approved.
 
 ## 13. Artifacts
 

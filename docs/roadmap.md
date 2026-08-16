@@ -43,7 +43,7 @@ still has a named operational owner.
 | Phase 0 | Partial | Core repository, contract, Compose, runner-session, and lifecycle prototypes exist; isolation, egress, telemetry, load, and artifact-signing gates remain. |
 | Phase 1 | Partial | Core Copilot, persistence, live events, artifacts, and Runner V1 exist; production gateway, sandbox, enterprise API, and complete authorization remain. |
 | Phase 2 | Partial | Admin agent lifecycle exists; configuration catalogs, operations, audit, evaluations, integrations, and platform management remain. |
-| Phase 3 | Partial prototype | One durable requester approval loop exists; credential mediation, general tool execution, thresholds, suspension, and audit integrity remain. |
+| Phase 3 | Partial prototype | One durable requester approval loop exists; credential mediation, general tool execution, expiry processing, suspension, and audit integrity remain. |
 | Phase 4 | Designed | Evaluation is documented but has no complete product slice. |
 | Phase 5 | Not started | Pilot hardening has not begun. |
 | Phase 6 | Not started | General-availability gates have not begun. |
@@ -221,9 +221,10 @@ credential mediation, and durable human approval.
   exact action digests.
 - Durable action execution records, compare-and-swap revisions, lease fencing,
   and single-use execution permits.
-- Approval queue and detail views in Admin and Copilot.
-- Eligible approver rules, separation of duties, thresholds, expiry,
-  supersession, revocation, and reason capture.
+- Approval queue and decision detail in Copilot; Admin Run Detail and Audit show
+  read-only approval evidence without a separate approval inbox.
+- Requester-bound action approvals, expiry, supersession, revocation, and reason
+  capture; no generic approver routing or thresholds.
 - Retained suspension with TTL and resource accounting.
 - Durable checkpoint contract and resume in a new sandbox.
 - Credential broker integrated with one enterprise secret store.
@@ -246,8 +247,9 @@ credential mediation, and durable human approval.
 - Approval versus cancellation, policy change, lease loss, durable resume, and
   execution-claim races consume at most one permit and use the documented
   rejection/expiry outcome mapping.
-- Concurrent threshold votes produce one satisfaction transition; duplicate
-  votes, late votes, and terminal-rejection rules are deterministic.
+- Duplicate or late requester decisions are idempotent; rejection and expiry
+  resume with structured outcomes, keep the conversation available for input,
+  and any revised consequential action receives a new digest.
 - Cancellation tests cover both sides of the execution linearization point and
   never report an in-flight unknown external effect as safely canceled.
 - Runner filesystem, environment, terminal, and logs contain no durable
@@ -326,7 +328,7 @@ Prepare for a limited production pilot with representative teams and agents.
 - SBOM, signed images and binaries, vulnerability response process, and release
   provenance.
 - External penetration test and remediation.
-- Administrator, approver, operator, and employee documentation.
+- Administrator, requester-approval, operator, and employee documentation.
 
 ### Exit Gate
 

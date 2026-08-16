@@ -57,9 +57,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   full resource-role model, group assignment, policy intersection, and
   revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
-  Threshold decisions, alternate approver selection, expiry processing,
-  retained/durable suspension, revocation, and general tool-gateway execution
-  remain incomplete.
+  Expiry processing, retained/durable suspension, revocation, rejection resume,
+  and general tool-gateway execution remain incomplete.
 - **Artifacts and streams:** Upload, storage, download, live events, and content
   segments exist. Production malware scanning, preview isolation, retention,
   compaction, backpressure evidence, and object-store failure handling remain.
@@ -119,7 +118,7 @@ governance loops were built early. This does not mean later phases are complete.
 | Phase 0 | Partial | Repository, contracts, Compose, runner session, PTY, and core lifecycle spikes exist; isolation, egress, telemetry, load evidence, and signed artifacts remain. |
 | Phase 1 | Partial | The core Copilot path, persistence, live events, artifacts, and runner loop exist; production model gateway, sandboxing, enterprise API, and full authorization remain. |
 | Phase 2 | Partial | Admin agent lifecycle and review-gated publication exist; configuration catalogs, operations, audit, evaluations, integrations, and access management remain. |
-| Phase 3 | Partial prototype | A requester-bound action approval loop exists; credential mediation, general tool execution, thresholds, suspension, and audit integrity remain. |
+| Phase 3 | Partial prototype | A requester-bound action approval loop exists; credential mediation, general tool execution, expiry processing, suspension, rejection resume, and audit integrity remain. |
 | Phase 4 | Designed | Evaluation architecture exists only in documentation and scaffolding. |
 | Phase 5 | Not started | No production-pilot hardening claim. |
 | Phase 6 | Not started | No general-availability claim. |

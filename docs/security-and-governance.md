@@ -57,7 +57,6 @@ Baseline roles:
 - Security Reviewer
 - Operator
 - Auditor
-- Approver
 - Employee
 
 ### Action-Time Context
@@ -93,6 +92,46 @@ No layer can broaden another layer's authority.
 For enterprise invocation, effective authority also includes the registered
 client's scopes and the explicit integration publication. Delegated calls add,
 rather than replace, the subject user's current authorization intersection.
+
+### Policy Lifecycle and Scope Composition
+
+Each Policy has one mutable Draft and immutable published Versions. Drafts are
+never evaluated for runtime authorization. Publishing records an exact Version
+ID, content digest, schema, author, message, and validation evidence; activating
+that Version is a separate authorized Binding action. Policies have no branch,
+merge, or movable-latest runtime semantics.
+
+Organization and Workspace Policies compose by intersection. A lower scope may
+add a restriction or select a narrower allowance, but cannot broaden an outer
+Policy. Agent Revisions pin exact Policy Versions and remain constrained by the
+active organization, Workspace, resource, Deployment, and Integration
+Publication boundaries. Each Run Manifest captures all contributing Policy
+Version identities and digests.
+
+Policy simulation is side-effect free. It may evaluate a Draft or Version and
+explain contributing rules, but it cannot execute a Tool, resolve a secret,
+create an Approval Request, change a Binding, or produce a reusable execution
+permit. Approval Policies configure allow, deny, or requester-approval rules;
+they do not create generic approver authority or move approval decisions into
+Admin.
+
+### Platform Settings Scope
+
+`/platform/settings` is a single Admin route with an explicit Organization or
+Workspace scope. Organization Administrators own organization defaults and
+non-negotiable bounds. Workspace overrides are valid only when their effective
+value is inside those bounds; they may narrow authority or capacity but never
+broaden it. The Settings projection is composed from typed resources and does
+not bypass the owning authorization contract for Policies, Integrations,
+Providers, Runners, credentials, or Audit.
+
+The UI uses role-oriented actions instead of exposing an Allow/Deny rule
+builder. The server still evaluates explicit capabilities for each section and
+re-checks the actor, scope, ETag, and action-time Policy on every mutation.
+Validation is side-effect free. Accepted, rejected, blocked, and completed
+changes are attributable Audit events with correlation IDs. Retention deletion
+is asynchronous and re-checks active Legal Holds, minimum Audit retention,
+classification, and key-destruction eligibility at execution time.
 
 ## 5. Agent Spec Governance
 
@@ -220,8 +259,9 @@ persisted. Redaction is a defense layer, not justification to log secrets first.
 
 - Organization installation requires publisher, provenance, dependency,
   descriptor, permission, and compatibility review.
-- Workspaces enable one exact Plugin Version explicitly; upgrades create a new
-  reviewable enablement choice.
+- Workspaces may enable multiple exact Plugin Versions explicitly; upgrades
+  create a new reviewable enablement choice and never replace an existing
+  enablement implicitly.
 - Agents select contained Skills and Tools individually. Install, enablement, or
   upgrade never auto-binds a newly introduced capability.
 - Plugin configuration and MCP connection secrets remain behind trusted
@@ -276,14 +316,12 @@ approval. An agent action approval binds to an immutable action digest containin
 operation, canonical arguments, target, credential mode, policy version, and
 expiry. Changing any bound field invalidates the approval.
 
-Approval rules support:
-
-- Named users, groups, workspace roles, or resource owners.
-- One-person or multi-person thresholds.
-- Separation of requester and approver.
-- Risk-based expiry.
-- Mandatory reason capture.
-- Escalation and notification without automatic approval.
+When a human confirmation is required, the authenticated task requester is the
+only eligible approver. Gantry does not route Agent action approvals to generic
+approver roles, groups, thresholds, or administrators. A published policy may
+allow or deny an action without human confirmation, but it cannot nominate a
+different human approver. Approval requests have risk-based expiry and may
+require a reason.
 
 Business workflow approvals remain in the tool or enterprise system that owns
 the business process. Gantry stores an external approval reference and accepts
@@ -291,8 +329,9 @@ only a signed, idempotent callback that is bound to the same action digest; the
 Gantry Admin application is not a universal business-approval inbox.
 
 Before executing an approved action, Gantry verifies that the run is still at
-the same pending action, the approval is unused and unexpired, the approver
-remains eligible, and current policy still permits execution.
+the same pending action, the approval is unused and unexpired, the deciding
+identity is still the authenticated task requester, and current policy still
+permits execution.
 
 An approval decision changes only the durable action state; it never calls the
 tool directly. The tool gateway atomically claims the exact action digest using
@@ -302,12 +341,17 @@ lease loss, and resume transitions race through the same compare-and-swap state
 machine. Only one transition wins, and losing requests return the resulting
 state without creating an effect.
 
-For threshold approvals, decision append, approval projection revision, and the
-bound action transition are one transaction. A uniqueness constraint prevents
-multiple votes by the same approver, and only one threshold-winning transaction
-may emit satisfaction or make the action ready. The published policy explicitly
-states whether one rejection is terminal or remaining approvals can still
-satisfy the request.
+Decision append, approval projection revision, and the bound action transition
+are one transaction. A uniqueness constraint makes a repeated requester
+decision idempotent, and only one terminal decision may make the action ready or
+reject it.
+
+Rejecting an Agent action or allowing its approval to expire denies only that
+immutable action digest. The Agent loop resumes with a structured
+`action_denied` or `approval_expired` result, and the task conversation remains
+available for new requester input. The requester may tell the Agent how to
+revise the action or what to do next. Any later consequential action has a new
+digest and requires its own authorization and, when required, approval.
 
 The first agent loop serializes consequential actions and allows only one
 pending or executing action. This product restriction reduces ambiguity but is
@@ -331,6 +375,12 @@ Audit records cover authentication, authorization decisions, configuration
 changes, publication, task commands, model routes, tool calls, approvals,
 operator terminal attachment, artifact access, exports, and emergency controls.
 
+The canonical Audit projection is cross-resource and append-only. Resource
+pages may show a bounded Recent activity slice, but they do not own separate
+Audit stores or alternate evidence semantics. Run timelines, Policy Version
+history, and Webhook delivery attempts remain domain projections that link to
+the canonical Audit event and preserve their operational detail.
+
 - Events are append-only through application APIs.
 - Each event contains actor, subject, action, resource, outcome, timestamp,
   request ID, and policy/version references.
@@ -342,7 +392,12 @@ operator terminal attachment, artifact access, exports, and emergency controls.
   deletion leaves hash-preserving tombstones.
 - Database administrators remain a privileged threat; high-assurance deployments
   may replicate checkpoints to external write-once storage.
-- Audit export itself is authorized and audited.
+- Audit export is a separate capability from Audit read. Organization
+  Administrators, Security Reviewers, and Auditors may export within their
+  authorized scope; Operators and other read-only actors cannot export merely
+  because they can inspect events. Export creation and download reapply scope,
+  classification, and redaction checks, never include secret values or raw
+  chain-of-thought, and are themselves append-only Audit events.
 
 ## 12. Data Protection and Retention
 
@@ -350,11 +405,20 @@ Data is classified at workspace, agent, attachment, tool, and artifact levels.
 Retention policies distinguish operational metadata, prompts and outputs,
 terminal streams, artifacts, evaluation fixtures, and audit evidence.
 
+Organization retention policy defines the permitted bounds for each class;
+Workspace settings may select values within those bounds. Exact durations remain
+deployment configuration pending Legal and Security approval. Audit metadata and
+integrity checkpoints have a minimum retention floor, while prompts, outputs,
+terminal streams, Artifacts, and Evaluation fixtures may have shorter periods.
+
 - Encrypt transport and storage using managed keys where available.
 - Support workspace-specific retention within organization limits.
 - Legal hold prevents scheduled deletion of selected evidence.
 - Deletion creates tombstone events and verifiable cleanup jobs; immutable
   compliance records retain only the minimum required metadata.
+- Deletion re-checks active Legal Holds, minimum Audit retention, classification,
+  and key-destruction eligibility immediately before execution. Blocked records
+  remain pending and expose the Hold or retention reason.
 - Production-to-evaluation export runs deterministic and configurable redaction,
   followed by a human review when classification requires it.
 

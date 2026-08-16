@@ -12,15 +12,15 @@ The product is intentionally split into two applications.
 ### Gantry Admin
 
 Gantry Admin is an operations-focused console for platform administrators,
-agent designers, security reviewers, auditors, and approvers. It owns the agent
+agent designers, security reviewers, auditors, and operators. It owns the agent
 lifecycle from draft through publication, monitoring, evaluation, and
 retirement.
 
 ### Gantry Copilot
 
 Gantry Copilot is an employee-facing application. It provides a catalog of
-approved agents, conversational and task-oriented execution, approvals assigned
-to the current employee, run history, and access to generated artifacts. It does
+approved agents, conversational and task-oriented execution, action approvals
+from the current employee's tasks, run history, and access to generated artifacts. It does
 not expose prompts, credentials, infrastructure controls, raw policy internals,
 or unrestricted terminal access.
 
@@ -68,10 +68,9 @@ third Gantry user interface.
 | --- | --- | --- |
 | Platform Administrator | Admin | Platform settings, providers, runner pools, retention, emergency controls |
 | Agent Designer | Admin | Draft specs, prompts, tools, model policies, tests, and release notes |
-| Security Reviewer | Admin | Review permissions, egress, credentials, commands, and publication changes |
-| Operator | Admin | Monitor runs, inspect failures, cancel or retry tasks, manage capacity |
-| Auditor | Admin | Search immutable events, inspect approvals, export evidence |
-| Approver | Admin or Copilot | Approve or reject a specific pending action within delegated scope |
+| Security Reviewer | Admin | Review permissions, egress, credentials, commands, publication changes, and export scoped audit evidence |
+| Operator | Admin | Monitor runs, inspect failures, cancel or retry tasks, manage capacity, and inspect audit evidence without export |
+| Auditor | Admin | Search immutable events, inspect approvals, and export scoped evidence |
 | Employee | Copilot | Discover approved agents, submit tasks, review progress, receive artifacts |
 | Integration Client | Agent Invocation API | Invoke explicitly published agents as an application or on behalf of a verified user |
 
@@ -89,6 +88,16 @@ This model avoids claiming SaaS-grade tenant isolation while preserving stable
 tenant identifiers in schemas and APIs. A future hosted edition may map each
 organization to a stronger isolation boundary without changing core resource
 identifiers.
+
+### Platform Settings Boundary
+
+Admin exposes one `/platform/settings` route with an explicit
+`Organization | Workspace` scope. Organization Administrators define defaults
+and non-negotiable bounds; Workspace values inherit or narrow within those
+bounds. Settings composes typed Organization, Retention, Legal Hold,
+Classification, Limit, and Environment resources without replacing their
+ownership or creating a second Audit, Policy, Integration, Provider, or Runner
+configuration surface. Copilot never exposes Platform Settings.
 
 ## 6. Core Product Concepts
 
@@ -167,7 +176,10 @@ classification, credential capabilities, destinations, and execution limits.
 
 A task represents user intent and durable ownership. A run is one execution
 attempt of a task against a specific Agent Revision and policy snapshot. Retrying
-a task creates a new run rather than rewriting history.
+a task creates a new Run rather than rewriting history. Copilot presents Tasks,
+conversation, requester approvals, and a compact list of Run attempts. Admin
+presents the same immutable Run records as a cross-actor operational and
+diagnostic workbench, subject to role, scope, and redaction controls.
 
 ### Tool Binding
 
@@ -175,11 +187,21 @@ An Agent-owned, versioned reference to one immutable Tool Descriptor. It narrows
 allowed operations, inputs, credentials, destinations, approval policy, and
 runtime limits. It never broadens the registered descriptor.
 
+### Policy
+
+An organization- or Workspace-owned typed rule resource with one mutable Draft,
+immutable Versions, and explicit Bindings. Organization and Workspace Policies
+intersect, so a lower scope can only narrow outer authority. Agent Revisions
+pin exact Policy Versions; a Draft or movable latest Version never controls a
+run. Approval Policies configure Agent action decisions but do not own pending
+approvals or business workflow approvals.
+
 ### Approval
 
-A durable decision request for a proposed action. It includes an exact action
-preview, risk explanation, policy reason, expiry, eligible approvers, and the
-resulting decision.
+A durable requester decision for one proposed Agent action. It includes an
+exact action preview, risk explanation, policy reason, expiry, authenticated
+task requester, and the resulting decision. Business workflow approvals remain
+owned by the tool or enterprise system that defines them.
 
 ### Golden Case
 
@@ -240,6 +262,18 @@ simple agents.
   deltas, latency, tokens, and estimated cost.
 - Compare candidate and baseline Revisions before publication.
 
+### Governance
+
+- Browse all Policy types in one scope-aware catalog.
+- Edit the single Draft for a Policy and publish immutable exact Versions.
+- Bind a Version explicitly and preview affected Agents and environments.
+- Explain how organization and Workspace Policies intersect without allowing a
+  lower scope to broaden authority.
+- Simulate candidate and effective decisions without executing actions,
+  resolving secrets, or creating approvals.
+- Keep Approval Policy configuration separate from Copilot approval decisions
+  and tool-owned business workflow approvals.
+
 ## 8. Gantry Copilot Capabilities
 
 ### Agent Discovery
@@ -258,12 +292,26 @@ simple agents.
 - Distinguish waiting, running, awaiting approval, suspended, failed, canceled,
   and completed states.
 - Allow cancellation and safe retry when policy permits.
+- After an action is rejected or its approval expires, keep the task
+  conversation open so the requester can tell the Agent how to revise the
+  action or what to do next.
 - Resume the task view after browser disconnect or a later login.
+
+### Task History
+
+- List only tasks visible to the current employee and organize them by intent,
+  status, last activity, requester action, and artifacts.
+- Show Run attempts inside Task detail without exposing runner, lease,
+  credential, raw prompt, or cross-user operational internals.
+- Keep retry, cancel, and requester guidance attached to the Task; every retry
+  creates a new immutable Run.
+- Link to the same Task, Run, event, and artifact identities used by Admin when
+  the current actor is authorized to see the corresponding evidence.
 
 ### Employee Approvals
 
-Employees may approve only actions assigned to them and only when their current
-authorization still permits the action. The approval view must show the exact
+Employees may approve only actions from tasks they initiated and only when their
+current authorization still permits the action. The approval view must show the exact
 target, arguments or human-readable diff, credential identity class, expected
 side effects, and expiry. Approval is never represented as a generic "continue"
 button without an action preview.

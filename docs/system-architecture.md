@@ -116,7 +116,7 @@ delivery without changing task outcomes when delivery fails.
 Evaluates actor, agent, version, workspace, tool, action, arguments, destination,
 credential class, runtime context, and requested effect. It returns `allow`,
 `deny`, or `require_approval` plus obligations such as redaction, limits, and
-eligible approver sets.
+requester-confirmation expiry or reason requirements.
 
 The first implementation uses typed policy evaluators in Go backed by versioned
 policy documents. A general policy language is deferred until real rules prove
@@ -124,19 +124,19 @@ the need.
 
 ### Approval Service
 
-Creates durable approval requests for concrete agent actions, resolves the
-policy-selected decision subject, enforces expiry and single-use decisions, and
-appends the result to the run event stream. It revalidates the action digest and
-decision authorization immediately before execution resumes. It does not own
-business workflow approvals defined by tools or enterprise systems.
+Creates durable approval requests for concrete Agent actions, binds the sole
+human decision authority to the authenticated task requester, enforces expiry
+and single-use decisions, and appends the result to the run event stream. It
+revalidates the action digest and requester identity immediately before
+execution resumes. It does not own business workflow approvals defined by tools
+or enterprise systems.
 
-Concurrent approver decisions are appended with a uniqueness constraint on
-request and approver. Each append locks or compare-and-swaps the approval
-projection revision, recomputes the immutable threshold and rejection rule, and
+Requester decisions use a uniqueness constraint per approval request. Each
+decision locks or compare-and-swaps the approval projection revision and
 attempts the bound action transition in the same database transaction. Exactly
-one transaction may emit `approval.satisfied` and move the action to `ready`;
-late decisions observe the terminal approval state and cannot create another
-execution opportunity.
+one transaction may approve or reject the action; duplicate or late decisions
+observe the terminal approval state and cannot create another execution
+opportunity.
 
 ### Scheduler
 
@@ -336,12 +336,13 @@ been applied. An unresolved result reaches `Failed` with reason
 `action_outcome_unknown` by a bounded reconciliation deadline; later evidence is
 recorded as a reconciliation event and never rewrites the original observation.
 
-`Rejected` and approval `Expired` are approval outcomes, not run states. The
-immutable approval policy specifies whether either outcome resumes the loop with
-a structured action-denied result or terminates the run as `Failed` with reason
-`approval_rejected` or `approval_expired`. Cancellation always wins before an
-execution permit is consumed. Task aggregate state is then derived from the run
-rather than inventing a separate approval terminal state.
+`Rejected` and approval `Expired` are approval outcomes, not run states. Both
+resume the loop with a structured `action_denied` or `approval_expired` result
+and keep the task conversation available for new requester input. Neither
+outcome terminates the run merely because the action was not authorized in
+time. Cancellation always wins before an execution permit is consumed. Task
+aggregate state is then derived from the run rather than inventing a separate
+approval terminal state.
 
 ## 9. Suspension and Recovery
 

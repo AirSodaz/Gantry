@@ -58,8 +58,19 @@ Current and planned resources:
 - Planned: `/api/admin/v1/tool-servers`
 - Planned: `/api/admin/v1/tool-descriptors`
 - Planned: `/api/admin/v1/cli-command-profiles`
-- Planned: `/api/admin/v1/runs`, `/approval-policies`, `/evaluation-suites`,
-  `/integrations`, `/policies`, `/audit-events`, and `/platform/runner-pools`.
+- Planned: `/api/admin/v1/runs` for the organization or Workspace-scoped
+  operational Run workbench and richer diagnostic event projection;
+  `/evaluation-suites`, `/integrations`,
+  `/policies`, `/audit-events`, `/retention-policies`, `/legal-holds`, and
+  `/platform/runner-pools`, `/retention-deletion-jobs`, `/platform/settings`,
+  `/platform/data-classifications`, `/platform/limit-policies`, and
+  `/platform/environment-profiles`. `/audit-events`
+  is the canonical cross-resource immutable event explorer; resource APIs may
+  return a bounded Recent activity slice and a pre-filtered Audit link but do
+  not create resource-specific Audit stores. `/policies` is the
+  unified typed Policy resource, including Approval Policies; it owns one
+  mutable Draft, immutable Versions, exact Bindings, side-effect-free
+  simulation, and audit evidence. It does not expose an Admin approval inbox.
 
 ### Copilot API
 
@@ -75,7 +86,11 @@ Representative resources:
 - `/api/copilot/v1/artifacts`
 
 The Copilot API uses employee-oriented response types. It does not return raw
-agent specs and rely on the frontend to hide privileged fields.
+agent specs and rely on the frontend to hide privileged fields. Task and Run
+responses are requester-scoped and conversation-first: they include the
+employee-visible Task, compact Run attempts, approvals, events, and artifacts,
+but not Admin runner, lease, credential, raw prompt, or cross-user diagnostic
+fields.
 
 ### Enterprise Agent Invocation API
 
@@ -98,6 +113,11 @@ Representative resources:
 The full authentication, publication, request, result, webhook, approval, and
 idempotency contract is defined in
 [Enterprise Agent Invocation API](enterprise-integration-api.md).
+
+Admin, Copilot, and Enterprise APIs may refer to the same opaque Task and Run
+identities, but each response is a separately authorized projection. An Admin
+Run record is not a permission shortcut into the Copilot conversation, and a
+Copilot Task record is not a way to enumerate global Runs.
 
 ## 3. HTTP Conventions
 
@@ -167,8 +187,14 @@ permission.
 `POST /api/copilot/v1/approvals/{id}:decide`
 
 The request includes decision, reason, action digest, and idempotency key. A
-stale action digest is rejected. This route is only for a concrete agent action;
-it is not a general enterprise business-approval endpoint.
+stale action digest is rejected. The authenticated principal must be the task
+requester; Admin visibility, roles, or workspace ownership do not grant decision
+authority. This route is only for a concrete Agent action; it is not a general
+enterprise business-approval endpoint. Rejection returns a structured
+action-denied outcome to the Agent and leaves the task conversation available
+for later requester input. If the request has expired, the decision command
+returns `approval_expired`; the Agent receives the corresponding structured
+expiry outcome and the conversation remains available.
 
 ### Publish an Agent Revision
 
@@ -179,6 +205,101 @@ release notes, expected current Production Revision, deployment targets, and
 acknowledged warnings. Policy determines required reviews and evaluation gates.
 The current implementation still accepts an expected integer Draft revision;
 the target contract replaces that ambiguity with an exact immutable Revision.
+
+### Publish and Bind a Policy Version
+
+`POST /api/admin/v1/policies/{id}/versions`
+
+Publishing requires the Policy Draft ETag, canonical document digest, schema
+version, required message, and idempotency key. It creates one immutable Policy
+Version and does not activate it.
+
+`POST /api/admin/v1/policies/{id}/bindings`
+
+Binding requires one exact Policy Version ID and digest, target scope or
+resource, environment, effective interval, reason, and expected current binding
+state. The server rejects a lower-scope Binding that would broaden an active
+outer Policy. Agent Revisions pin exact Policy Versions independently; no API
+resolves a movable latest Version for execution.
+
+`POST /api/admin/v1/policies/{id}:simulate`
+
+Simulation evaluates a Draft or exact Version against an explicit scenario and
+returns `allow`, `deny`, or `require_requester_approval` with contributing
+Versions and rule explanations. It never executes a Tool, resolves a secret,
+creates an Approval Request, changes a Binding, or returns an execution permit.
+
+### Search Audit Events
+
+`GET /api/admin/v1/audit-events`
+
+The query accepts authorized scope, resource type and ID, actor, event type,
+outcome, risk, correlation ID, linked Run/Revision/Policy Version, and time
+filters. Results are cursor-paginated immutable event summaries and include a
+stable link to `/audit/events/{eventId}`. The endpoint never mutates the owning
+resource, decides an approval, or exposes fields outside the caller's audit and
+resource capabilities.
+
+`GET /api/admin/v1/audit-events/{eventId}` returns the immutable envelope,
+linked evidence references, redaction metadata, and permitted payload fields.
+`POST /api/admin/v1/audit-events:export` creates a signed, scoped export
+package. This command requires the separate `audit.export` capability, which is
+available to Organization Administrators, Security Reviewers, and Auditors
+within their authorized scope; `runs.read` or ordinary Audit read access is not
+sufficient. The export applies the caller's redaction and scope rules and
+cannot contain secrets or raw chain-of-thought. Export creation, download, and
+failure are themselves auditable.
+
+### Retention and Legal Hold Administration
+
+`/api/admin/v1/retention-policies` exposes organization bounds and Workspace
+values for each data class. Exact durations are deployment configuration and
+must be approved by Legal and Security before production data is admitted. A
+Workspace value outside organization bounds is rejected.
+
+`POST /api/admin/v1/legal-holds` creates a scoped Hold with owner, authority
+basis, selector, affected data classes, and optional release condition.
+`POST /api/admin/v1/legal-holds/{id}:release` releases it with an attributable
+actor and reason. Deletion commands re-check active Holds and minimum Audit
+retention immediately before content or key deletion. They return pending or
+blocked state when evidence is protected and retain a digest-preserving
+Tombstone after permitted deletion. Hold and deletion mutations are idempotent,
+auditable, and never return protected content.
+
+### Platform Settings Projection and Commands
+
+`GET /api/admin/v1/platform/settings?scope=organization|workspace&workspace_id=...`
+returns the composed Settings projection for the requested scope. Each setting
+includes its effective value, source (`organization` or `workspace_override`),
+organization bound, owning resource, last-change metadata, validation state,
+and current ETag. Workspace scope requires an authorized `workspace_id` and
+never returns settings outside that Workspace.
+
+`POST /api/admin/v1/platform/settings:validate` accepts a proposed, section-scoped
+change and returns a side-effect-free semantic diff. The result identifies
+authority broadening or narrowing, affected resources, retention/deletion
+impact, cross-section conflicts, and required capabilities. It does not write
+settings, create Holds, schedule deletion, resolve secrets, or execute a Tool.
+
+`POST /api/admin/v1/platform/settings:apply` applies a validated change with an
+expected ETag and an explicit target scope. The command is atomic across the
+submitted section, idempotent with a caller-provided command ID, and returns the
+new effective projection, correlation ID, audit event ID, and any asynchronous
+deletion job. A stale ETag returns `409 settings_conflict` with the current
+projection; it never silently overwrites a concurrent administrator.
+
+The composed endpoint delegates persistence and authorization to typed owning
+resources. `/platform/data-classifications`, `/platform/limit-policies`, and
+`/platform/environment-profiles` expose their respective list/detail commands;
+the Settings page links to those resources when a value is managed there. The
+page does not create a second Policy, Provider, Runner, Integration, or Audit
+contract. Recent activity is queried from `/audit-events` with Settings filters.
+
+`GET /api/admin/v1/retention-deletion-jobs` returns cursor-paginated estimates,
+eligible windows, active Hold matches, blocked records, retry state, and
+tombstone summaries. It never returns protected content. Deletion execution
+re-checks active Holds, minimum Audit retention, classification, and key
+destruction eligibility at the linearization point.
 
 ## 5. Browser Event Stream
 

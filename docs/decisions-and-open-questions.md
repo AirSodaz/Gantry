@@ -233,12 +233,17 @@ second effect and provides a defined unknown-outcome state.
 
 **Status:** Accepted
 
-Gantry owns action-time authorization for effect-bearing agent operations. The
-Copilot approval surface may approve the exact action digest, or a published
-policy may approve it automatically. Business approvals such as leave,
+Gantry owns action-time authorization for effect-bearing agent operations. When
+human confirmation is required, only the authenticated task requester may
+approve or reject the exact action digest; a published policy may instead allow
+or deny it without human confirmation. Business approvals such as leave,
 expense, or purchase requests remain owned and presented by the tool or
 enterprise system that defines that workflow; Gantry integrates them through a
 signed external status callback rather than a universal Admin approver inbox.
+Rejecting an Agent action or allowing its approval to expire returns a
+structured denial or expiry result to the Agent and leaves the task conversation
+available for requester input; a revised consequential action receives a new
+digest and decision.
 
 **Reason:** A business approver decides a domain process, while an agent action
 approver decides whether one concrete external effect may execute. Combining the
@@ -269,10 +274,12 @@ immutable content digests and Skill source identities. Gantry displays the
 version declared by an imported Skill package (or `未声明` when absent) but does
 not create a separate Skill version history; multiple artifacts of one Skill
 may coexist for testing.
-Plugins are installed by the organization, enabled per workspace, and
-selectively bound by Agents. Skills and Plugins cannot grant tool authority,
-bindings may only narrow descriptors, and dynamic discovery cannot mutate
-published Agents.
+Plugins are installed by the organization, and one or more exact Plugin
+Versions may be enabled per workspace for testing or migration before being
+selectively bound by Agents. There is no implicit default Plugin Version.
+Skills and Plugins cannot grant tool authority, bindings may only narrow
+descriptors, multiple descriptor versions may coexist without a default, and
+dynamic discovery cannot mutate published Agents.
 
 **Reason:** Reproducibility and review require stable configuration ownership
 instead of one mutable specification blob or runtime discovery. See
@@ -313,6 +320,77 @@ boundaries. See [ADR-026](adr-026-agent-scoped-permissions.md).
 The initial ACL implementation is Allow-only. Unset or revoked capabilities are
 denied; outer policy or resource constraints explain ineffective grants rather
 than creating explicit Deny entries.
+
+### ADR-028: Immutable Policy Versions and Narrowing Scope Intersection
+
+**Status:** Accepted
+
+All Policy types share one catalog and lifecycle. A Policy has one mutable
+Draft, immutable Versions, and explicit Bindings; it has no branches or movable
+latest-Version runtime pointer. Publishing and Binding are separate actions.
+Organization and Workspace Policies compose by intersection, and a lower scope
+may only narrow outer authority. Agent Revisions pin exact Policy Versions, and
+Run Manifests preserve all contributing Version identities and digests.
+
+Policy simulation is side-effect free. Approval Policies configure whether an
+Agent action is allowed, denied, or requires its authenticated task requester;
+they do not create an Admin approval queue or absorb business workflow
+approvals.
+
+**Reason:** Exact immutable inputs make authorization reproducible while a
+narrowing intersection prevents local configuration from bypassing enterprise
+guardrails. Separating authoring, publication, binding, simulation, and approval
+decisions keeps each surface understandable and auditable. See
+[ADR-028](adr-028-policy-lifecycle-and-scope-intersection.md).
+
+### ADR-029: Retention Classes, Legal Holds, and Verifiable Deletion
+
+**Status:** Accepted; exact durations deferred
+
+Retention is classified by Audit metadata, operational metadata, prompts and
+outputs, terminal streams, Artifacts, and Evaluation fixtures. Organization
+settings define permitted bounds; Workspace settings may choose values within
+those bounds. Audit metadata and signed integrity checkpoints have a minimum
+retention floor, while content classes may expire earlier. The product does not
+hard-code universal day counts before Legal and Security approve deployment
+defaults.
+
+Legal Holds identify an owner, authority basis, scope or selector, and affected
+data classes. An active Hold blocks scheduled deletion and key destruction for
+matching content and evidence. Deletion is authorized, asynchronous, and
+auditable: it enters pending state, re-checks Holds and minimum retention,
+deletes permitted content and keys, and retains a digest-preserving Tombstone.
+Hold creation, release, deletion, failure, retry, and blocked records are Audit
+events.
+
+**Reason:** Separating retention classes keeps sensitive content shorter-lived
+than compliance metadata without making a false universal legal assumption.
+Holds and Tombstones preserve defensible evidence while allowing eligible
+content to be removed. See [ADR-029](adr-029-retention-and-legal-hold.md).
+
+### ADR-030: Single Platform Settings Route and Bounded Workspace Overrides
+
+**Status:** Accepted
+
+Admin exposes one `/platform/settings` route with an explicit
+`Organization | Workspace` scope switcher. Organization Administrators own
+organization defaults and non-negotiable bounds. Workspace settings inherit or
+narrow within those bounds and cannot broaden organization authority or
+capacity. There is no separate Workspace Settings page.
+
+The page is a composed projection over typed Organization, Retention, Legal
+Hold, Classification, Limit, and Environment resources. It does not create a
+second Policy, Integration, Provider, Runner, or Audit configuration surface.
+Mutations use section-scoped validation, semantic diffs, expected-ETag conflict
+handling, explicit confirmation, and attributable Audit events. Recent activity
+links to the canonical Audit explorer; retention deletion remains an
+asynchronous, Hold-aware workflow.
+
+**Reason:** One scope-aware entry point makes inheritance and boundaries visible
+without duplicating Workspace administration or hiding ownership behind a
+god-object. Typed resource ownership keeps authorization, lifecycle, and audit
+semantics consistent across platform controls. See
+[ADR-030](adr-030-platform-settings-scope-and-composition.md).
 
 ## 2. Deferred Questions
 
@@ -356,8 +434,10 @@ existing manager; keep a development-only encrypted local adapter.
 Set default retention for prompts, outputs, terminal streams, artifacts, audit
 metadata, and evaluation fixtures with legal and security stakeholders.
 
-**Default:** Shorter retention for content than audit metadata, configurable by
-workspace within organization limits.
+**Accepted principle:** Shorter retention for content than Audit metadata,
+organization-defined bounds, Workspace values within those bounds, Legal Hold
+override, and digest-preserving Tombstones. Exact durations remain deferred and
+are not product constants. See ADR-029.
 
 **Decision gate:** Before production pilot data is admitted.
 

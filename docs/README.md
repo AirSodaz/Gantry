@@ -38,6 +38,9 @@ server-to-server Agent Invocation API while retaining their own user interface.
 | [ADR-025](adr-025-flat-agent-revisions.md) | Flat Agent Draft, Revision, test Deployment, Production, and rollback model |
 | [ADR-026](adr-026-agent-scoped-permissions.md) | Independent per-Agent metadata, configuration, edit, and execution permissions |
 | [ADR-027](adr-027-external-skill-package-versions.md) | External Skill package versions, imported artifacts, and coexistence for testing |
+| [ADR-028](adr-028-policy-lifecycle-and-scope-intersection.md) | Immutable Policy Versions, explicit Bindings, and narrowing scope intersection |
+| [ADR-029](adr-029-retention-and-legal-hold.md) | Retention classes, Legal Holds, and verifiable deletion with Tombstones |
+| [ADR-030](adr-030-platform-settings-scope-and-composition.md) | Single Platform Settings route and bounded Workspace overrides |
 
 ## Design Status
 

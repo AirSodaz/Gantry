@@ -132,7 +132,7 @@ not empty landing pages.
 
 1. Overview
 2. Build: Agents, Skills, Plugins, Tools
-3. Operate: Runs, Approvals, Evaluations
+3. Operate: Runs, Evaluations
 4. Govern: Integrations, Policies, Audit
 5. Platform: Runners, Model Providers, Credentials, Settings
 
@@ -155,9 +155,9 @@ workspace-scoped list.
 The first viewport is an operational summary rather than a welcome page. The
 default scope is the selected workspace; organization administrators may choose
 `All workspaces`. It
-contains active runs, approval backlog, failure rate, runner capacity, recent
-policy denials, quarantined agents, and evaluation regressions. Each metric
-links to a filtered working view.
+contains active runs, runs awaiting requester action, failure rate, runner
+capacity, recent policy denials, quarantined agents, and evaluation regressions.
+Each metric links to a filtered working view.
 
 ### Agent List
 
@@ -174,7 +174,7 @@ Tabs:
 - Runs
 - Evaluations
 - Access
-- Audit
+- Recent activity (links to the global Audit explorer)
 
 The overview presents employee-facing description, ownership, current release,
 health, usage, and risk summary. It does not make the editable draft look like
@@ -236,21 +236,14 @@ operator session.
 Raw chain-of-thought is never requested or displayed. "Reasoning" in the UI
 means model-provided concise rationale summaries, plans, and observable actions.
 
-### Approval Queue
-
-The queue is optimized for comparison and fast triage. Each row shows age,
-requester, agent, action class, risk, target, and expiry. The detail view shows
-the exact proposed action, redacted sensitive fields, relevant diffs, policy
-reason, prior approvals, and consequences of approval or rejection.
-
-Bulk approval is prohibited in the first release.
-
 ### Evaluation Workspace
 
-The suite page compares baseline and candidate results using aligned tables and
-diffs. It separates deterministic assertion failures from probabilistic score
-changes. Cost, latency, policy, VCR mismatches, filesystem deltas, and database
-deltas are independently filterable.
+The workspace uses `Suites`, `Runs`, and `Regressions` views. Suite and run pages
+compare baseline and candidate results using aligned tables and diffs. They
+separate deterministic assertion failures from probabilistic score changes.
+Cost, latency, policy, VCR mismatches, filesystem deltas, and database deltas
+are independently filterable. Agent Evaluations reuses the same result
+projection with a fixed Agent filter.
 
 ### Integrations
 
@@ -269,6 +262,48 @@ server-to-server API. It includes:
 Client credentials and private keys are never displayed after provisioning.
 The Admin UI shows identifiers, fingerprints, expiry, and rotation state. Test
 invocation uses non-production data and an explicit development publication.
+
+### Audit Explorer
+
+Audit is one cross-resource Admin explorer, not a repeated tab on every
+resource. It searches immutable events by resource, actor, scope, outcome,
+correlation ID, linked Run/Revision/Policy Version, and time. Resource pages
+show only a compact Recent activity slice and link to the same explorer with
+resource filters encoded in the URL.
+
+Audit detail is read-only and shows the event envelope, actor, action, outcome,
+linked evidence, redaction state, and authorized export controls. Run timelines,
+Policy Version history, and Webhook delivery history remain domain-specific
+views; they link to Audit but do not create another audit table or export
+system. Export controls are visible only to Organization Administrators,
+Security Reviewers, and Auditors within their assigned scope; Operators can
+inspect and locate evidence but cannot export it.
+
+### Platform Settings
+
+`/platform/settings` is one route with an explicit `Organization | Workspace`
+scope switcher. It does not create a parallel Workspace Settings page. The
+selected scope is visible in the page header, and Workspace scope additionally
+shows the selected Workspace and the organization bounds that constrain it.
+
+The first viewport is an effective-settings summary: inherited versus overridden
+values, validation conflicts, pending deletion or Legal Hold warnings, and a
+compact Settings-filtered Recent activity list. A persistent section index leads
+to Organization, Retention, Legal Holds, Data Classifications, Limits and
+Quotas, and Environments.
+
+Each value displays its source, effective value, organization bound, last actor,
+and validation state. Workspace users can reset an override to inheritance, but
+cannot widen a bound. Provider budgets, runner capacity, Integration quotas,
+credential secrets, and Policy Bindings remain on their owning pages; Settings
+links to those pages instead of duplicating their editors.
+
+Settings mutations use section-scoped forms, semantic diffs, explicit save
+confirmation, expected-ETag conflict handling, and visible correlation IDs.
+`Validate` is side-effect free. Retention deletion is asynchronous and shows
+estimated scope, next eligible window, active Holds, blocked records, retries,
+and tombstone outcomes. No control is optimistic for security-sensitive or
+destructive changes, and all mutation outcomes link to the global Audit explorer.
 
 ## 5. Directional Gantry Copilot Information Architecture
 
@@ -314,12 +349,48 @@ The task screen prioritizes outcome and current status:
 Terminal output is not exposed by default. Agents designed for developer use
 may expose a sanitized command-log component, but never an interactive shell.
 
+### My Tasks and History
+
+`My tasks` is the Copilot history projection for tasks initiated by the current
+employee or otherwise visible through an explicit delegated context. It is
+organized around user intent rather than infrastructure attempts. Rows show
+agent, task title or first message, current outcome, last activity, pending
+requester action, and artifact availability. Filters cover status, agent,
+time, and whether the task needs requester input; they never expose another
+employee's operational runs.
+
+Task detail may expand a compact `Run attempts` section showing attempt number,
+status, start and completion time, and a user-facing failure or retry reason.
+Selecting an attempt keeps the user in the task conversation and activity
+stream. It does not open Admin runner, lease, credential, raw prompt, or
+cross-user diagnostic data. Retry is a Task command that creates a new Run and
+returns to the same conversation.
+
+The history view and active task view share the same reconnectable event cursor
+and artifact authorization rules. A task may remain open after an action is
+rejected or expires, so the composer remains available for requester guidance.
+
+### Approval Queue
+
+The Copilot queue contains only Agent action approvals from tasks initiated by
+the current employee. Each row shows age, agent, action class, risk, target, and
+expiry. Business workflow approvals remain in the owning tool or enterprise
+system. Bulk approval is prohibited.
+
 ### Approval Detail
 
 The employee-facing approval page uses plain business language and includes an
 expandable technical payload for qualified users. Approve and reject actions
-require a reason when policy specifies one. Expired or superseded requests are
-read-only.
+require a reason when policy specifies one. Only the authenticated task
+requester can decide. Expired or superseded requests are read-only. After
+rejection or expiry, the task returns to the conversation with a visible denial
+or expiry event and an enabled composer so the requester can tell the Agent how
+to revise the action or continue differently.
+
+Copilot approval pages are the only decision surface for Agent action approvals.
+Admin Run and Audit pages may show the same approval request, decision, expiry,
+and outcome as immutable evidence, but never expose an approve or reject
+command.
 
 ## 6. Realtime and Reconnection Behavior
 
@@ -388,7 +459,8 @@ mobile widths where relevant:
 
 - Admin agent creation through publication review.
 - Admin live run inspection, reconnect, cancellation, and failure diagnosis.
-- Admin and employee approval flows, including expiry and supersession.
+- Copilot requester approval flows plus read-only Admin Run/Audit evidence,
+  including expiry and supersession.
 - Approval races with cancellation, expiry, duplicate decisions, policy
   revocation, and runner recovery, proving that the UI renders the server's
   winning state and never implies that a stale approval executed an action.

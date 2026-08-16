@@ -29,7 +29,6 @@ not add empty section landing pages.
 | Build | Plugins | `/plugins` | Organization catalog with workspace enablement | Next |
 | Build | Tools | `/tools` | Organization inventory with workspace availability | Next |
 | Operate | Runs | `/runs` | Workspace or all workspaces | Later |
-| Operate | Approvals | `/approvals` | Assigned and administratively visible requests | Later |
 | Operate | Evaluations | `/evaluations` | Workspace | Later |
 | Govern | Integrations | `/integrations` | Organization | Later |
 | Govern | Policies | `/policies` | Organization and workspace | Later |
@@ -87,10 +86,9 @@ require an explicit confirmation surface with the affected scope and result.
 | --- | --- |
 | Organization Administrator | All pages and all-workspace aggregation; installation, platform, identity, and emergency controls |
 | Workspace Agent Editor | Agents, Skills, enabled Plugins, available Tools, workspace Runs and Evaluations |
-| Security Reviewer | Agent reviews, Plugin/Tool risk, Policies, relevant Approvals, Audit, and evaluation evidence |
-| Operator | Overview, Runs, Approvals, runtime artifacts, Runners, provider health, and operational Audit |
-| Auditor | Read-only Overview, Runs, Approvals, Integrations, Policies, and Audit within assigned scope |
-| Approver | Assigned Approvals and the minimum linked run/action context needed to decide safely |
+| Security Reviewer | Agent reviews, Plugin/Tool risk, Policies, Audit, evaluation evidence, and scoped Audit export |
+| Operator | Overview, Runs, runtime artifacts, Runners, provider health, and read-only operational Audit |
+| Auditor | Read-only Overview, Runs, Integrations, Policies, Audit, and scoped Audit export within assigned scope |
 
 Navigation hides pages the actor cannot use. Direct navigation still performs
 server authorization and returns a non-leaking denied state.
@@ -129,10 +127,8 @@ server authorization and returns a non-leaking denied state.
 
 | Page | Route | Responsibility | Delivery |
 | --- | --- | --- | --- |
-| Run list | `/runs` | Search, filter, compare, and operate task attempts | Later |
+| Run list | `/runs` | Cross-actor operational search, diagnosis, comparison, and authorized task-attempt operations | Later |
 | Run detail | `/runs/:runId` | Timeline, output, tools, approvals, artifacts, configuration, and diagnostics | Later |
-| Approval queue | `/approvals` | Triage actionable, waiting, expired, and resolved approvals | Later |
-| Approval detail | `/approvals/:approvalId` | Review one exact action digest and decide when authorized | Later |
 | Evaluation suite list | `/evaluations` | Browse suites, coverage, regressions, and publication gates | Later |
 | Evaluation suite | `/evaluations/suites/:suiteId/*` | Author cases, versions, assertions, and gate policy | Later |
 | Evaluation run | `/evaluations/runs/:runId` | Compare candidate/baseline results and inspect failures | Later |
@@ -143,6 +139,8 @@ server authorization and returns a non-leaking denied state.
 | --- | --- | --- | --- |
 | Integration list | `/integrations` | Manage registered enterprise clients and publications | Later |
 | Integration resource | `/integrations/:integrationId/*` | Clients, agent contracts, webhooks, quotas, credentials, and audit | Later |
+| Agent publication | `/integrations/:integrationId/publications/:publicationId` | Inspect one exact Agent Revision contract exposed to the Integration | Later |
+| Webhook endpoint | `/integrations/:integrationId/webhooks/:webhookId` | Configure endpoint metadata and inspect signed delivery history | Later |
 | Policy list | `/policies` | Browse policy sets by type, scope, state, and usage | Later |
 | Policy resource | `/policies/:policyId/*` | Edit drafts, review versions, simulate, publish, and inspect bindings | Later |
 | Audit explorer | `/audit` | Search attributable configuration and runtime records | Later |
@@ -158,7 +156,7 @@ server authorization and returns a non-leaking denied state.
 | Model Provider detail | `/platform/model-providers/:providerId` | Route configuration, allowed models, usage, incidents, and audit | Later |
 | Credentials | `/platform/credentials` | Credential references, modes, owners, expiry, rotation, and usage | Later |
 | Credential detail | `/platform/credentials/:credentialId` | Metadata and policy without revealing secret values | Later |
-| Settings | `/platform/settings` | Organization identity, retention, classifications, limits, and environments | Later |
+| Settings | `/platform/settings` | Scope-aware organization defaults, Workspace overrides, retention, Legal Holds, classifications, limits, and environments | Later |
 
 ## 5. Overview Page Specification
 
@@ -178,10 +176,10 @@ welcome page and does not duplicate complete operational tables.
 
 ### Primary Functions
 
-1. Show an attention queue ordered by urgency: incidents, blocked runs, aging
-   approvals, failed publication gates, quarantined assets, expiring
+1. Show an attention queue ordered by urgency: incidents, blocked runs, runs
+   awaiting requester action, failed publication gates, quarantined assets, expiring
    credentials, and unhealthy providers or runner pools.
-2. Summarize active runs, queue age, failure rate, approval wait, artifact
+2. Summarize active runs, queue age, failure rate, requester wait, artifact
    failures, and evaluation regressions for the selected scope.
 3. Show recent Agent publications and permission-broadening reviews.
 4. Show runtime capacity and provider health as organization-scoped signals.
@@ -358,7 +356,7 @@ The Agent resource uses stable nested routes and the following tabs:
 | Runs | `/agents/:agentId/runs` | Filter runtime attempts for this Agent and exact Revisions | Later |
 | Evaluations | `/agents/:agentId/evaluations` | Compare suite results and publication-gate evidence by Revision | Later |
 | Access | `/agents/:agentId/access` | Owners, editors, reviewers, publishers, consumers, and integration visibility | Later |
-| Audit | `/agents/:agentId/audit` | Immutable configuration, review, deployment, access, and emergency events | Later |
+| Recent activity | `/audit?resource_type=agent&resource_id=:agentId` | Recent immutable activity with a link to the global Audit explorer | Later |
 
 `Review` and `Publish` are not permanent tabs. They are Revision-bound
 workflows launched from Design, Versions, or a Revision detail and use
@@ -610,11 +608,14 @@ Access acceptance criteria:
 - Direct URLs and API commands enforce the same effective capability result as
   the page.
 
-### Audit
+### Recent Activity
 
-Audit includes Draft creation/archive, Revision commits, validation, comparison,
-review decisions, test/Production deployment changes, rollback, quarantine,
-access changes, effective-access denials, and denied consequential commands.
+The Agent Overview and Versions views show a compact Recent activity slice for
+Draft creation/archive, Revision commits, validation, comparison, review
+decisions, test/Production deployment changes, rollback, quarantine, access
+changes, effective-access denials, and denied consequential commands. The slice
+links to `/audit?resource_type=agent&resource_id=:agentId`; the canonical Audit
+explorer owns full filtering, event detail, and export.
 
 ### Agent Acceptance Criteria
 
@@ -688,7 +689,679 @@ Revisions and run manifests retain the selected source and digest.
   imported artifact.
 - Agent bindings and direct API calls enforce the same exact-artifact behavior.
 
-## 8. Cross-Page Conventions
+## 8. Plugin Page Specifications
+
+### Plugin Catalog
+
+The Plugin catalog is organization-scoped and shows installed packages, source
+provenance, publisher, available versions, review status, compatibility, risk,
+and workspace enablement counts. Workspace context filters the enablement view
+but never hides organization-level installation state.
+
+### Install Plugin
+
+The install flow reviews one immutable Plugin Version before installation. It
+shows publisher and provenance, contained Skills, Tool Servers and Tool
+Descriptors, dependencies, configuration schemas, permission or effect
+changes, compatibility requirements, risk findings, and content digest.
+Installation is an organization action and does not enable the Plugin for any
+workspace or bind it to an Agent.
+
+### Plugin Resource
+
+The Plugin resource uses stable sections for Overview, Versions, Workspace
+Enablement, Assets, and Health. Versions are read-only immutable package
+records. A version detail shows its manifest, contained assets, dependency and
+compatibility results, digest, review evidence, and Agent usage; it never edits
+package contents. Overview includes Recent activity and links to the global
+Audit explorer with the Plugin pre-filtered.
+
+### Workspace Enablement
+
+Workspace Enablement lists every exact Plugin Version available in the selected
+workspace. Administrators may enable or disable versions independently, and
+multiple versions of one Plugin may coexist for testing or migration. The page
+does not offer a default version or automatic upgrade. Enablement checks asset
+compatibility, namespace collisions, policy requirements, and workspace
+capacity before committing an auditable change.
+
+Plugin pages can link to Agents that bind a version, but Agent-specific Skill
+and Tool selection remains in the Agent designer. Enabling a Plugin never
+auto-binds contained assets.
+
+### Plugin Acceptance Criteria
+
+- Organization installation, review, Workspace enablement, and Agent binding
+  are separate actions with separate authorization checks.
+- Multiple exact Plugin Versions can be enabled in one Workspace without an
+  implicit default or silent replacement.
+- Version detail is immutable and exposes contained assets, digest, provenance,
+  compatibility, risk, and review evidence.
+- Namespace, dependency, and policy conflicts block enablement with actionable
+  findings.
+- Installation or enablement never grants an Agent contained Skill or Tool
+  authority automatically.
+- Enablement, disablement, review, conflict, and quarantine events are auditable.
+
+## 9. Tools Page Specifications
+
+### Tool Inventory
+
+`/tools` is one organization-scoped inventory with segmented views for
+Built-in, MCP, and CLI tools. The default table shows fully qualified name,
+provider or Tool Server, descriptor version, effect and idempotency class,
+data classification, trust tier, health, activation state, and Agent usage.
+Workspace context filters availability and enablement without hiding the
+organization-owned descriptor source.
+
+Tool inventory search covers name, server, provider type, descriptor version,
+effect, data class, lifecycle state, and Agent usage. Tool inventory commands
+are limited to opening the owning Server or Descriptor route and reviewing
+activation or deprecation state; Agent-specific authority is configured only
+in Agent Designer.
+
+### Tool Server
+
+The Tool Server resource uses sections for Overview, Connection, Discovery,
+Descriptors, Health, and Credentials. Connection and credential fields show
+references and capabilities, never secret values. Health includes last check,
+latency or availability evidence, discovery time, and degraded or quarantined
+state. Overview includes Recent activity and links to the global Audit explorer
+with the Tool Server pre-filtered.
+
+MCP discovery is an explicit review workflow. A discovery result is shown as a
+proposed Descriptor Version with schema, effect, idempotency, classification,
+credential, destination, and compatibility changes. Discovery cannot add or
+replace an active descriptor silently. Multiple compatible Descriptor Versions
+for one fully qualified tool name may remain active at once; no version is
+treated as a default.
+
+### Tool Descriptor
+
+Descriptor detail is an immutable, read-only route. It shows the fully
+qualified name, version and digest, input/output schemas, effect and
+idempotency, data classification, destination and credential requirements,
+limits, deprecation or replacement metadata, activation evidence, and Agent
+usage. The route links to the owning Tool Server and to Agent bindings without
+editing those bindings inline.
+
+Descriptor activation or deprecation requires the applicable organization or
+workspace permission, compatibility validation, namespace checks within the
+selected version, and an audit event. A new version is not rejected merely
+because another version of the same fully qualified name is active. Existing
+Agent Revisions remain pinned to their exact descriptor even when a newer
+descriptor is discovered or activated.
+
+### CLI Command Profile
+
+CLI profiles use the same inventory and descriptor evidence model but expose
+structured executable identity, argument schema, filesystem scope, environment
+allowlist, image/runtime requirement, effect, idempotency, and interceptor
+policy. The page never accepts arbitrary command text as a production profile.
+
+### Tools Acceptance Criteria
+
+- Built-in, MCP, and CLI assets are discoverable from one inventory with clear
+  provider-type segmentation.
+- Tool Server connection metadata and secrets remain separate from immutable
+  Tool Descriptor content.
+- MCP discovery creates a proposed descriptor and never silently changes an
+  active descriptor or Agent Revision.
+- Descriptor activation blocks unresolved schema, per-version namespace,
+  compatibility, credential, destination, and policy conflicts with actionable
+  findings; same-name versions may coexist when each binding selects an exact
+  version.
+- Descriptor routes are read-only; Agent-specific narrowing and approvals are
+  configured in Agent Designer.
+- Descriptor activation, deprecation, quarantine, discovery, and health changes
+  are attributable and auditable.
+
+## 10. Operate Page Specifications
+
+### Runs Workbench
+
+`/runs` is the global operational workbench. Its table supports filters for
+workspace, Agent, exact Revision hash, Deployment, actor, integration,
+status, risk, runner, model route, start time, and failure class. The default
+view prioritizes active, blocked, failed, and recently completed runs without
+losing access to historical runs.
+
+The Agent route `/agents/:agentId/runs` is the same run projection with a fixed
+Agent filter and preserves the global query controls. A run row shows task and
+run identifiers, Agent and Revision, Deployment, actor, state, elapsed time,
+tool or approval activity, failure summary, and last event time. It never
+silently substitutes the current Production Revision for the recorded one.
+
+### Run Detail
+
+`/runs/:runId` presents a durable timeline with assignment, lease, model,
+prompt/Skill provenance summary, tool calls, approvals, policy decisions,
+artifacts, checkpoints, resource usage, runner diagnostics, and terminal state.
+Sensitive prompt, credential, and internal Tool Binding content follows the
+actor's configuration-read and run-read permissions; redaction is visible and
+auditable.
+
+The header identifies the exact Agent Revision, Deployment, actor, integration,
+policy snapshot, and run-manifest digest. Configuration links open immutable
+evidence views rather than mutable Agent drafts. Timeline filters can isolate
+semantic events, model output, tool effects, approvals, artifacts, or errors.
+
+### Admin and Copilot Run Boundary
+
+Admin Runs are an organization or Workspace-scoped operational projection. The
+workbench supports cross-actor search, failure diagnosis, runner and lease
+evidence, model and Tool details, policy decisions, resource usage, and
+authorized operational commands. It is not a second approval inbox: approval
+evidence is read-only and only the authenticated task requester can decide.
+
+Copilot does not expose this global operational table. Its `My tasks` and task
+detail views are requester-scoped, conversation-first projections that show the
+task's Run attempts, user-visible activity, approvals, and artifacts. Copilot
+does not expose runner internals, raw prompts, credentials, unrestricted
+terminal output, or cross-user operational data. Both projections link the same
+immutable Task, Run, event, and artifact identities when the actor is allowed
+to see them.
+
+### Run Actions
+
+Available commands depend on state and independent permissions:
+
+- `Cancel` requests cooperative cancellation and shows lease, runner, and
+  cleanup progress.
+- `Retry` creates a new Run and requires an explicit choice to reuse the
+  original Revision or target the current authorized Production Deployment;
+  it never rewrites the original Run.
+- `Quarantine Agent` or `Quarantine Deployment` opens the owning emergency
+  workflow and blocks new claims without changing historical evidence.
+- `Inspect approval evidence` opens the read-only action digest, requester
+  decision, expiry, and outcome in Run Detail; `Open artifact` navigates to the
+  exact linked resource.
+- `Inspect tool call` shows the action digest, approval, policy decision,
+  result classification, and redacted output permitted to the actor.
+
+Destructive, authority-broadening, or external-effect commands require a
+confirmation surface with scope, expected result, and correlation ID. Run
+actions are server-authorized and remain available through direct routes only
+when the same effective permission is present.
+
+### Runs Acceptance Criteria
+
+- Global and Agent-scoped run lists use the same data contract and differ only
+  by fixed filtering.
+- Every run identifies one immutable Agent Revision, Deployment, run-manifest
+  digest, actor, and effective policy context.
+- Admin Run detail is operational and cross-actor within the authorized scope;
+  Copilot task detail is requester-scoped and conversation-first. Neither
+  projection can approve an action from the other surface.
+- Retry creates a new attributable Run with an explicit Revision target.
+- Cancellation, quarantine, and external-effect controls fail closed when
+  authorization or runner state is unavailable.
+- Run detail preserves event ordering, redaction, artifact authorization, and
+  audit links across reloads and reconnects.
+- Direct URLs, table actions, and API commands enforce identical effective
+  permissions.
+
+### Evaluations Workspace
+
+`/evaluations` is one workspace-scoped evaluation workbench with `Suites`,
+`Runs`, and `Regressions` views. Filters for Agent, candidate Revision,
+Production baseline, suite, owner, gate, status, risk, environment, and time are
+stored in the URL. `/agents/:agentId/evaluations` is the same result projection
+with a fixed Agent filter.
+
+### Suites
+
+Suites lists purpose, owner, immutable latest version, case count, deterministic
+and probabilistic coverage, publication-gate usage, recent pass rate, and last
+run. A Suite resource uses Overview, Cases, Versions, Gates, and Runs sections.
+Overview includes Recent activity and links to the global Audit explorer with
+the Suite pre-filtered. Editable suite and case working copies are distinct
+from immutable Golden Case and Suite Versions used by evaluation runs.
+
+Suite authoring supports authored cases and reviewed sanitized production-run
+exports. Each case exposes inputs, fixtures, assertions, rubrics, provenance,
+redaction findings, compatibility constraints, and effect-safety checks. Large
+fixtures and expected outputs are represented by content-addressed references.
+
+### Evaluation Runs
+
+Starting an Evaluation Run requires an exact candidate Agent Revision, an
+immutable Suite Version, an evaluation environment, and an optional exact
+baseline Revision. Mutable Agent Drafts and mutable suite working copies cannot
+execute. The start confirmation summarizes case count, model/evaluator policy,
+fixture environment, expected cost, write interception, and absence of
+production credentials.
+
+The Runs view shows candidate and baseline, suite version, environment, status,
+deterministic pass rate, probabilistic score summary, policy violations,
+fixture misses, cost, latency, and gate result. Evaluation Run detail separates
+deterministic assertions from probabilistic scores and exposes aligned evidence
+for tool calls, policy decisions, VCR matches, filesystem/database deltas,
+artifacts, cleanup, and environment integrity.
+
+### Regressions
+
+Regressions groups newly failing deterministic cases, policy or side-effect
+violations, quality-distribution changes, latency/cost movement, unexpected
+tool use, fixture misses, and environment/evaluator drift. Comparisons are
+marked invalid when candidate and baseline evidence is not materially
+comparable. Every regression links to the exact case result and both immutable
+Revision/evaluation manifests.
+
+### Publication Gates
+
+Gate status is evidence attached to an Agent Revision and Review; it does not
+publish the Agent automatically. Overrides require authorized review, reason,
+scope, and expiry, and never modify the underlying Evaluation Run. Publication
+rechecks that required Suite Versions, results, and overrides still apply to the
+exact candidate Revision.
+
+### Evaluations Acceptance Criteria
+
+- Suites, Runs, and Regressions share one workspace and URL-preserved filters;
+  Agent Evaluations differs only by its fixed Agent scope.
+- Every Evaluation Run binds an exact Agent Revision, Suite Version, fixture
+  manifest, runtime image, model/evaluator policy, and environment digest.
+- Evaluation mode cannot resolve production credentials or reach real write
+  targets through sandbox or trusted gateways.
+- Deterministic evidence and probabilistic scoring are visually and
+  semantically distinct.
+- Invalid baseline comparisons are labeled and cannot satisfy a publication
+  gate silently.
+- Gate overrides are scoped, expiring, attributable, and auditable without
+  rewriting results.
+
+## 11. Integrations Page Specifications
+
+### Integration Directory
+
+`/integrations` is an organization-scoped directory of external enterprise
+systems. Each row shows Integration name, owner, environments, client status,
+published Agents, authority modes, webhook health, recent requests, quota
+state, and last activity. Search and filters cover owner, environment, status,
+authority mode, published Agent, webhook health, and recent failures.
+
+Creating an Integration establishes its identity and ownership only. It does
+not issue a client credential, publish an Agent, or grant invocation authority
+implicitly.
+
+### Integration Resource
+
+The resource uses Overview, Clients, Agent Publications, Webhooks, and Usage
+sections. Overview summarizes environments, owners, active publications,
+credential expiry, webhook incidents, quota pressure, and recent invocation
+outcomes without exposing secret values or internal Agent configuration. It
+also shows Recent activity and links to the global Audit explorer with the
+Integration pre-filtered.
+
+### Clients
+
+Clients are environment-bound OAuth registrations with audience, approved
+grant and authentication modes, owner, status, credential fingerprint, issue
+and expiry time, and rotation history. A generated secret or private key is
+shown only once. Rotation can overlap old and new credentials for a bounded
+interval and is independently auditable. Disabling a client blocks new calls
+without deleting historical tasks, runs, deliveries, or evidence.
+
+### Agent Publications
+
+An Agent Publication is nested under one Integration and pins an exact Agent
+Revision, input and output contract versions, workspace, environment,
+application or verified delegated-user authority mode, allowed scopes,
+visible artifacts and event projection, quotas, budgets, retention, and
+effective interval. Publication cannot broaden the selected Agent Revision's
+Tools, credentials, destinations, or policy authority.
+
+Creating or changing a Publication uses a semantic diff and compatibility
+check. The detail route shows the exact Revision and contract digests, effective
+authority, client/environment bindings, usage, recent failures, review evidence,
+and audit history. Expiry or revocation blocks new invocations while preserving
+existing Task and Run evidence. There is no global Publications page; Agent
+Overview and Versions may link back to consuming Integration Publications.
+
+### Webhooks
+
+Webhook endpoints are nested under an Integration and record environment,
+approved HTTPS destination, authentication mode, subscribed event projection,
+status, signing-key fingerprint, rotation state, and delivery policy. Private
+keys and secrets are never shown after creation.
+
+Webhook detail shows ordered delivery attempts, event and delivery IDs,
+signature-key reference, response class, latency, retry schedule, and terminal
+state. Explicit redelivery reuses the same immutable event and creates an
+auditable delivery attempt; it never changes the Task result. Destination
+changes require SSRF/private-network validation and a confirmation of affected
+subscriptions.
+
+### Usage
+
+Usage aggregates requests, concurrency, latency, errors, model/tool cost,
+artifact transfer, quota consumption, webhook delivery, and delegated-user
+failures by environment, client, Publication, Agent, and time. Metrics link to
+filtered Runs and delivery evidence rather than becoming an alternate run
+explorer.
+
+### Integrations Acceptance Criteria
+
+- Integration identity, client credential issuance, Agent Publication, and
+  webhook registration are separate authorized actions.
+- Every invocation resolves one active client, one exact Agent Publication, one
+  Agent Revision, and one input/output contract pair.
+- Application identity cannot invent a delegated user, and delegated identity
+  is preserved independently in policy and audit evidence.
+- Publication never broadens Agent authority and fails closed on incompatible
+  contracts, expired clients, revoked scope, or invalid environment binding.
+- Secret values are one-time or never displayed; normal pages expose only
+  references, fingerprints, status, and rotation metadata.
+- Webhook delivery is signed, idempotent, auditable, and independent of Task
+  outcome.
+- Revocation and expiry block new work without rewriting historical evidence.
+
+## 12. Policies Page Specifications
+
+### Policy Catalog
+
+`/policies` is the unified organization and workspace policy catalog. It does
+not split approval, model, network, command, credential, data, budget,
+retention, or evaluation policies into separate top-level pages. Each row shows
+the Policy name, type, owning scope, owner, Draft validation state, latest
+immutable Version, active Bindings, affected Agents, and last change. Filters
+cover type, organization or Workspace scope, lifecycle state, validation state,
+binding target, affected Agent, owner, and recent changes.
+
+The catalog distinguishes a Policy's authored state from its effective use. A
+valid Draft is not active, publishing a Version does not bind it, and removing
+a Binding does not delete the immutable Version or its evidence.
+
+### Policy Resource
+
+`/policies/:policyId/*` uses Overview, Draft, Versions, Bindings, and Simulation
+sections. The header always shows Policy type, owning scope, owner,
+Draft state, latest Version, active Binding count, and whether a stricter
+organization Policy also constrains the selected Workspace or Agent.
+
+Overview summarizes purpose, schema, scope, owners, current Draft, latest
+Version, active Bindings, affected resources, recent simulations, and recent
+changes. It includes Recent activity and links to the global Audit explorer with
+the Policy pre-filtered. It links to effective-policy explanations rather than
+presenting a single editable "effective policy" document.
+
+### Draft
+
+Each Policy has one mutable Draft. Editing uses schema-aware forms for the
+Policy type, with a structured source view only where the typed form cannot
+express an advanced supported field. The editor exposes validation findings,
+field provenance, unsaved state, optimistic-concurrency conflicts, and a
+semantic comparison with one selected immutable Version.
+
+Saving a Draft does not change runtime authorization. Publishing requires a
+valid Draft, a required change message, the exact Draft ETag, and confirmation
+of affected Bindings and Agents. A Policy has no named Drafts, branches,
+merge, or rebase workflow.
+
+### Versions
+
+Publishing creates an immutable Policy Version with an exact Version ID,
+content digest, schema version, author, message, creation time, validation
+evidence, and canonical policy document. Versions can be compared semantically
+and inspected independently, but never edited or deleted while referenced by a
+Binding, Agent Revision, Run Manifest, review, simulation, or audit event.
+
+Version history is linear by creation time and does not imply a branch graph.
+Publishing a Version does not automatically replace any active Binding. An
+operator changes runtime behavior only by selecting that exact Version in a
+Binding or by publishing an Agent Revision that pins it.
+
+### Bindings
+
+Bindings show which exact Policy Version applies to an Organization,
+Workspace, Agent Revision, Deployment, Integration Publication, or governed
+platform resource. Each row shows target, environment, effective interval,
+binding status, actor, reason, and the stricter outer Policies that also apply.
+
+Organization and Workspace Policies compose by intersection. A Workspace
+Binding may add restrictions or choose a narrower allowance, but cannot
+broaden an Organization Policy. Agent Revisions pin exact Policy Versions and
+remain constrained by both scopes; no movable "latest" or default Version is
+resolved at run time. If a proposed Binding would be ineffective or broader
+than an outer Policy, the UI explains the conflict and blocks activation rather
+than silently weakening or ignoring the outer rule.
+
+Binding changes show affected Agents, Deployments, Publications, and new-run
+behavior before confirmation. They do not rewrite existing Agent Revisions or
+historical Run Manifests. Emergency restriction or revocation uses an explicit
+auditable Binding or resource-state command, not mutation of a Version.
+
+### Simulation
+
+Simulation evaluates a selected Draft or immutable Version against a
+user-supplied scenario containing principal or client identity, Workspace,
+Agent Revision, environment, tool or model operation, normalized arguments,
+destination, credential mode, data classification, budget, and relevant prior
+approval state. It returns `allow`, `deny`, or `require_requester_approval`,
+the matched rules, contributing Policy Versions, ineffective lower-scope
+rules, and a concise explanation.
+
+A comparison mode evaluates the same scenario against the currently effective
+Bindings and a candidate Draft or Version. Simulation never executes a Tool,
+resolves a credential secret, creates an Approval Request, or changes a
+Binding. Results are evidence for review and troubleshooting, not reusable
+authorization decisions.
+
+### Approval Policy Boundary
+
+An Approval Policy configures whether a concrete Agent action is allowed,
+denied, or requires approval from its authenticated task requester, including
+risk criteria and expiry. It does not nominate generic approvers, create an
+Admin approval queue, or represent business workflow approvals. Pending Agent
+action approvals remain in Copilot; Admin Run Detail and Audit expose
+read-only evidence only.
+
+### Policies Acceptance Criteria
+
+- All Policy types share one catalog and the same Overview, Draft, Versions,
+  Bindings, and Simulation resource structure; Recent activity links to the
+  canonical global Audit explorer.
+- A Policy has one mutable Draft; runtime behavior references only immutable
+  exact Policy Versions and never a Draft or a movable latest pointer.
+- Publishing and Binding are separate authorized, attributable actions.
+- Organization and Workspace rules intersect, and no lower scope can broaden
+  an outer Policy or another effective authority boundary.
+- Agent Revisions and Run Manifests preserve exact Policy Version identities
+  and content digests for reproduction and audit.
+- Simulation is side-effect free and clearly distinguishes a candidate result
+  from current effective behavior.
+- Approval Policy configuration never creates an Admin approval inbox or takes
+  ownership of business approvals.
+
+## 13. Audit Page Specifications
+
+### Audit Explorer
+
+`/audit` is the only complete Admin audit experience. It searches immutable,
+attributable events across Agents, Skills, Plugins, Tools, Runs, Evaluations,
+Integrations, Policies, platform resources, and security controls. Filters
+include resource type and ID, scope, actor, event type, outcome, risk,
+correlation ID, linked Run/Revision/Policy Version, and time. URL state is
+shareable and direct navigation remains subject to the actor's scope.
+
+The default table shows time, actor, action, resource, scope, outcome, risk,
+correlation ID, and linked evidence. It is an evidence explorer, not a second
+configuration or operations workbench. It does not approve actions, edit
+resources, retry Runs, or change Policy Bindings.
+
+Resource pages expose only a compact Recent activity component. It shows a
+small, pre-filtered slice and links to `/audit` with the resource query encoded
+in the URL. Recent activity is not a second table contract, export workflow, or
+resource-specific audit store.
+
+### Audit Event Detail
+
+`/audit/events/:eventId` shows the immutable event envelope, actor and
+authentication context, resource and scope, action, outcome, timestamp,
+correlation and request IDs, policy/version references, and linked Run,
+Revision, Binding, Publication, Tool, Artifact, or Approval evidence. Sensitive
+payloads follow the same redaction and capability checks as the owning resource;
+redacted fields remain visibly marked.
+
+The detail page can open the owning resource or a filtered Run/Policy/Integration
+view, but those links never grant additional authority. Security Reviewers,
+Auditors, and Organization Administrators may export the selected evidence or a
+filtered result set as a signed, scoped package. Operators and other read-only
+actors can inspect and locate events but cannot export them. Export creation,
+download, and failure are themselves audit events; the export applies the
+caller's current scope and redaction rules and never includes secret values or
+raw chain-of-thought.
+
+### Audit Acceptance Criteria
+
+- `/audit` and `/audit/events/:eventId` are the only full Audit routes.
+- Agent, Plugin, Tool, Evaluation, Integration, and Policy resources use Recent
+  activity plus a pre-filtered link instead of separate Audit tables.
+- Run timelines, Policy Version history, Webhook delivery history, and similar
+  domain views remain available as operational evidence, but do not reimplement
+  the global Audit query or export contract.
+- Audit events are append-only, attributable, redacted by capability, and
+  linked to immutable resource identities and correlation IDs.
+- Audit export is a separate `audit.export` capability. It is granted to
+  Organization Administrators, Security Reviewers, and Auditors within scope;
+  Operator read access does not imply export.
+- Audit is read-only with respect to the owning resource; consequential actions
+  stay on their owning pages and are independently authorized.
+
+### Retention and Legal Hold
+
+Retention configuration lives under `/platform/settings`, not in the Audit event
+table. Organization Administrators define retention bounds for Audit metadata,
+operational metadata, prompts and outputs, terminal streams, Artifacts, and
+Evaluation fixtures. Workspace settings may choose values within those
+organization bounds; the product does not prescribe universal day counts before
+Legal and Security review.
+
+The settings view shows the effective value, organization bound, affected data
+classes, pending deletion jobs, and the next eligible deletion window. A Legal
+Hold names its owner, authority basis, scope or selector, affected data classes,
+status, and set or release history. Active Holds block scheduled deletion and
+key destruction for matching content and evidence.
+
+Deletion is an explicit, asynchronous workflow. The confirmation surface shows
+the estimated scope, matching Holds, protected records, and resulting
+tombstone behavior. Deletion requests, pending state, blocked records,
+completion, failure, retry, Hold creation, and Hold release are all visible in
+the global Audit explorer. Audit metadata and signed integrity checkpoints stay
+through the configured minimum even when content is removed; deleted content is
+represented by a digest-preserving Tombstone.
+
+## 14. Platform Settings Page Specification
+
+### Purpose and scope model
+
+`/platform/settings` is one Settings experience with an explicit scope switcher:
+
+```text
+Organization | Workspace
+```
+
+There is no separate Workspace Settings route. Organization Administrators
+maintain organization defaults and non-negotiable bounds. A Workspace can set
+an override only when it remains inside those bounds; a lower scope can narrow
+authority or capacity but never broaden organization policy. The header always
+shows the active scope and, for Workspace scope, the selected Workspace.
+
+Settings is a composed view over typed platform resources. It is not a mutable
+catch-all `PlatformSettings` record and does not take ownership of Integrations,
+Model Providers, Runner Pools, Policies, or the global Audit explorer.
+
+### Audience and authorization
+
+The page evaluates explicit capabilities server-side and presents them through
+simple role-oriented actions rather than an Allow/Deny rule builder:
+
+| Actor | Read | Mutate |
+| --- | --- | --- |
+| Organization Administrator | Organization and all Workspace effective settings | Organization defaults/bounds, Workspace overrides, classifications, limits, environments, retention, and Legal Holds within organization scope |
+| Security Reviewer | All settings and validation/deletion impact | Legal Holds and retention simulations; no identity, environment, or quota administration unless separately granted |
+| Workspace Agent Editor | Effective settings for assigned Workspace | No Platform Settings mutation |
+| Operator | Runtime-effective limits, environments, retention status, and pending deletion impact | No Platform Settings mutation |
+| Auditor | Authorized settings and change evidence | No mutation; scoped Audit export remains governed by `audit.export` |
+
+Every mutation is checked against organization authorization, Workspace scope,
+the owning resource capability, and action-time policy. Hidden controls are not
+security boundaries; direct API calls return a non-leaking authorization error.
+
+### Sections and layout
+
+The page uses a persistent left section index and a central settings workspace.
+The first viewport contains scope, an effective-settings summary, unresolved
+conflicts, pending deletion or Legal Hold warnings, and Recent activity. The
+sections are:
+
+1. **Overview**: effective values, inherited organization bounds, override
+   count, validation state, and links to the owning section.
+2. **Organization**: display name, slug, status, support/contact metadata, and
+   organization-level defaults. Identity changes show a before/after preview
+   and never alter authentication subjects.
+3. **Retention**: bounds at Organization scope and selectable values at
+   Workspace scope for Audit metadata, operational metadata, prompts and
+   outputs, terminal streams, Artifacts, and Evaluation fixtures. Exact day
+   counts are deployment configuration pending Legal and Security approval.
+4. **Legal Holds**: active and released Holds, owner, authority basis, scope or
+   selector, affected data classes, protected deletion jobs, and set/release
+   history. Create and release use dedicated confirmation flows.
+5. **Data Classifications**: definitions, allowed handling, default class,
+   inheritance, and affected resources. Classification changes validate against
+   provider, Tool, Integration, and retention constraints.
+6. **Limits and Quotas**: organization ceilings and Workspace allocations for
+   concurrency, run duration, output/artifact size, task volume, and budget.
+   Provider budgets, runner capacity, and Integration quotas remain on their
+   owning pages; Settings only supplies global bounds and defaults.
+7. **Environments**: named `development`, `staging`, and `production` profiles,
+   data handling posture, allowed publication targets, emergency state, and
+   visible environment markers. Provider credentials and webhook secrets stay
+   on their owning resources.
+8. **Recent activity**: a compact Settings-filtered slice linking to the global
+   `/audit` explorer. It is not a second audit table or export workflow.
+
+Each editable section shows the current effective value, source (`Organization`
+or `Workspace override`), organization bound, last change actor/time, and
+validation status. A Workspace override can be reset to inheritance without
+deleting the organization value.
+
+### Edit, validation, and conflict behavior
+
+- Edits are section-scoped and saved as an explicit command with an expected
+  settings ETag; optimistic UI is not used.
+- `Validate` is side-effect free and reports narrowed/broadened authority,
+  affected resources, retention/deletion impact, and cross-section conflicts.
+- `Save` presents a semantic diff, target scope, effective result, and pending
+  asynchronous work before confirmation.
+- A stale ETag returns a conflict with the current effective projection and a
+  rebase-free choice to reload or discard local edits. The page never silently
+  overwrites another administrator's change.
+- Organization bound changes are rejected when they would invalidate existing
+  Workspace overrides, active Policy Bindings, published Agent Revisions, or
+  protected retention evidence. The response names the blocking resource or
+  asks the administrator to narrow the change first.
+- Retention deletion is asynchronous. The page shows an estimate, next eligible
+  window, active Holds, blocked records, retry state, and tombstone outcome;
+  deletion commands re-check Holds and minimum Audit retention at execution.
+- All accepted, rejected, blocked, and completed mutations expose a correlation
+  ID and a link to the canonical Audit event.
+
+### Acceptance criteria
+
+- One route and one explicit scope switcher are used for Organization and
+  Workspace settings; there is no parallel Workspace Settings page.
+- Organization values are authoritative bounds. Workspace values can only
+  inherit or narrow within those bounds.
+- Settings does not duplicate Integration, Provider, Runner, Policy, or Audit
+  configuration; it links to the owning page when a value is managed there.
+- Read-only actors see effective values and evidence appropriate to scope, but
+  never secret values or protected content.
+- Legal Hold creation/release and deletion impact are attributable, auditable,
+  and visible without becoming an Admin approval inbox.
+
+## 15. Cross-Page Conventions
 
 - List filters serialize to the URL and survive reload and sharing.
 - Resource detail pages use stable nested routes rather than modal-only deep
@@ -704,3 +1377,9 @@ Revisions and run manifests retain the selected source and digest.
   credential, runner, or destructive operations.
 - Correlation IDs and audit links are available on terminal errors and
   consequential mutations.
+- Resource pages use `Recent activity` for contextual history and link to the
+  canonical `/audit` explorer; they do not create resource-specific Audit
+  stores or full duplicate tables.
+- Retention and Legal Hold settings are organization-governed and exposed from
+  Platform Settings; Audit provides evidence and status, not an alternate
+  deletion control surface.

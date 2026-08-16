@@ -22,7 +22,8 @@ Represents one installed enterprise organization. Key fields include `id`,
 
 Provides a logical ownership and policy boundary. Key fields include `id`,
 `organization_id`, `slug`, `display_name`, `classification`, `status`, and
-`policy_set_id`.
+timestamps. Effective policy is resolved from exact Policy Bindings rather than
+one mutable policy-set pointer.
 
 ### Principal
 
@@ -41,6 +42,66 @@ Represents a registered enterprise application and environment. It records the
 OAuth client reference, owner, status, allowed authority modes, scopes, quotas,
 data classification, credential metadata, and operational contacts. Secret or
 private-key material remains in the identity or secret system.
+
+### Retention Policy
+
+A typed retention Policy controls one or more data classes: Audit metadata,
+operational metadata, prompts and outputs, terminal streams, Artifacts, or
+Evaluation fixtures. The organization defines the permitted bounds; a Workspace
+may choose a value within those bounds. Exact default durations are deployment
+configuration pending Legal and Security approval, not constants in the product
+model.
+
+Retention Policies distinguish content deletion from integrity evidence. Audit
+metadata and signed checkpoints remain through the configured minimum, while
+content classes may expire earlier. A Policy change never retroactively erases
+evidence outside an authorized deletion workflow.
+
+### Legal Hold
+
+A Legal Hold prevents scheduled deletion and key destruction for selected
+resources or data classes:
+
+- owner, authority basis, scope or selector, and affected content classes
+- status, set time, optional release time, and release actor
+- matching records, protected deletion jobs, and provenance
+
+Hold creation and release are immutable, attributable events. A Hold is checked
+before deletion enters execution and may leave a deletion request pending until
+all matching Holds are released.
+
+### Platform Settings Composition
+
+Platform Settings is a scope-aware projection over typed resources, not a
+mutable catch-all settings entity. The projection resolves an effective value
+from the organization default/bound and an optional Workspace override. Every
+returned value carries its source, bound, owner resource, validation state,
+ETag, and last-change metadata. Resolution is monotonic: Workspace settings
+may narrow an organization value but may not broaden it.
+
+The owning records are:
+
+- **Organization Profile**: organization identity metadata, status, defaults,
+  and non-negotiable bounds. Authentication subjects and secrets remain outside
+  this record.
+- **Workspace Setting Override**: a typed override keyed by Workspace and
+  setting owner, with an explicit inherit/reset state, validation result,
+  issuer, reason, ETag, and timestamps. Resetting removes the override while
+  preserving the organization value.
+- **Data Classification Definition**: label, handling posture, defaulting
+  rule, allowed providers/tools/integrations, and retention class mapping.
+- **Limit Policy**: organization ceilings and Workspace allocations for
+  concurrency, duration, volume, output/artifact size, and budget. Provider,
+  runner, and Integration-specific quotas remain on their owning resources.
+- **Environment Profile**: named environment, publication posture, data
+  handling class, emergency state, and allowed target controls. Credentials,
+  private keys, and webhook secrets are referenced by owning resources only.
+- **Retention Deletion Job**: asynchronous estimate, eligible window, Hold
+  matches, protected and blocked counts, execution attempts, completion/failure
+  state, and digest-preserving Tombstone summary without retained content.
+
+Settings reads are projections and do not create a second history store. Changes
+are represented by the owning typed record plus canonical Audit events.
 
 ## 3. Agent Configuration Entities
 
@@ -155,9 +216,10 @@ configuration schemas, default binding templates, publisher/provenance,
 compatibility, risk metadata, and content digest.
 
 Plugin Installation records organization review and operational status.
-Workspace Plugin Enablement records which exact Plugin Version is available to a
-workspace. Agent Revisions separately pin only the contained Skill artifacts and Tool
-Bindings selected by the designer; enablement does not imply authorization.
+Workspace Plugin Enablement records which exact Plugin Versions are available to
+a workspace. Multiple versions may coexist for testing and migration. Agent
+Revisions separately pin only the contained Skill artifacts and Tool Bindings
+selected by the designer; enablement does not imply authorization.
 
 ### Tool Server
 
@@ -173,6 +235,9 @@ An immutable descriptor contains fully qualified tool name, input/output
 schemas, effect and idempotency classifications, credential capability, data
 classifications, destination class, execution limits, compatibility metadata,
 version, lifecycle state, and content digest.
+Multiple descriptor versions for the same fully qualified name may be active
+simultaneously for testing or migration. There is no default descriptor version;
+an Agent Tool Binding selects one exact version and digest.
 
 ### CLI Command Profile
 
@@ -188,7 +253,58 @@ narrows allowed operations, arguments, credential mode/reference, destination,
 data classification, approval policy, timeout, output, concurrency, and budget
 limits. Agent Revisions pin the binding and descriptor digests.
 
-## 4. Task and Run Entities
+## 4. Policy Configuration Entities
+
+### Policy
+
+A stable organization-owned policy identity:
+
+- `id`, `organization_id`, optional owning `workspace_id`
+- type, name, description, owner, lifecycle state
+- creation and update metadata
+
+Policy types include approval, model, tool or command, network, credential and
+data, budget or limit, retention, and evaluation or publication rules. They
+share one lifecycle without requiring one universal user-authored policy
+language.
+
+### Policy Draft
+
+The single mutable working copy for one Policy:
+
+- `policy_id`, typed `document_json`, and `schema_version`
+- `working_copy_etag`, validation state, and validation findings
+- author and update timestamps
+
+A Draft cannot participate in runtime authorization. A Policy has no parallel
+Drafts, branches, merge, or rebase semantics.
+
+### Policy Version
+
+An immutable published policy document:
+
+- exact `id`, `policy_id`, `content_digest`, and `schema_version`
+- canonical `document_json`, required message, author, and creation time
+- validation/compiler evidence and policy type
+
+Publishing creates a Version but does not activate or bind it. A referenced
+Version is retained with its exact content and evidence.
+
+### Policy Binding
+
+Applies one exact Policy Version to an organization, Workspace, governed
+platform resource, Deployment, or Integration Publication. It records target,
+environment, effective interval, status, actor, reason, and provenance. An
+Agent Revision directly pins its exact Policy Version references rather than
+resolving a movable latest Version.
+
+Effective policy is the intersection of active Organization and Workspace
+Bindings, the exact Agent Revision references, and applicable resource
+constraints. A lower-scope Binding may only narrow outer authority. The Run
+Manifest records every contributing Policy Version ID and content digest so a
+later Binding change does not rewrite historical execution evidence.
+
+## 5. Task and Run Entities
 
 ### Task
 
@@ -236,45 +352,43 @@ approved destination, authentication mode, subscribed event types, status, and
 rotation metadata. Each delivery records event sequence, attempt, signature-key
 reference, response class, next attempt, and terminal delivery status.
 
-## 5. Approval Entities
+## 6. Approval Entities
 
 ### Approval Request
 
 - `id`, run and event sequence
 - immutable `action_digest`
 - normalized action preview and redacted payload reference
-- risk class, policy reason, eligible approver rule
-- threshold, status, expiry, and supersession reference
+- risk class, policy reason, requester identity
+- status, expiry, and supersession reference
 
 The approval request is for one concrete agent action. It is not a general
 business-workflow approval record: leave, expense, purchase, and similar
 decisions remain in the tool or enterprise system that owns that process. The
-first action-approval slice routes the request to the authenticated requester;
-published policy may later select a different human or automatic decision
-subject without introducing a generic workspace approver role.
+authenticated task requester is the only eligible human approver. A published
+policy may allow or deny the action without human confirmation, but it cannot
+route the request to a different person, group, or administrator.
 
 ### Approval Decision
 
-- request and approver
+- request and authenticated requester
 - `approve` or `reject`
 - reason, authentication context, decision time
 - policy evaluation reference and unique idempotency key
 
 Decisions are append-only. The approval request projection derives whether the
-threshold is met, rejected, expired, superseded, or revoked and has its own
-revision. A decision insert, projection recomputation, and any
-`awaiting_approval -> ready` action transition occur in one transaction. The
-unique request-and-approver constraint makes duplicate votes idempotent, while
-the projection revision ensures exactly one transaction emits the
-threshold-satisfied event. The immutable approval policy defines whether one
-reject vote immediately rejects the request or a remaining threshold can still
-be satisfied.
+request is approved, rejected, expired, superseded, or revoked and has its own
+revision. A decision insert, projection recomputation, and the corresponding
+action transition occur in one transaction. The unique request-decision
+constraint makes duplicate requester commands idempotent, while the projection
+revision ensures exactly one terminal decision takes effect.
 
-Rejection and expiry are approval outcomes, not run statuses. Each immutable
-approval policy chooses `resume_with_denial` or `fail_run` for those outcomes.
-Applying the outcome uses the same action revision transaction and emits the
-corresponding run transition; task status continues to derive from its current
-run.
+Rejection and expiry are approval outcomes, not run statuses. Both resume the
+Agent loop with a schema-valid `action_denied` or `approval_expired` result and
+leave the task conversation open for additional requester input. The requester
+may direct the Agent to revise the action or continue differently; any new
+consequential action receives a new digest. Applying either outcome uses the
+same action revision transaction and emits the corresponding run transition.
 
 ### Action Execution
 
@@ -306,7 +420,7 @@ and deadline. If still unresolved at that deadline, the run becomes `Failed`
 with reason `action_outcome_unknown`; later evidence is appended without
 rewriting the original action result.
 
-## 6. Evaluation Entities
+## 7. Evaluation Entities
 
 ### Golden Case
 
@@ -329,7 +443,7 @@ Records assertion type, expected value or digest, actual value or digest,
 status, evidence reference, and severity. Probabilistic scores include evaluator
 identity, prompt/version, repetitions, distribution, and confidence information.
 
-## 7. Event Envelope
+## 8. Event Envelope
 
 Every run event uses a common envelope:
 
@@ -361,7 +475,7 @@ Every run event uses a common envelope:
 Event payloads are typed and versioned. Unknown optional fields are ignored;
 unknown event types are retained but not projected until supported.
 
-## 8. Core Run Event Types
+## 9. Core Run Event Types
 
 ### Lifecycle
 
@@ -432,10 +546,21 @@ These contain concise, user-facing summaries. They are not raw hidden reasoning.
 - `operator.terminal_attached`
 - `operator.terminal_detached`
 - `policy.evaluated`
+- `platform.settings.validated`
+- `platform.settings.changed`
+- `classification.changed`
+- `limit.policy.changed`
+- `environment.profile.changed`
+- `retention.deletion_requested`
+- `retention.deletion_blocked`
+- `retention.deletion_completed`
+- `retention.deletion_failed`
+- `legal_hold.created`
+- `legal_hold.released`
 - `sandbox.cleanup_completed`
 - `sandbox.cleanup_failed`
 
-## 9. Ordering and Idempotency
+## 10. Ordering and Idempotency
 
 - The database allocates one strictly increasing sequence per run.
 - Runner messages include runner-session ID and client sequence for
@@ -445,12 +570,12 @@ These contain concise, user-facing summaries. They are not raw hidden reasoning.
   through the resource's terminal state plus the published maximum retry
   interval; content deletion does not make the key reusable.
 - Tool calls have stable call IDs and effect classification.
-- Approval decisions have a uniqueness constraint per request and approver.
+- Approval decisions have a uniqueness constraint per request.
 - Outbox consumers are idempotent and track their last processed event.
 
 Global ordering across different runs is neither required nor claimed.
 
-## 10. High-Frequency Content Streams
+## 11. High-Frequency Content Streams
 
 Model output and PTY output are byte streams with independent monotonically
 increasing offsets. The runner and gateway buffer them into segments using
@@ -486,7 +611,7 @@ before the referenced object and digest are readable. Segment finalization is
 idempotent so a retry after either side of the storage boundary cannot create an
 overlapping visible range.
 
-## 11. Payload and Redaction Rules
+## 12. Payload and Redaction Rules
 
 Event envelopes remain queryable, but sensitive payloads may be stored as
 encrypted objects referenced from the event. Each payload field is classified
@@ -495,14 +620,31 @@ as searchable metadata, encrypted content, secret-forbidden, or transient-only.
 Redaction records the rule set and produces a new derivative artifact. Gantry
 does not overwrite historical evidence and call the result sanitized.
 
-## 12. State Projections
+## 13. State Projections
 
 Current run status, pending approval, last event, usage totals, and health are
 projections updated transactionally where possible. Projection rebuilding from
 events is supported for repair and verification, but events are not used as an
 excuse to make common queries scan an entire run history.
 
-## 13. Cursor Retention, Compaction, and Deletion
+The same immutable Task and Run identities support separate authorized
+projections. Copilot projections are requester-scoped and conversation-first,
+with compact Run attempts, user-visible events, approvals, and artifacts.
+Admin projections are organization or Workspace-scoped and operational, with
+cross-actor filtering, runner and lease diagnostics, policy and Tool evidence,
+resource usage, and authorized commands. Enterprise projections are limited to
+the published Integration contract. A projection never grants access to a
+different projection or to fields omitted by its audience policy.
+
+Audit is one canonical cross-resource projection over append-only events. It
+indexes resource, actor, scope, action, outcome, risk, correlation, and linked
+immutable identities for search. Resource pages may render a small Recent
+activity slice with a pre-filtered Audit link, but they do not maintain separate
+Audit stores or alternate export contracts. Domain timelines such as Run event
+streams and Webhook deliveries remain operational projections and link to the
+canonical Audit evidence.
+
+## 14. Cursor Retention, Compaction, and Deletion
 
 The no-loss reconnect guarantee applies within the declared content-retention
 window. A durable cursor identifies its projection, run, canonical sequence,
@@ -527,7 +669,12 @@ Retention operates by content class and workspace policy. A deletion workflow:
 4. Deletes object content and encryption keys where applicable.
 5. Retains a tombstone with digest, scope, reason, and completion status.
 
-## 14. Schema Evolution
+Deletion never removes an active Legal Hold's matching content or the minimum
+Audit metadata and integrity checkpoints. A Tombstone preserves the deleted
+object's digest, scope, classification, deletion reason, and verification state
+without retaining the deleted content or secret material.
+
+## 15. Schema Evolution
 
 - Before the first released database shape, revise the bootstrap schema directly
   instead of carrying migration code. After release, database migrations are

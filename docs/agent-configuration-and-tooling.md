@@ -95,7 +95,9 @@ provenance, risk metadata, compatibility, and digest.
 Plugin enablement has three explicit stages:
 
 1. An organization administrator installs and reviews a Plugin Version.
-2. A workspace administrator enables that version for a workspace.
+2. A workspace administrator enables one or more exact Plugin Versions for a
+   workspace. Multiple versions may coexist for testing and migration; no
+   version is implicit or default.
 3. An Agent designer explicitly selects the contained Skills and Tool Bindings
    needed by an Agent.
 

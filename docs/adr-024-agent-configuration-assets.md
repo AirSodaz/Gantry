@@ -26,11 +26,15 @@ arguments, credentials, destinations, approvals, and limits, but may never
 broaden the descriptor.
 
 Plugins are installed and reviewed at organization scope, enabled explicitly
-per workspace, and bound selectively by each Agent. Installation or enablement
-never grants all contained tool permissions automatically.
+per workspace, and bound selectively by each Agent. A workspace may enable
+multiple exact Plugin Versions for testing or migration, with no implicit
+default. Installation or enablement never grants all contained tool permissions
+automatically.
 
 MCP discovery may propose new descriptor versions but cannot mutate a deployed
-Agent Revision. CLI integration uses structured, registered Command Profiles rather than
+Agent Revision. Multiple descriptor versions for one fully qualified tool name
+may be active simultaneously, with no implicit default; each Agent Tool Binding
+selects one exact version and digest. CLI integration uses structured, registered Command Profiles rather than
 unrestricted model-generated shell commands. The control plane compiles the
 selected assets into a signed run manifest; the runner does not query Admin
 catalogs during execution.
