@@ -337,7 +337,7 @@ invoking a domain agent while keeping its own user interface and workflow.
   runtime images, or mutable Drafts.
 
 The complete contract is defined in
-[Enterprise Agent Invocation API](enterprise-integration-api.md).
+[Enterprise Agent Invocation API](../architecture/enterprise-integration-api.md).
 
 ## 10. Functional Requirements
 
@@ -415,12 +415,7 @@ invented before representative agents and workloads exist.
 
 ## 13. Frontend Design Boundary
 
-This document defines product capabilities, not the final page inventory. The
-Admin page structure is defined in
-[Gantry Admin Site Design](admin-site-design.md). The Copilot page and function
-specification is defined in
-[Gantry Copilot Site Design](copilot-site-design.md). Remaining Admin pages will
-continue to be refined by route, function, permission state, field set,
-interaction, responsive behavior, and acceptance criterion. The shared
-[Frontend UX Design](frontend-ux-design.md) document remains the source for
-cross-application design language and interaction rules.
+This document defines product capabilities, not page-level behavior. The
+[Admin Site Design](admin-site-design.md) and
+[Copilot Site Design](copilot-site-design.md) own route and interaction details;
+[Frontend UX Design](frontend-ux-design.md) owns cross-application rules.

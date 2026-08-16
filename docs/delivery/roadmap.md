@@ -54,8 +54,8 @@ commit and environment.
 ### Design-to-Implementation Handoff
 
 The complete Admin and Copilot page/function design is now documented in
-[Gantry Admin Site Design](admin-site-design.md) and
-[Gantry Copilot Site Design](copilot-site-design.md). Those documents contain
+[Gantry Admin Site Design](../product/admin-site-design.md) and
+[Gantry Copilot Site Design](../product/copilot-site-design.md). Those documents contain
 the approved sitemap, route and permission matrix, page specifications,
 cross-page workflows, responsive requirements, and acceptance criteria.
 

@@ -483,22 +483,10 @@ mobile widths where relevant:
 Gantry Admin is desktop-first but must remain usable on a tablet. Gantry
 Copilot is fully responsive for desktop and mobile use.
 
-## 11. Page and Function Design Packages
+## 11. Page Design Handoff
 
-The detailed Admin and Copilot packages are maintained in
-[Gantry Admin Site Design](admin-site-design.md) and
-[Gantry Copilot Site Design](copilot-site-design.md). The remaining cross-product
-work is implementation traceability and rendered acceptance:
-
-- route-to-contract, capability-to-page, and authorization traceability;
-- one specification per page covering purpose, actors, entry points, data,
-  commands, filters, states, validation, errors, destructive actions, and
-  responsive behavior;
-- cross-page workflow tests for Agent configuration/publication, operations,
-  governance, integrations, platform administration, and recovery;
-- desktop, tablet, and mobile requirements appropriate to each application;
-- accessibility, localization, empty/loading/error, realtime, and browser-test
-  acceptance criteria.
-
-Existing page descriptions remain target behavior; a route is implementation-ready
-only after its contract, handler, tests, and status entry agree.
+Page-level behavior lives in the [Admin Site Design](admin-site-design.md) and
+[Copilot Site Design](copilot-site-design.md). The remaining shared work is
+traceability and rendered acceptance: a target route is implementation-ready
+only when its contract, authorization, handler, tests, responsive behavior, and
+[Implementation Status](../delivery/implementation-status.md) entry agree.

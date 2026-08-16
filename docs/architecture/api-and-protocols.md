@@ -3,7 +3,7 @@
 This document defines both checked-in and target contracts. The current OpenAPI
 files are authoritative for implemented public HTTP routes. Resources labeled
 **planned** below are design commitments, not callable endpoints. See
-[Implementation Status](implementation-status.md).
+[Implementation Status](../delivery/implementation-status.md).
 
 ## 1. Protocol Strategy
 
@@ -77,7 +77,7 @@ Current and planned resources:
 Audience: `gantry-copilot-api`.
 
 Checked-in routes are defined by
-[`packages/contracts/openapi/copilot-api.yaml`](../packages/contracts/openapi/copilot-api.yaml)
+[`packages/contracts/openapi/copilot-api.yaml`](../../packages/contracts/openapi/copilot-api.yaml)
 and currently include agent discovery, task submission/list/detail, event tickets,
 run cancel/retry, approval list/decision, and artifact metadata/download.
 

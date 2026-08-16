@@ -1,7 +1,7 @@
 # System Architecture
 
 This document defines the target architecture. See
-[Implementation Status](implementation-status.md) for the checked-in subset and
+[Implementation Status](../delivery/implementation-status.md) for the checked-in subset and
 remaining production boundaries.
 
 ## 1. Architectural Style
@@ -92,7 +92,7 @@ reference. At run assignment it compiles the Deployment-selected Agent Revision
 plus authorized runtime context into a signed, expiring manifest. The runner
 never discovers or fetches
 mutable Admin configuration during execution. The complete model is defined in
-[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
+[Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 
 ### Task Service
 
@@ -454,7 +454,7 @@ Moon coordinates all workspace tasks. Compose exposes PostgreSQL (`5432`),
 MinIO API (`9000`), MinIO console (`9001`), public OpenAPI HTTP (`8080`), and
 the runner gRPC listener (`8081`). Admin and Copilot Vite servers run outside
 Compose on `3001` and `3002`, proxying `/api` to the public listener. See the
-[Developer Guide](developer-guide.md) for bootstrap, environment variables, and
+[Developer Guide](../delivery/developer-guide.md) for bootstrap, environment variables, and
 the generated-code check.
 
 ## 13. Observability

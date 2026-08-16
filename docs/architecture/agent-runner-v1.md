@@ -7,7 +7,7 @@ approval state and durable semantic events.
 
 This document describes the checked-in Runner V1 development boundary. The
 target production configuration model is defined in
-[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
+[Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 
 ## Manifest compilation
 

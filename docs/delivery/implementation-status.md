@@ -29,9 +29,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Workspace-scoped Admin Agent target lifecycle: create and edit named Drafts
   with optimistic concurrency, validate, commit hash-identified Revisions,
   review exact Revisions, create multiple Test Deployments, and move one
-  Production Deployment pointer. The older integer-version routes remain
-  available only for the existing compatibility test surface and are not used
-  by the Admin UI or Copilot runtime.
+  Production Deployment pointer. Superseded integer-version Draft/Version/
+  Publication routes and tables are not part of the active contract.
 - Admin configuration catalog slice: register immutable Skill artifacts,
   Plugin versions, and Tool descriptor versions; enable Plugins per workspace;
   bind exact catalog IDs to Agent Drafts; and revalidate availability at draft
@@ -111,7 +110,7 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Package-content ingestion and inspection, Plugin asset expansion, Tool Server
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
-  [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
+  [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 - Detailed deployment history, policy projections, evaluations, run operations,
   audit search, integrations, and platform administration remain designed but
   are not complete product areas.

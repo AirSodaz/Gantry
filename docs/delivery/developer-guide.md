@@ -21,7 +21,7 @@ without changing domain or service interfaces.
 named repository baseline. Target behavior lives in the product and engineering
 design documents; accepted ADRs constrain implementation. The configuration
 ownership and compilation model is defined in
-[Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
+[Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 
 ## Code Structure
 

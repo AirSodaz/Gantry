@@ -5,7 +5,7 @@
 Accepted for Agent Runner V1 development deployments.
 
 This ADR does not select the production-supported provider set. That decision
-remains DQ-002 in [Decisions and Open Questions](decisions-and-open-questions.md).
+remains DQ-002 in [Decisions and Open Questions](../decisions-and-open-questions.md).
 
 ## Decision
 

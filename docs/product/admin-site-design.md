@@ -352,7 +352,7 @@ The Agent resource uses stable nested routes and the following tabs:
 | --- | --- | --- | --- |
 | Overview | `/agents/:agentId` | Current state, ownership, production/test deployments, attention items, and recent activity | Current |
 | Design | `/agents/:agentId/design` | Edit one named Draft, validate it, commit Revisions, and start test/review workflows | Current, expanding next |
-| Versions | `/agents/:agentId/versions` | Browse Draft latest Revisions, immutable snapshots, test Deployments, and Production history | Next |
+| Versions | `/agents/:agentId/versions` | Browse Draft latest Revisions, immutable snapshots, test Deployments, and Production history | Current |
 | Runs | `/agents/:agentId/runs` | Filter runtime attempts for this Agent and exact Revisions | Later |
 | Evaluations | `/agents/:agentId/evaluations` | Compare suite results and publication-gate evidence by Revision | Later |
 | Access | `/agents/:agentId/access` | Owners, editors, reviewers, publishers, consumers, and integration visibility | Later |

@@ -231,189 +231,77 @@ second effect and provides a defined unknown-outcome state.
 
 ### ADR-022: Separate Agent Action Approval from Business Workflow Approval
 
-**Status:** Accepted
-
-Gantry owns action-time authorization for effect-bearing agent operations. When
-human confirmation is required, only the authenticated task requester may
-approve or reject the exact action digest; a published policy may instead allow
-or deny it without human confirmation. Business approvals such as leave,
-expense, or purchase requests remain owned and presented by the tool or
-enterprise system that defines that workflow; Gantry integrates them through a
-signed external status callback rather than a universal Admin approver inbox.
-Rejecting an Agent action or allowing its approval to expire returns a
-structured denial or expiry result to the Agent and leaves the task conversation
-available for requester input; a revised consequential action receives a new
-digest and decision.
-
-**Reason:** A business approver decides a domain process, while an agent action
-approver decides whether one concrete external effect may execute. Combining the
-two creates ambiguous authority, duplicates enterprise workflows, and makes
-the approval UI imply permissions it cannot safely enforce.
+**Status:** Accepted. Gantry owns action-time authorization for effect-bearing
+Agent operations; only the authenticated Task requester decides an exact action
+digest. Business workflow approvals remain in the owning tool or enterprise
+system. Rejection or expiry leaves the Copilot conversation available for a new
+instruction. See [ADR-022](adr/adr-022-agent-action-approval-boundary.md).
 
 ### ADR-023: Development Runner Model Routing
 
-**Status:** Accepted for development deployments
-
-Runner V1 may call OpenAI-compatible or Anthropic endpoints directly only when
-the process explicitly enables development direct-provider mode. Production
-must use a trusted LLM gateway and must not place provider credentials in Agent
-specs, manifests, checkpoints, events, or logs.
-
-**Reason:** Deterministic and local provider testing should exercise the real
-agent loop without weakening the production credential and routing boundary.
-See [ADR-023](adr-023-runner-model-routing.md).
+**Status:** Accepted for development deployments. Runner V1 may use direct
+OpenAI-compatible or Anthropic adapters only with explicit development opt-in;
+production uses a trusted gateway and never stores provider credentials in
+execution inputs or evidence. See [ADR-023](adr/adr-023-runner-model-routing.md).
 
 ### ADR-024: Versioned Agent Configuration Assets
 
-**Status:** Accepted
-
-Agent-owned Prompt Snapshots, externally sourced Skill artifacts, installable
-Plugins, Tool Servers, Tool Descriptor Versions, CLI Command Profiles, and
-Agent Tool Bindings form the governed configuration model. Agent Revisions pin
-immutable content digests and Skill source identities. Gantry displays the
-version declared by an imported Skill package (or `未声明` when absent) but does
-not create a separate Skill version history; multiple artifacts of one Skill
-may coexist for testing.
-Plugins are installed by the organization, and one or more exact Plugin
-Versions may be enabled per workspace for testing or migration before being
-selectively bound by Agents. There is no implicit default Plugin Version.
-Skills and Plugins cannot grant tool authority, bindings may only narrow
-descriptors, multiple descriptor versions may coexist without a default, and
-dynamic discovery cannot mutate published Agents.
-
-**Reason:** Reproducibility and review require stable configuration ownership
-instead of one mutable specification blob or runtime discovery. See
-[ADR-024](adr-024-agent-configuration-assets.md).
+**Status:** Accepted. Prompt Snapshots, external Skill Artifacts, Plugins, Tool
+Servers, descriptor versions, CLI profiles, and explicit bindings are governed
+assets. Revisions pin exact digests; Skills and Plugins cannot grant authority;
+runtime discovery cannot mutate deployed configuration. See
+[ADR-024](adr/adr-024-agent-configuration-assets.md).
 
 ### ADR-025: Flat Agent Revisions and Deployment Pointers
 
-**Status:** Accepted
-
-Agents support multiple independent named Drafts and immutable hash-identified
-Revisions with required messages. Revision history is flat: optional
-`derived from` metadata records provenance without parent, branch, fork, merge,
-or rebase semantics. Multiple test Deployments may coexist, while one default
-Production Deployment points to the active Revision.
-
-**Reason:** Parallel Drafts and test pointers support debugging without imposing
-a source-control graph or unsafe configuration merge expectations. Reviews,
-runs, evaluations, publication, and rollback remain bound to exact immutable
-Revisions. See [ADR-025](adr-025-flat-agent-revisions.md).
+**Status:** Accepted. Agents use independent named Drafts and flat,
+hash-identified Revisions with required messages. Multiple Test Deployments may
+coexist while one Production pointer is active; there are no merge or rebase
+semantics. See [ADR-025](adr/adr-025-flat-agent-revisions.md).
 
 ### ADR-026: Agent-Scoped Independent Permissions
 
-**Status:** Accepted
-
-Every Agent has an explicit ACL that independently controls metadata discovery,
-configuration read, Draft editing, Review decisions, test Deployment
-management, Production publication, run inspection, execution, and ACL
-management. `execute` does not imply configuration read, and configuration read
-does not imply execution. Effective access is the intersection of organization
-and workspace authorization, Agent ACL, resource state, Deployment or
-integration publication, and action-time policy.
-
-**Reason:** Different teams and service identities need to use the same Agent
-with different visibility and authority. Agent-level grants provide that control
-without weakening the existing default-deny and action-time authorization
-boundaries. See [ADR-026](adr-026-agent-scoped-permissions.md).
-
-The initial ACL implementation is Allow-only. Unset or revoked capabilities are
-denied; outer policy or resource constraints explain ineffective grants rather
-than creating explicit Deny entries.
+**Status:** Accepted. Agent ACL capabilities independently govern metadata,
+configuration, editing, review, deployment, run inspection, execution, and ACL
+management. The initial model is Allow-only with default denial; outer
+constraints explain ineffective grants. See
+[ADR-026](adr/adr-026-agent-scoped-permissions.md).
 
 ### ADR-027: External Skill Package Versions
 
-**Status:** Accepted
-
-Skills are imported from external package sources, such as an `npx skills`
-marketplace, a Claude Code skills marketplace, a direct locator, or a manually
-provided complete package/local directory. The package source owns the Skill's
-declared version. Gantry records the source reference and content digest and
-displays the declared version, or `未声明` when the package has no declaration;
-it does not create a second Skill version or release lifecycle.
-
-Each import is an immutable Skill Artifact. Manual edits are not performed in
-Gantry; a changed package is imported as another artifact. Multiple artifacts,
-including artifacts with the same declared version but different digests, may
-coexist so test Agent Revisions can compare them without changing Production.
-An Agent Revision pins one exact artifact, and later imports never mutate an
-existing Revision or Run Manifest.
-
-**Reason:** Version authority remains with the marketplace or package author,
-while content-addressed artifacts preserve reproducibility and allow safe
-testing without introducing a duplicate release system. See
-[ADR-027](adr-027-external-skill-package-versions.md).
+**Status:** Accepted. External packages own declared Skill versions. Gantry
+stores source references and digests, displays the declared version or `未声明`,
+and permits multiple immutable artifacts to coexist for testing. See
+[ADR-027](adr/adr-027-external-skill-package-versions.md).
 
 ### ADR-028: Immutable Policy Versions and Narrowing Scope Intersection
 
-**Status:** Accepted
-
-All Policy types share one catalog and lifecycle. A Policy has one mutable
-Draft, immutable Versions, and explicit Bindings; it has no branches or movable
-latest-Version runtime pointer. Publishing and Binding are separate actions.
-Organization and Workspace Policies compose by intersection, and a lower scope
-may only narrow outer authority. Agent Revisions pin exact Policy Versions, and
-Run Manifests preserve all contributing Version identities and digests.
-
-Policy simulation is side-effect free. Approval Policies configure whether an
-Agent action is allowed, denied, or requires its authenticated task requester;
-they do not create an Admin approval queue or absorb business workflow
-approvals.
-
-**Reason:** Exact immutable inputs make authorization reproducible while a
-narrowing intersection prevents local configuration from bypassing enterprise
-guardrails. Separating authoring, publication, binding, simulation, and approval
-decisions keeps each surface understandable and auditable. See
-[ADR-028](adr-028-policy-lifecycle-and-scope-intersection.md).
+**Status:** Accepted. Policies use one Draft, immutable Versions, and explicit
+Bindings. Organization and Workspace policies intersect monotonically;
+Revisions pin exact Policy Versions. Simulation is side-effect free and Approval
+Policies never create an Admin approval inbox. See
+[ADR-028](adr/adr-028-policy-lifecycle-and-scope-intersection.md).
 
 ### ADR-029: Retention Classes, Legal Holds, and Verifiable Deletion
 
-**Status:** Accepted; exact durations deferred
-
-Retention is classified by Audit metadata, operational metadata, prompts and
-outputs, terminal streams, Artifacts, and Evaluation fixtures. Organization
-settings define permitted bounds; Workspace settings may choose values within
-those bounds. Audit metadata and signed integrity checkpoints have a minimum
-retention floor, while content classes may expire earlier. The product does not
-hard-code universal day counts before Legal and Security approve deployment
-defaults.
-
-Legal Holds identify an owner, authority basis, scope or selector, and affected
-data classes. An active Hold blocks scheduled deletion and key destruction for
-matching content and evidence. Deletion is authorized, asynchronous, and
-auditable: it enters pending state, re-checks Holds and minimum retention,
-deletes permitted content and keys, and retains a digest-preserving Tombstone.
-Hold creation, release, deletion, failure, retry, and blocked records are Audit
-events.
-
-**Reason:** Separating retention classes keeps sensitive content shorter-lived
-than compliance metadata without making a false universal legal assumption.
-Holds and Tombstones preserve defensible evidence while allowing eligible
-content to be removed. See [ADR-029](adr-029-retention-and-legal-hold.md).
+**Status:** Accepted; exact durations deferred. Retention is class-based with
+organization bounds, Workspace narrowing, Legal Hold protection, asynchronous
+deletion, and digest-preserving Tombstones. See
+[ADR-029](adr/adr-029-retention-and-legal-hold.md).
 
 ### ADR-030: Single Platform Settings Route and Bounded Workspace Overrides
 
-**Status:** Accepted
+**Status:** Accepted. `/platform/settings` is one scope-aware projection over
+typed platform resources. Workspace values may inherit or narrow organization
+bounds; Settings does not duplicate Policy, Provider, Runner, Integration, or
+Audit ownership. See [ADR-030](adr/adr-030-platform-settings-scope-and-composition.md).
 
-Admin exposes one `/platform/settings` route with an explicit
-`Organization | Workspace` scope switcher. Organization Administrators own
-organization defaults and non-negotiable bounds. Workspace settings inherit or
-narrow within those bounds and cannot broaden organization authority or
-capacity. There is no separate Workspace Settings page.
+### ADR-031: Protocol and Storage Boundaries
 
-The page is a composed projection over typed Organization, Retention, Legal
-Hold, Classification, Limit, and Environment resources. It does not create a
-second Policy, Integration, Provider, Runner, or Audit configuration surface.
-Mutations use section-scoped validation, semantic diffs, expected-ETag conflict
-handling, explicit confirmation, and attributable Audit events. Recent activity
-links to the canonical Audit explorer; retention deletion remains an
-asynchronous, Hold-aware workflow.
-
-**Reason:** One scope-aware entry point makes inheritance and boundaries visible
-without duplicating Workspace administration or hiding ownership behind a
-god-object. Typed resource ownership keeps authorization, lifecycle, and audit
-semantics consistent across platform controls. See
-[ADR-030](adr-030-platform-settings-scope-and-composition.md).
+**Status:** Accepted. OpenAPI is authoritative for public HTTP APIs, protobuf
+and Connect are private to the mutually authenticated runner session, and the
+control plane accesses object storage through an adapter port. See
+[ADR-031](adr/adr-031-protocol-and-storage-boundaries.md).
 
 ## 2. Deferred Questions
 

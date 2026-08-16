@@ -1,4 +1,4 @@
-# ADR-022: Protocol and Storage Boundaries
+# ADR-031: Protocol and Storage Boundaries
 
 **Status:** Accepted
 **Date:** 2026-08-13
