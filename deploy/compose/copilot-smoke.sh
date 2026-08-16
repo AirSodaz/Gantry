@@ -105,7 +105,7 @@ complete_task=$(task_id)
 [[ -n $complete_task ]]
 wait_task_status "$complete_task" completed
 request POST "/api/copilot/v1/tasks/${complete_task}/events:ticket" '{}'
-[[ $response_status == 200 && -n $(json_value ticket) ]]
+[[ $response_status == 200 && -n $(json_value ticket) && -n $(json_value websocket_url) ]]
 artifact_id=$(wait_artifact "$complete_task")
 request POST "/api/copilot/v1/artifacts/${artifact_id}:download" '{}'
 [[ $response_status == 200 ]]
@@ -185,7 +185,7 @@ restart_task=$(task_id)
 wait_task_status "$restart_task" running
 "${compose[@]}" restart control-plane
 wait_task_status "$restart_task" failed
-request POST "/api/copilot/v1/tasks/${restart_task}:retry" '{}'
+request POST "/api/copilot/v1/tasks/${restart_task}:retry" '{"revision_selection":"original_revision"}'
 [[ $response_status == 201 ]]
 retry_run=$(task_run_id)
 [[ -n $retry_run ]]

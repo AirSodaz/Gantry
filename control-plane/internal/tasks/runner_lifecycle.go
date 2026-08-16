@@ -151,6 +151,9 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 				if err := appendEventPayload(ctx, tx, runID, "approval.requested", string(payload)); err != nil {
 					return RecordEventsResult{}, err
 				}
+				if err := appendEvent(ctx, tx, runID, "run.awaiting_approval"); err != nil {
+					return RecordEventsResult{}, err
+				}
 			}
 		case "action.execution_requested":
 			var request struct {

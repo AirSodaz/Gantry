@@ -266,6 +266,12 @@ paths:
       tags: [Tasks]
       parameters:
         - $ref: "#/components/parameters/TaskIdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskEventsTicketRequest"
       responses:
         "200":
           description: Short-lived ticket for the task event stream
@@ -950,11 +956,135 @@ components:
 
     TaskEventsTicket:
       type: object
-      required: [ticket, task_id, expires_at]
+      required: [ticket, task_id, websocket_url, expires_at]
       properties:
         ticket:
           type: string
         task_id:
           type: string
+        websocket_url:
+          type: string
+          format: uri
         expires_at:
           $ref: "#/components/schemas/Timestamp"
+
+    TaskEventsTicketRequest:
+      type: object
+      properties:
+        last_cursor:
+          type: string
+
+    TaskEventSnapshot:
+      type: object
+      required: [schema_version, task, runs, approvals, cursor]
+      properties:
+        schema_version:
+          type: string
+          enum: [gantry.copilot.snapshot/v1]
+        task:
+          $ref: "#/components/schemas/TaskResponse"
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunAttempt"
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopilotApproval"
+        cursor:
+          type: string
+
+    TaskEventFrame:
+      type: object
+      required: [schema_version, task_id, task_sequence, cursor, event]
+      properties:
+        schema_version:
+          type: string
+          enum: [gantry.copilot.event/v1]
+        task_id:
+          type: string
+        run_id:
+          type: string
+          nullable: true
+        task_sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        run_sequence:
+          type: integer
+          format: int64
+          nullable: true
+        cursor:
+          type: string
+        event:
+          oneOf:
+            - $ref: "#/components/schemas/MessageCommittedEvent"
+            - $ref: "#/components/schemas/ContentSegmentEvent"
+            - $ref: "#/components/schemas/RunStateChangedEvent"
+            - $ref: "#/components/schemas/ApprovalChangedEvent"
+            - $ref: "#/components/schemas/ArtifactChangedEvent"
+          discriminator:
+            propertyName: type
+            mapping:
+              message_committed: "#/components/schemas/MessageCommittedEvent"
+              content_segment: "#/components/schemas/ContentSegmentEvent"
+              run_state_changed: "#/components/schemas/RunStateChangedEvent"
+              approval_changed: "#/components/schemas/ApprovalChangedEvent"
+              artifact_changed: "#/components/schemas/ArtifactChangedEvent"
+
+    MessageCommittedEvent:
+      type: object
+      required: [type, message]
+      properties:
+        type:
+          type: string
+          enum: [message_committed]
+        message:
+          $ref: "#/components/schemas/TaskMessage"
+
+    ContentSegmentEvent:
+      type: object
+      required: [type, message_id, segment_index, text]
+      properties:
+        type:
+          type: string
+          enum: [content_segment]
+        message_id:
+          type: string
+        segment_index:
+          type: integer
+          minimum: 0
+        text:
+          type: string
+        final:
+          type: boolean
+
+    RunStateChangedEvent:
+      type: object
+      required: [type, run]
+      properties:
+        type:
+          type: string
+          enum: [run_state_changed]
+        run:
+          $ref: "#/components/schemas/RunAttempt"
+
+    ApprovalChangedEvent:
+      type: object
+      required: [type, approval]
+      properties:
+        type:
+          type: string
+          enum: [approval_changed]
+        approval:
+          $ref: "#/components/schemas/CopilotApproval"
+
+    ArtifactChangedEvent:
+      type: object
+      required: [type, artifact]
+      properties:
+        type:
+          type: string
+          enum: [artifact_changed]
+        artifact:
+          $ref: "#/components/schemas/ArtifactResponse"

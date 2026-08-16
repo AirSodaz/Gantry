@@ -1,7 +1,7 @@
 # Implementation Status
 
 This document separates the checked-in product from the target design. It is a
-source-based snapshot of the current worktree on 2026-08-16. A capability is
+source-based snapshot of the current worktree on 2026-08-17. A capability is
 not considered complete merely because a package,
 table, route, or UI placeholder exists.
 
@@ -63,6 +63,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   browse/detail, artifact download, requester-owned attachment upload and
   validation before Task binding, and URL-preserved Agent search/category filters
   with an owner projection.
+- Schema-versioned Task event snapshots and requester-bound cursors now carry
+  complete Task conversations, Run history, and approval history. Continuous
+  frames expose only typed committed-message, content-segment, Run-state,
+  approval, and Artifact projections; internal Runner event payloads remain
+  private to the control plane.
 - Persistent tasks, runs, ordered semantic events, bounded content segments,
   artifacts, durable action records, approval requests, and approval decisions.
 - Runner V1 agent loop with deterministic and development provider adapters,
@@ -173,10 +178,6 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   requester-bound favorites/recent use. The product design names these fields,
   but does not yet define their Admin authoring, publication, or persistence
   contract.
-- The complete Copilot target contract is documented in
-  [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
-  Current routes do not yet provide complete typed message parts or any of the
-  remaining approval capabilities identified above.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a

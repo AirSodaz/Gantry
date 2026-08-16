@@ -41,6 +41,18 @@ describe('CopilotApi', () => {
     expect(init.body).toBe(JSON.stringify({ revision_selection: 'current_production_revision' }));
   });
 
+  it('includes the rendered cursor when refreshing an event ticket', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ticket: 'evt_1', task_id: 'tsk_1', websocket_url: 'wss://copilot.example.test/events', expires_at: '2026-08-17T01:00:00Z' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = new CopilotApi(() => 'token-1');
+
+    await api.createEventsTicket('tsk_1', 'cur_1');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/tasks/tsk_1/events:ticket');
+    expect(init.body).toBe(JSON.stringify({ last_cursor: 'cur_1' }));
+  });
+
   it('requests download references through the audited artifact command', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ artifact_id: 'art_1', download_url: 'https://downloads.example.test/art_1', expires_at: '2026-08-17T01:00:00Z' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

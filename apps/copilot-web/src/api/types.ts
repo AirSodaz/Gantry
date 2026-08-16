@@ -15,6 +15,8 @@ export type ArtifactDownloadGrant = components['schemas']['ArtifactDownloadGrant
 export type Attachment = components['schemas']['AttachmentResponse'];
 export type CreateAttachmentInput = components['schemas']['CreateAttachmentRequest'];
 export type EventsTicket = components['schemas']['TaskEventsTicket'];
+export type TaskEventSnapshot = components['schemas']['TaskEventSnapshot'];
+export type TaskEventFrame = components['schemas']['TaskEventFrame'];
 
 export type SubmitTaskInput = {
   agent_id: string;

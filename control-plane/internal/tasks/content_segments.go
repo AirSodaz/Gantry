@@ -136,8 +136,8 @@ func (s *Service) persistContentSegment(ctx context.Context, runID, streamID str
 		return err
 	}
 	defer tx.Rollback(ctx)
-	var start int64
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(end_offset),0) FROM gantry.run_content_segments WHERE run_id=$1 AND stream_id=$2`, runID, streamID).Scan(&start); err != nil {
+	var start, segmentIndex int64
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(end_offset),0), COUNT(*) FROM gantry.run_content_segments WHERE run_id=$1 AND stream_id=$2`, runID, streamID).Scan(&start, &segmentIndex); err != nil {
 		return err
 	}
 	end := start + int64(len(data))
@@ -154,10 +154,11 @@ func (s *Service) persistContentSegment(ctx context.Context, runID, streamID str
 	if err := tx.QueryRow(ctx, `SELECT task_id FROM gantry.runs WHERE id=$1`, runID).Scan(&taskID); err != nil {
 		return err
 	}
-	if err := taskmessage.Append(ctx, tx, taskID, runID, "agent", taskmessage.Text(string(data))); err != nil {
+	messageID, err := taskmessage.AppendWithID(ctx, tx, taskID, runID, "agent", taskmessage.Text(string(data)))
+	if err != nil {
 		return err
 	}
-	payload, _ := json.Marshal(map[string]any{"segment_id": segmentID, "stream_id": streamID, "start_offset": start, "end_offset": end})
+	payload, _ := json.Marshal(map[string]any{"segment_id": segmentID, "message_id": messageID, "stream_id": streamID, "segment_index": segmentIndex, "start_offset": start, "end_offset": end})
 	if err := appendEventPayload(ctx, tx, runID, "model.segment", string(payload)); err != nil {
 		return err
 	}
@@ -170,7 +171,9 @@ func (s *Service) hydrateContentSegment(ctx context.Context, event *Event) error
 	}
 	var reference struct {
 		SegmentID string `json:"segment_id"`
+		MessageID string `json:"message_id"`
 		StreamID  string `json:"stream_id"`
+		Index     int64  `json:"segment_index"`
 	}
 	if err := json.Unmarshal(event.Payload, &reference); err != nil || reference.SegmentID == "" {
 		return ErrInvalidInput
@@ -194,6 +197,6 @@ func (s *Service) hydrateContentSegment(ctx context.Context, event *Event) error
 		return ErrInvalidInput
 	}
 	event.Type = "model.delta"
-	event.Payload, _ = json.Marshal(map[string]string{"stream_id": strings.TrimSpace(reference.StreamID), "text": string(data)})
+	event.Payload, _ = json.Marshal(map[string]any{"message_id": reference.MessageID, "stream_id": strings.TrimSpace(reference.StreamID), "segment_index": reference.Index, "text": string(data)})
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/policy"
+	"github.com/AirSodaz/gantry/internal/taskevents"
 	"github.com/AirSodaz/gantry/internal/taskmessage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -390,6 +391,9 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if err := appendEvent(ctx, tx, runID, eventType, map[string]any{"approval_id": input.ID, "action_digest": digest, "principal_id": actor.ID}); err != nil {
 		return Resolution{}, err
 	}
+	if err := appendEvent(ctx, tx, runID, "run.resumed", map[string]any{"approval_id": input.ID}); err != nil {
+		return Resolution{}, err
+	}
 	resolution := Resolution{ApprovalID: input.ID, RunID: runID, ActionID: actionID, CallID: callID, ActionDigest: digest, Decision: input.Decision, Reason: strings.TrimSpace(input.Reason), PermitID: permitID, PermitLeaseEpoch: permitLeaseEpoch}
 	if permitExpiresAt != nil {
 		resolution.PermitExpiresAt = *permitExpiresAt
@@ -421,21 +425,7 @@ func appendApprovalStatus(ctx context.Context, tx pgx.Tx, runID, code, message s
 }
 
 func appendEvent(ctx context.Context, tx pgx.Tx, runID, eventType string, payload any) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	var runSequence int64
-	var taskID string
-	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET event_sequence=event_sequence+1 WHERE id=$1 RETURNING task_id, event_sequence`, runID).Scan(&taskID, &runSequence); err != nil {
-		return err
-	}
-	var taskSequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&taskSequence); err != nil {
-		return err
-	}
-	_, err = tx.Exec(ctx, `INSERT INTO gantry.run_events (run_id, sequence, task_sequence, event_type, payload) VALUES ($1,$2,$3,$4,$5::jsonb)`, runID, runSequence, taskSequence, eventType, string(data))
-	return err
+	return taskevents.Append(ctx, tx, runID, eventType, payload)
 }
 
 func preview(action policy.Action) []byte {

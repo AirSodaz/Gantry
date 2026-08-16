@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AirSodaz/gantry/internal/taskevents"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -35,25 +36,38 @@ func Status(code, message string) Part {
 // Append allocates the next task-wide sequence and commits an immutable
 // requester, agent, or system summary message in the caller's transaction.
 func Append(ctx context.Context, tx pgx.Tx, taskID, runID, role string, parts ...Part) error {
+	_, err := AppendWithID(ctx, tx, taskID, runID, role, parts...)
+	return err
+}
+
+// AppendWithID returns the immutable message identifier for a dependent
+// projection, including a content segment that references its committed text.
+func AppendWithID(ctx context.Context, tx pgx.Tx, taskID, runID, role string, parts ...Part) (string, error) {
 	taskID = strings.TrimSpace(taskID)
 	runID = strings.TrimSpace(runID)
 	if taskID == "" || runID == "" || (role != "requester" && role != "agent" && role != "system_summary") || len(parts) == 0 {
-		return fmt.Errorf("invalid task message")
+		return "", fmt.Errorf("invalid task message")
 	}
 	content, err := contentFor(parts)
 	if err != nil {
-		return err
+		return "", err
 	}
 	payload, err := json.Marshal(parts)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var sequence int64
 	if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&sequence); err != nil {
-		return err
+		return "", err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, task_sequence, role, parts, content) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`, newID(), taskID, runID, sequence, role, string(payload), content)
-	return err
+	messageID := newID()
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, task_sequence, role, parts, content) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`, messageID, taskID, runID, sequence, role, string(payload), content); err != nil {
+		return "", err
+	}
+	if err := taskevents.AppendAtTaskSequence(ctx, tx, runID, sequence, "message.committed", map[string]string{"message_id": messageID}); err != nil {
+		return "", err
+	}
+	return messageID, nil
 }
 
 func contentFor(parts []Part) (string, error) {

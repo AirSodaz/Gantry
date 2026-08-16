@@ -58,10 +58,10 @@ export class CopilotApi {
     return this.request<{ items: RunAttempt[] }>(`/tasks/${encodeURIComponent(taskId)}/runs`);
   }
 
-  createEventsTicket(taskId: string) {
+  createEventsTicket(taskId: string, lastCursor?: string) {
     return this.request<EventsTicket>(`/tasks/${encodeURIComponent(taskId)}/events:ticket`, {
       method: 'POST',
-      body: '{}',
+      body: JSON.stringify(lastCursor ? { last_cursor: lastCursor } : {}),
     });
   }
 

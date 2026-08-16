@@ -4,7 +4,7 @@ import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Send, Timer, XCircle } from 'l
 import { Button, StatusMark } from '@gantry/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
-import type { Artifact } from '../../api/types';
+import type { Artifact, TaskEventFrame as ApiTaskEventFrame, TaskEventSnapshot } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 import { AttachmentUploadControl, type AttachmentUploadState } from './AttachmentUploadControl';
 
@@ -103,7 +103,7 @@ export function TaskPage() {
       if (cancelled) return;
       setStreamState(attempt === 0 ? 'connecting' : 'reconnecting');
       try {
-        const ticket = await api.createEventsTicket(taskId);
+        const ticket = await api.createEventsTicket(taskId, cursorRef.current || undefined);
         if (cancelled) return;
         if (typeof WebSocket === 'undefined') {
           setStreamState('closed');
@@ -111,9 +111,11 @@ export function TaskPage() {
         }
         const base = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
         const wsOrigin = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
-        const params = new URLSearchParams({ ticket: ticket.ticket });
-        if (cursorRef.current) params.set('after', cursorRef.current);
-        socket = new WebSocket(`${wsOrigin}${base}/tasks/${encodeURIComponent(taskId)}/events?${params.toString()}`);
+        const fallbackURL = `${wsOrigin}${base}/tasks/${encodeURIComponent(taskId)}/events`;
+        const streamURL = new URL(ticket.websocket_url ?? fallbackURL, window.location.origin);
+        streamURL.searchParams.set('ticket', ticket.ticket);
+        if (cursorRef.current) streamURL.searchParams.set('after', cursorRef.current);
+        socket = new WebSocket(streamURL.toString());
         socket.onopen = () => {
           attempt = 0;
           setStreamState('connected');
@@ -122,23 +124,41 @@ export function TaskPage() {
           try {
             const frame = JSON.parse(message.data as string) as EventFrame;
             if (frame.type === 'cursor_expired') {
-              cursorRef.current = '';
-              seenSequences.current.clear();
-              setOutput('');
+              if (isSnapshotFrame(frame.snapshot)) {
+                applySnapshot(frame.snapshot, taskId, queryClient, setOutput, cursorRef, seenSequences);
+              } else {
+                cursorRef.current = '';
+                seenSequences.current.clear();
+                setOutput('');
+              }
               void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
               socket?.close();
               return;
             }
-            if (frame.type === 'event' && frame.event) {
+            if (frame.type === 'error' && frame.code === 'cursor_invalid') {
+              cursorRef.current = '';
+              seenSequences.current.clear();
+              socket?.close();
+              return;
+            }
+            if (isSnapshotFrame(frame)) {
+              applySnapshot(frame, taskId, queryClient, setOutput, cursorRef, seenSequences);
+              return;
+            }
+            if (isTaskEventFrame(frame)) {
               cursorRef.current = frame.cursor ?? cursorRef.current;
-              if (seenSequences.current.has(frame.event.sequence)) return;
-              seenSequences.current.add(frame.event.sequence);
-              const payload = frame.event.payload as Record<string, unknown>;
-              if (frame.event.type === 'model.delta' && typeof payload.text === 'string') {
-                setOutput((current) => current + payload.text);
+              if (seenSequences.current.has(frame.task_sequence)) return;
+              seenSequences.current.add(frame.task_sequence);
+              const event = frame.event;
+              if (event.type === 'content_segment') {
+                setOutput((current) => current + event.text);
+              } else {
+                void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+                if (event.type === 'run_state_changed') {
+                  void queryClient.invalidateQueries({ queryKey: ['task-runs', taskId] });
+                }
               }
-              void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
-              if (isTerminalEvent(frame.event.type)) {
+              if (isTerminalEvent(event)) {
                 terminal = true;
                 socket?.close();
               }
@@ -218,10 +238,50 @@ export function TaskPage() {
 }
 
 type EventFrame = {
-  type: string;
+  type?: string;
+  code?: string;
+  schema_version?: string;
   cursor?: string;
-  event?: { sequence: number; type: string; payload: unknown };
+  task?: unknown;
+  runs?: unknown[];
+  approvals?: unknown[];
+  snapshot?: unknown;
+  task_sequence?: number;
+  event?: unknown;
 };
+
+type TaskEvent = ApiTaskEventFrame['event'];
+
+type SnapshotFrame = TaskEventSnapshot & {
+  type: 'snapshot';
+};
+
+type TaskEventFrame = ApiTaskEventFrame;
+
+function isSnapshotFrame(value: unknown): value is SnapshotFrame {
+  const frame = value as Partial<SnapshotFrame> | null;
+  return frame?.type === 'snapshot' && frame.schema_version === 'gantry.copilot.snapshot/v1' && typeof frame.cursor === 'string' && Array.isArray(frame.runs) && Array.isArray(frame.approvals) && frame.task != null;
+}
+
+function isTaskEventFrame(value: EventFrame): value is TaskEventFrame {
+  const frame = value as Partial<TaskEventFrame>;
+  return frame.schema_version === 'gantry.copilot.event/v1' && typeof frame.cursor === 'string' && typeof frame.task_sequence === 'number' && isTaskEvent(frame.event);
+}
+
+function isTaskEvent(value: unknown): value is TaskEvent {
+  if (!value || typeof value !== 'object' || typeof (value as { type?: unknown }).type !== 'string') return false;
+  const event = value as { type: string; text?: unknown; message_id?: unknown; segment_index?: unknown };
+  if (event.type === 'content_segment') return typeof event.text === 'string' && typeof event.message_id === 'string' && typeof event.segment_index === 'number';
+  return event.type === 'message_committed' || event.type === 'run_state_changed' || event.type === 'approval_changed' || event.type === 'artifact_changed';
+}
+
+function applySnapshot(snapshot: SnapshotFrame, taskId: string, queryClient: ReturnType<typeof useQueryClient>, setOutput: (value: string) => void, cursorRef: { current: string }, seenSequences: { current: Set<number> }) {
+  cursorRef.current = snapshot.cursor;
+  seenSequences.current.clear();
+  setOutput('');
+  queryClient.setQueryData(['task', taskId], snapshot.task);
+  queryClient.setQueryData(['task-runs', taskId], { items: snapshot.runs });
+}
 
 function ArtifactRow({ artifact, onDownload }: { artifact: Artifact; onDownload: () => Promise<void> }) {
   const [downloadError, setDownloadError] = useState(false);
@@ -237,8 +297,8 @@ function ArtifactRow({ artifact, onDownload }: { artifact: Artifact; onDownload:
   return <div className="artifact-row"><div><strong>{artifact.filename ?? artifact.id}</strong><span>{artifact.media_type ?? 'Artifact'} · {formatBytes(artifact.size_bytes ?? 0)} · {available ? 'Ready' : 'Processing'}</span>{downloadError ? <span className="artifact-error" role="alert">Download failed. Try again.</span> : null}</div><Button variant="secondary" disabled={!available} onClick={() => void download()}>{downloadError ? 'Retry download' : 'Download'}</Button></div>;
 }
 
-function isTerminalEvent(type: string) {
-  return type === 'run.completed' || type === 'run.failed' || type === 'run.canceled';
+function isTerminalEvent(event: TaskEvent) {
+  return event.type === 'run_state_changed' && (event.run.status === 'completed' || event.run.status === 'failed' || event.run.status === 'canceled');
 }
 
 function formatBytes(value: number) {

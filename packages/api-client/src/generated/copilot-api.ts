@@ -529,7 +529,75 @@ export interface components {
         TaskEventsTicket: {
             ticket: string;
             task_id: string;
+            /** Format: uri */
+            websocket_url: string;
             expires_at: components["schemas"]["Timestamp"];
+        };
+        TaskEventsTicketRequest: {
+            last_cursor?: string;
+        };
+        TaskEventSnapshot: {
+            /** @enum {string} */
+            schema_version: "gantry.copilot.snapshot/v1";
+            task: components["schemas"]["TaskResponse"];
+            runs: components["schemas"]["RunAttempt"][];
+            approvals: components["schemas"]["CopilotApproval"][];
+            cursor: string;
+        };
+        TaskEventFrame: {
+            /** @enum {string} */
+            schema_version: "gantry.copilot.event/v1";
+            task_id: string;
+            run_id?: string | null;
+            /** Format: int64 */
+            task_sequence: number;
+            /** Format: int64 */
+            run_sequence?: number | null;
+            cursor: string;
+            event: components["schemas"]["MessageCommittedEvent"] | components["schemas"]["ContentSegmentEvent"] | components["schemas"]["RunStateChangedEvent"] | components["schemas"]["ApprovalChangedEvent"] | components["schemas"]["ArtifactChangedEvent"];
+        };
+        MessageCommittedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "message_committed";
+            message: components["schemas"]["TaskMessage"];
+        };
+        ContentSegmentEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "content_segment";
+            message_id: string;
+            segment_index: number;
+            text: string;
+            final?: boolean;
+        };
+        RunStateChangedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "run_state_changed";
+            run: components["schemas"]["RunAttempt"];
+        };
+        ApprovalChangedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "approval_changed";
+            approval: components["schemas"]["CopilotApproval"];
+        };
+        ArtifactChangedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "artifact_changed";
+            artifact: components["schemas"]["ArtifactResponse"];
         };
     };
     responses: never;
@@ -822,7 +890,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TaskEventsTicketRequest"];
+            };
+        };
         responses: {
             /** @description Short-lived ticket for the task event stream */
             200: {

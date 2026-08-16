@@ -84,17 +84,35 @@ describe('TaskPage', () => {
 
   it('accumulates event output and reconnects with the rendered cursor', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
-    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.listTaskRuns.mockResolvedValue({ items: [] });
     vi.stubGlobal('WebSocket', MockWebSocket);
     renderTask();
 
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
-    MockWebSocket.instances[0].emit({ type: 'event', cursor: 'cur_1', event: { sequence: 1, type: 'model.delta', payload: { text: 'Hello' } } });
+    expect(MockWebSocket.instances[0].url).toContain('stream.example.test');
+    MockWebSocket.instances[0].emit({ schema_version: 'gantry.copilot.event/v1', task_id: 'tsk_1', run_id: 'run_1', task_sequence: 1, run_sequence: 1, cursor: 'cur_1', event: { type: 'content_segment', message_id: 'msg_1', segment_index: 0, text: 'Hello' } });
     expect(await screen.findByText('Hello')).toBeInTheDocument();
 
     MockWebSocket.instances[0].close();
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2), { timeout: 1_500 });
     expect(MockWebSocket.instances[1].url).toContain('after=cur_1');
+  });
+
+  it('replaces the task projection and cursor from a stream snapshot', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.listTaskRuns.mockResolvedValue({ items: [] });
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    renderTask();
+
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.instances[0].emit({ type: 'snapshot', schema_version: 'gantry.copilot.snapshot/v1', cursor: 'cur_snapshot', task: { ...baseTask, agent_display_name: 'Snapshot Agent', status: 'completed', current_run: { id: 'run_1', status: 'completed' } }, runs: [{ id: 'run_1', attempt_number: 1, status: 'completed', created_at: '2026-08-14T08:00:00Z' }], approvals: [] });
+    expect(await screen.findByRole('heading', { name: 'Snapshot Agent' })).toBeInTheDocument();
+
+    MockWebSocket.instances[0].close();
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2), { timeout: 1_500 });
+    expect(MockWebSocket.instances[1].url).toContain('after=cur_snapshot');
   });
 
   it('shows a retry action when an artifact download fails', async () => {
