@@ -67,6 +67,12 @@ paths:
         - name: workspace_id
           in: query
           schema: {type: string}
+        - name: search
+          in: query
+          schema: {type: string}
+        - name: status
+          in: query
+          schema: {type: string, enum: [available, deprecated, retired]}
       responses:
         "200": {description: Skills, content: {application/json: {schema: {$ref: "#/components/schemas/SkillList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
@@ -110,6 +116,13 @@ paths:
       operationId: listPlugins
       summary: List organization Plugin versions
       tags: [Plugins]
+      parameters:
+        - name: search
+          in: query
+          schema: {type: string}
+        - name: status
+          in: query
+          schema: {type: string, enum: [active, deprecated, retired]}
       responses:
         "200": {description: Plugins, content: {application/json: {schema: {$ref: "#/components/schemas/PluginList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
@@ -153,6 +166,13 @@ paths:
       operationId: listTools
       summary: List active Tool descriptors
       tags: [Tools]
+      parameters:
+        - name: search
+          in: query
+          schema: {type: string}
+        - name: status
+          in: query
+          schema: {type: string, enum: [active, proposed, deprecated, retired]}
       responses:
         "200": {description: Tools, content: {application/json: {schema: {$ref: "#/components/schemas/ToolList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}

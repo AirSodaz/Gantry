@@ -443,6 +443,23 @@ a {
   margin-bottom: 24px;
 }
 
+.admin-asset-filter-bar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-filter-input {
+  display: grid;
+  width: min(100%, 280px);
+  gap: 6px;
+}
+
+.admin-filter-input .ds-input {
+  min-width: 220px;
+}
+
 .admin-filter-select-wrap {
   width: 280px;
 }
@@ -605,6 +622,41 @@ a {
   overflow-wrap: anywhere;
   font-size: 13px;
   font-weight: 600;
+}
+
+.admin-prompt-settings {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+  border-top: 1px solid var(--ds-border);
+  padding-top: 18px;
+}
+
+.admin-model-fields {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.admin-binding-constraints {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--ds-border);
+  padding-top: 14px;
+}
+
+.admin-binding-constraint {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .admin-model-fields,
+  .admin-binding-constraint {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .admin-detail-list {

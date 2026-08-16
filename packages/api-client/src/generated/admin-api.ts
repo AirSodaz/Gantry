@@ -897,6 +897,8 @@ export interface operations {
         parameters: {
             query?: {
                 workspace_id?: string;
+                search?: string;
+                status?: "available" | "deprecated" | "retired";
             };
             header?: never;
             path?: never;
@@ -996,7 +998,10 @@ export interface operations {
     };
     listPlugins: {
         parameters: {
-            query?: never;
+            query?: {
+                search?: string;
+                status?: "active" | "deprecated" | "retired";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1095,7 +1100,10 @@ export interface operations {
     };
     listTools: {
         parameters: {
-            query?: never;
+            query?: {
+                search?: string;
+                status?: "active" | "proposed" | "deprecated" | "retired";
+            };
             header?: never;
             path?: never;
             cookie?: never;

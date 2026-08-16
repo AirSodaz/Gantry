@@ -60,17 +60,20 @@ function AssetCatalog({ kind }: { kind: AssetKind }) {
   const api = useAdminApi();
   const queryClient = useQueryClient();
   const [workspaceID, setWorkspaceID] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const meta = headings[kind];
 
   const workspaces = useQuery({ queryKey: ['admin-workspaces'], queryFn: () => api.listWorkspaces(), enabled: kind !== 'tools' });
   const query = useQuery<{ items: AssetItem[] }>({
-    queryKey: ['admin-assets', kind, workspaceID],
+    queryKey: ['admin-assets', kind, workspaceID, search, status],
     queryFn: async () => {
-      if (kind === 'skills') return api.listSkills(workspaceID) as Promise<{ items: AssetItem[] }>;
-      if (kind === 'plugins') return api.listPlugins() as Promise<{ items: AssetItem[] }>;
-      return api.listTools() as Promise<{ items: AssetItem[] }>;
+      const options = { workspaceId: workspaceID, search, status };
+      if (kind === 'skills') return api.listSkills(options) as Promise<{ items: AssetItem[] }>;
+      if (kind === 'plugins') return api.listPlugins(options) as Promise<{ items: AssetItem[] }>;
+      return api.listTools(options) as Promise<{ items: AssetItem[] }>;
     },
   });
   const mutation = useMutation<AssetItem, Error, void>({
@@ -105,6 +108,10 @@ function AssetCatalog({ kind }: { kind: AssetKind }) {
   });
 
   const workspaceOptions = useMemo<SelectOption[]>(() => (workspaces.data?.items ?? []).map((workspace) => ({ value: workspace.id, label: workspace.display_name })), [workspaces.data?.items]);
+  const statusOptions = useMemo<SelectOption[]>(() => {
+    const values = kind === 'skills' ? [['available', 'Available'], ['deprecated', 'Deprecated'], ['retired', 'Retired']] : kind === 'plugins' ? [['active', 'Active'], ['deprecated', 'Deprecated'], ['retired', 'Retired']] : [['active', 'Active'], ['proposed', 'Proposed'], ['deprecated', 'Deprecated'], ['retired', 'Retired']];
+    return values.map(([value, label]) => ({ value, label }));
+  }, [kind]);
   const items = query.data?.items ?? [];
   const Icon = meta.icon;
 
@@ -118,7 +125,11 @@ function AssetCatalog({ kind }: { kind: AssetKind }) {
         <Button onClick={() => setIsAdding((value) => !value)}><Plus size={16} /> {isAdding ? 'Close' : `Register ${kind === 'skills' ? 'skill' : kind === 'plugins' ? 'plugin' : 'tool'}`}</Button>
       </header>
 
-      {kind === 'skills' ? <div className="admin-filter-bar"><Select label="Workspace" options={workspaceOptions} value={workspaceID} onChange={setWorkspaceID} placeholder="All manageable workspaces" /></div> : null}
+      <div className="admin-filter-bar admin-asset-filter-bar">
+        <label className="admin-filter-input"><span className="admin-field-label">Search</span><input className="ds-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${meta.title.toLowerCase()}`} /></label>
+        {kind !== 'tools' ? <Select label="Workspace" options={workspaceOptions} value={workspaceID} onChange={setWorkspaceID} placeholder="All manageable workspaces" /> : null}
+        <Select label="Status" options={statusOptions} value={status} onChange={setStatus} placeholder="All statuses" />
+      </div>
 
       {isAdding ? <AssetForm kind={kind} form={form} setForm={setForm} workspaceOptions={workspaceOptions} onSubmit={() => mutation.mutate()} busy={mutation.isPending} error={mutation.error?.message} /> : null}
       {items.length === 0 ? <div className="admin-empty"><Icon size={22} /><strong>No {kind} registered</strong><span>Register an immutable catalog entry to use it in an Agent draft.</span></div> : (

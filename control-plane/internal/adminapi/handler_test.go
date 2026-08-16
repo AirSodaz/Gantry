@@ -36,14 +36,18 @@ type fakeLifecycleService struct {
 }
 
 type fakeAssetService struct {
-	createSkill  func(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
-	enablePlugin func(context.Context, identity.Principal, string, string) error
-	getSkill     func(string) (configassets.Skill, error)
-	skillUsage   func(string) ([]configassets.AssetUsage, error)
-	status       func(string, string, string) error
+	createSkill   func(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
+	enablePlugin  func(context.Context, identity.Principal, string, string) error
+	getSkill      func(string) (configassets.Skill, error)
+	skillUsage    func(string) ([]configassets.AssetUsage, error)
+	listSkillOpts func(configassets.ListOptions)
+	status        func(string, string, string) error
 }
 
-func (fakeAssetService) ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error) {
+func (s fakeAssetService) ListSkills(_ context.Context, _ identity.Principal, options configassets.ListOptions) ([]configassets.Skill, error) {
+	if s.listSkillOpts != nil {
+		s.listSkillOpts(options)
+	}
 	return nil, nil
 }
 func (s fakeAssetService) GetSkill(_ context.Context, _ identity.Principal, id string) (configassets.Skill, error) {
@@ -64,7 +68,7 @@ func (s fakeAssetService) CreateSkill(ctx context.Context, actor identity.Princi
 	}
 	return s.createSkill(ctx, actor, request)
 }
-func (fakeAssetService) ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error) {
+func (fakeAssetService) ListPlugins(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Plugin, error) {
 	return nil, nil
 }
 func (fakeAssetService) GetPlugin(context.Context, identity.Principal, string) (configassets.PluginDetail, error) {
@@ -82,7 +86,7 @@ func (s fakeAssetService) EnablePlugin(ctx context.Context, actor identity.Princ
 	}
 	return s.enablePlugin(ctx, actor, pluginID, workspaceID)
 }
-func (fakeAssetService) ListTools(context.Context, identity.Principal) ([]configassets.Tool, error) {
+func (fakeAssetService) ListTools(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Tool, error) {
 	return nil, nil
 }
 func (fakeAssetService) GetTool(context.Context, identity.Principal, string) (configassets.Tool, error) {
@@ -325,5 +329,16 @@ func TestSkillUsageRouteReturnsScopedReferences(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/skills/skill_1/usage", nil))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"agent_id":"agt_1"`) {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestSkillListForwardsCatalogFilters(t *testing.T) {
+	var options configassets.ListOptions
+	assets := fakeAssetService{listSkillOpts: func(value configassets.ListOptions) { options = value }}
+	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/skills?workspace_id=ws_1&search=search&status=deprecated", nil))
+	if response.Code != http.StatusOK || options != (configassets.ListOptions{WorkspaceID: "ws_1", Search: "search", Status: "deprecated"}) {
+		t.Fatalf("status=%d options=%+v", response.Code, options)
 	}
 }

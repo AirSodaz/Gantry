@@ -16,7 +16,9 @@ export type PluginDetail = Components['schemas']['PluginDetail'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';
-  model: { provider: 'scripted'; model: string };
+  system_prompt?: string;
+  user_input?: string;
+  model: { provider: 'scripted' | 'openai' | 'openai-compatible' | 'anthropic'; model: string };
   workspace_root: string;
   limits: { max_turns: number; max_output_bytes: number };
   checkpoint: { enabled: boolean };

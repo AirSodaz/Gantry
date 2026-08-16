@@ -10,21 +10,21 @@ export class AdminApiError extends Error {
 }
 
 type TokenProvider = () => string | null;
+export type AssetListOptions = { workspaceId?: string; search?: string; status?: string };
 
 export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
 
   listWorkspaces() { return this.request<{ items: Workspace[] }>('/workspaces'); }
-  listSkills(workspaceId = '') {
-    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
-    return this.request<{ items: Skill[] }>(`/skills${query}`);
+  listSkills(options: AssetListOptions = {}) {
+    return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }
   getSkill(skillId: string) { return this.request<Skill>(`/skills/${encodeURIComponent(skillId)}`); }
   listSkillUsage(skillId: string) { return this.request<{ items: AssetUsage[] }>(`/skills/${encodeURIComponent(skillId)}/usage`); }
   registerSkill(input: Omit<Skill, 'id' | 'status'>) {
     return this.request<Skill>('/skills', { method: 'POST', body: JSON.stringify(input) });
   }
-  listPlugins() { return this.request<{ items: Plugin[] }>('/plugins'); }
+  listPlugins(options: AssetListOptions = {}) { return this.request<{ items: Plugin[] }>(`/plugins${this.assetListQuery(options)}`); }
   getPlugin(pluginId: string) { return this.request<PluginDetail>(`/plugins/${encodeURIComponent(pluginId)}`); }
   listPluginUsage(pluginId: string) { return this.request<{ items: AssetUsage[] }>(`/plugins/${encodeURIComponent(pluginId)}/usage`); }
   registerPlugin(input: Omit<Plugin, 'id' | 'status'>) {
@@ -42,7 +42,7 @@ export class AdminApi {
   activateTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:activate`, reason); }
   deprecateTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:deprecate`, reason); }
   retireTool(toolId: string, reason = '') { return this.assetStatus(`/tools/${encodeURIComponent(toolId)}:retire`, reason); }
-  listTools() { return this.request<{ items: Tool[] }>('/tools'); }
+  listTools(options: AssetListOptions = {}) { return this.request<{ items: Tool[] }>(`/tools${this.assetListQuery(options)}`); }
   getTool(toolId: string) { return this.request<Tool>(`/tools/${encodeURIComponent(toolId)}`); }
   listToolUsage(toolId: string) { return this.request<{ items: AssetUsage[] }>(`/tools/${encodeURIComponent(toolId)}/usage`); }
   registerTool(input: { server_name: string; server_type: string; endpoint_ref?: string; fully_qualified_name: string; version: string; effect: string; idempotency: string; content_digest: string }) {
@@ -76,6 +76,15 @@ export class AdminApi {
 
   private assetStatus(path: string, reason: string) {
     return this.request<void>(path, { method: 'POST', body: JSON.stringify({ reason }) });
+  }
+
+  private assetListQuery(options: AssetListOptions) {
+    const query = new URLSearchParams();
+    if (options.workspaceId) query.set('workspace_id', options.workspaceId);
+    if (options.search) query.set('search', options.search);
+    if (options.status) query.set('status', options.status);
+    const value = query.toString();
+    return value ? `?${value}` : '';
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

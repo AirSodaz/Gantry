@@ -92,6 +92,12 @@ type AssetStatusRequest struct {
 	Reason string `json:"reason"`
 }
 
+type ListOptions struct {
+	WorkspaceID string
+	Search      string
+	Status      string
+}
+
 type Tool struct {
 	ID                 string          `json:"id"`
 	ServerID           string          `json:"server_id"`
@@ -127,9 +133,12 @@ func NewService(pool *pgxpool.Pool, authz *authorization.Service) *Service {
 	return &Service{pool: pool, authz: authz}
 }
 
-func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, workspaceID string) ([]Skill, error) {
-	if workspaceID != "" {
-		if err := s.authz.RequireWorkspace(ctx, actor, workspaceID); err != nil {
+func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, options ListOptions) ([]Skill, error) {
+	options.WorkspaceID = strings.TrimSpace(options.WorkspaceID)
+	options.Search = strings.TrimSpace(options.Search)
+	options.Status = normalizeSkillStatus(options.Status)
+	if options.WorkspaceID != "" {
+		if err := s.authz.RequireWorkspace(ctx, actor, options.WorkspaceID); err != nil {
 			return nil, err
 		}
 	}
@@ -137,11 +146,12 @@ func (s *Service) ListSkills(ctx context.Context, actor identity.Principal, work
 		SELECT id, workspace_id, slug, display_name, description, source_type, source_ref,
 			declared_version, content_digest, status
 		FROM gantry.skills
-		WHERE organization_id=$1 AND ($2='' OR workspace_id=$2) AND (
-			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
-			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='workspace_agent_editor' AND rb.workspace_id=gantry.skills.workspace_id)
+		WHERE organization_id=$1 AND ($2='' OR workspace_id=$2) AND ($3='' OR status=$3) AND
+			($4='' OR display_name ILIKE '%' || $4 || '%' OR slug ILIKE '%' || $4 || '%') AND (
+			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$5 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
+			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$5 AND rb.role='workspace_agent_editor' AND rb.workspace_id=gantry.skills.workspace_id)
 		)
-		ORDER BY display_name, slug, id`, actor.OrganizationID, workspaceID, actor.ID)
+		ORDER BY display_name, slug, id`, actor.OrganizationID, options.WorkspaceID, options.Status, options.Search, actor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +220,10 @@ func (s *Service) CreateSkill(ctx context.Context, actor identity.Principal, req
 	return item, nil
 }
 
-func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal) ([]Plugin, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE organization_id=$1 ORDER BY display_name, version DESC, id`, actor.OrganizationID)
+func (s *Service) ListPlugins(ctx context.Context, actor identity.Principal, options ListOptions) ([]Plugin, error) {
+	options.Search = strings.TrimSpace(options.Search)
+	options.Status = normalizePluginStatus(options.Status)
+	rows, err := s.pool.Query(ctx, `SELECT id, slug, display_name, description, version, content_digest, status FROM gantry.plugins WHERE organization_id=$1 AND ($2='' OR status=$2) AND ($3='' OR display_name ILIKE '%' || $3 || '%' OR slug ILIKE '%' || $3 || '%' OR version ILIKE '%' || $3 || '%') ORDER BY display_name, version DESC, id`, actor.OrganizationID, options.Status, options.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -449,8 +461,10 @@ func appendAudit(ctx context.Context, tx pgx.Tx, organizationID, actorID, resour
 	return err
 }
 
-func (s *Service) ListTools(ctx context.Context, actor identity.Principal) ([]Tool, error) {
-	rows, err := s.pool.Query(ctx, `SELECT d.id, s.id, s.name, s.server_type, s.endpoint_ref, d.fully_qualified_name, d.version, d.effect, d.idempotency, d.content_digest, d.schema_json, d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id WHERE s.organization_id=$1 AND s.status <> 'retired' ORDER BY s.name, d.fully_qualified_name, d.version DESC`, actor.OrganizationID)
+func (s *Service) ListTools(ctx context.Context, actor identity.Principal, options ListOptions) ([]Tool, error) {
+	options.Search = strings.TrimSpace(options.Search)
+	options.Status = normalizeToolStatus(options.Status)
+	rows, err := s.pool.Query(ctx, `SELECT d.id, s.id, s.name, s.server_type, s.endpoint_ref, d.fully_qualified_name, d.version, d.effect, d.idempotency, d.content_digest, d.schema_json, d.status FROM gantry.tool_descriptors d JOIN gantry.tool_servers s ON s.id=d.server_id WHERE s.organization_id=$1 AND s.status <> 'retired' AND ($2='' OR d.status=$2) AND ($3='' OR s.name ILIKE '%' || $3 || '%' OR d.fully_qualified_name ILIKE '%' || $3 || '%' OR d.version ILIKE '%' || $3 || '%') ORDER BY s.name, d.fully_qualified_name, d.version DESC`, actor.OrganizationID, options.Status, options.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -580,6 +594,28 @@ func validSlug(value string) bool {
 func validSkillSource(value string) bool {
 	return value == "marketplace" || value == "locator" || value == "upload" || value == "local"
 }
+
+func normalizeSkillStatus(value string) string {
+	if value == "available" || value == "deprecated" || value == "retired" {
+		return value
+	}
+	return ""
+}
+
+func normalizePluginStatus(value string) string {
+	if value == "active" || value == "deprecated" || value == "retired" {
+		return value
+	}
+	return ""
+}
+
+func normalizeToolStatus(value string) string {
+	if value == "active" || value == "proposed" || value == "deprecated" || value == "retired" {
+		return value
+	}
+	return ""
+}
+
 func validServerType(value string) bool {
 	return value == "builtin" || value == "mcp" || value == "cli"
 }

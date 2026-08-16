@@ -51,18 +51,18 @@ export function AgentDetailPage() {
 
   const skills = useQuery({
     queryKey: ['admin-skills', agent.data?.workspace_id],
-    queryFn: () => api.listSkills(agent.data!.workspace_id),
+    queryFn: () => api.listSkills({ workspaceId: agent.data!.workspace_id, status: 'available' }),
     enabled: Boolean(agent.data?.workspace_id),
   });
 
   const plugins = useQuery({
     queryKey: ['admin-plugins'],
-    queryFn: () => api.listPlugins(),
+    queryFn: () => api.listPlugins({ status: 'active' }),
   });
 
   const tools = useQuery({
     queryKey: ['admin-tools'],
-    queryFn: () => api.listTools(),
+    queryFn: () => api.listTools({ status: 'active' }),
   });
 
   const [spec, setSpec] = useState<AgentSpec>(defaultSpec);
@@ -156,6 +156,22 @@ export function AgentDetailPage() {
 
   const selectBindings = (field: 'skills' | 'plugins' | 'tool_bindings', valueKey: 'artifact_id' | 'plugin_version_id' | 'descriptor_id', selected: string[]) => {
     setSpec((current) => ({ ...current, [field]: selected.map((id) => ({ [valueKey]: id })) }));
+  };
+
+  const selectToolBindings = (selected: string[]) => {
+    setSpec((current) => ({
+      ...current,
+      tool_bindings: selected.map((id) => current.tool_bindings?.find((binding) => binding.descriptor_id === id) ?? { descriptor_id: id }),
+    }));
+  };
+
+  const updateToolOperations = (descriptorID: string, value: string) => {
+    setSpec((current) => ({
+      ...current,
+      tool_bindings: (current.tool_bindings ?? []).map((binding) => binding.descriptor_id === descriptorID
+        ? { ...binding, operations: value.split(',').map((operation) => operation.trim()).filter(Boolean) }
+        : binding),
+    }));
   };
 
   return (
@@ -253,6 +269,24 @@ export function AgentDetailPage() {
             </div>
           </dl>
 
+          <div className="admin-prompt-settings">
+            <div className="admin-section-heading">
+              <div><span>Agent-owned</span><h2>Prompt and model</h2></div>
+            </div>
+            <label className="admin-field">
+              <span className="admin-field-label">System prompt</span>
+              <textarea className="ds-input admin-textarea" rows={7} value={spec.system_prompt ?? ''} onChange={(event) => setSpec((current) => ({ ...current, system_prompt: event.target.value }))} disabled={busy} placeholder="Instructions frozen into the next immutable version." />
+            </label>
+            <label className="admin-field">
+              <span className="admin-field-label">User input template</span>
+              <textarea className="ds-input admin-textarea" rows={3} value={spec.user_input ?? ''} onChange={(event) => setSpec((current) => ({ ...current, user_input: event.target.value }))} disabled={busy} placeholder="Optional input contract or template." />
+            </label>
+            <div className="admin-form-grid admin-model-fields">
+              <label className="admin-field"><span className="admin-field-label">Model provider</span><select className="ds-input" value={spec.model.provider} onChange={(event) => setSpec((current) => ({ ...current, model: { ...current.model, provider: event.target.value as AgentSpec['model']['provider'] } }))} disabled={busy}><option value="scripted">Scripted</option><option value="openai">OpenAI</option><option value="openai-compatible">OpenAI-compatible</option><option value="anthropic">Anthropic</option></select></label>
+              <label className="admin-field"><span className="admin-field-label">Model</span><input className="ds-input" value={spec.model.model} onChange={(event) => setSpec((current) => ({ ...current, model: { ...current.model, model: event.target.value } }))} disabled={busy} /></label>
+            </div>
+          </div>
+
           <div className="admin-asset-bindings">
             <div className="admin-section-heading">
               <div><span>Immutable references</span><h2>Configuration assets</h2></div>
@@ -271,10 +305,11 @@ export function AgentDetailPage() {
             </label>
             <label className="admin-field">
               <span className="admin-field-label">Tool descriptors</span>
-              <select className="ds-input admin-multiselect" multiple value={(spec.tool_bindings ?? []).map((binding) => binding.descriptor_id)} onChange={(event) => selectBindings('tool_bindings', 'descriptor_id', Array.from(event.currentTarget.selectedOptions, (option) => option.value))} disabled={busy || tools.isLoading}>
+              <select className="ds-input admin-multiselect" multiple value={(spec.tool_bindings ?? []).map((binding) => binding.descriptor_id)} onChange={(event) => selectToolBindings(Array.from(event.currentTarget.selectedOptions, (option) => option.value))} disabled={busy || tools.isLoading}>
                 {(tools.data?.items ?? []).map((tool) => <option key={tool.id} value={tool.id}>{tool.fully_qualified_name} {tool.version}</option>)}
               </select>
             </label>
+            {(spec.tool_bindings ?? []).length > 0 ? <div className="admin-binding-constraints"><span className="admin-field-label">Allowed operations</span>{(spec.tool_bindings ?? []).map((binding) => <label className="admin-binding-constraint" key={binding.descriptor_id}><span>{tools.data?.items.find((tool) => tool.id === binding.descriptor_id)?.fully_qualified_name ?? binding.descriptor_id}</span><input className="ds-input" value={(binding.operations ?? []).join(', ')} onChange={(event) => updateToolOperations(binding.descriptor_id, event.target.value)} disabled={busy} placeholder="Optional comma-separated operations" /></label>)}</div> : null}
           </div>
         </section>
 

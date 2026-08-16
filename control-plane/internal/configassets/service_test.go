@@ -38,3 +38,12 @@ func TestCatalogStatusTransitions(t *testing.T) {
 		t.Fatal("Tool transition classification is incorrect")
 	}
 }
+
+func TestCatalogListFiltersNormalizeUnknownStatus(t *testing.T) {
+	if normalizeSkillStatus("available") != "available" || normalizePluginStatus("active") != "active" || normalizeToolStatus("proposed") != "proposed" {
+		t.Fatal("valid catalog status was discarded")
+	}
+	if normalizeSkillStatus("running") != "" || normalizePluginStatus("available") != "" || normalizeToolStatus("unknown") != "" {
+		t.Fatal("unknown catalog status was accepted")
+	}
+}

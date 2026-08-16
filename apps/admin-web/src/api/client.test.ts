@@ -60,4 +60,12 @@ describe('AdminApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/skills/skill_1', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer admin-token' }) }));
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/skills/skill_1:activate', expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'validated replacement package' }) }));
   });
+
+  it('encodes catalog search and status filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listTools({ search: 'data export', status: 'deprecated' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/v1/tools?search=data+export&status=deprecated', expect.anything());
+  });
 });

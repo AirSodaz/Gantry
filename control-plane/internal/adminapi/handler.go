@@ -42,16 +42,16 @@ type lifecycleService interface {
 }
 
 type assetService interface {
-	ListSkills(context.Context, identity.Principal, string) ([]configassets.Skill, error)
+	ListSkills(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Skill, error)
 	GetSkill(context.Context, identity.Principal, string) (configassets.Skill, error)
 	ListSkillUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreateSkill(context.Context, identity.Principal, configassets.CreateSkillRequest) (configassets.Skill, error)
-	ListPlugins(context.Context, identity.Principal) ([]configassets.Plugin, error)
+	ListPlugins(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Plugin, error)
 	GetPlugin(context.Context, identity.Principal, string) (configassets.PluginDetail, error)
 	ListPluginUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreatePlugin(context.Context, identity.Principal, configassets.CreatePluginRequest) (configassets.Plugin, error)
 	EnablePlugin(context.Context, identity.Principal, string, string) error
-	ListTools(context.Context, identity.Principal) ([]configassets.Tool, error)
+	ListTools(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Tool, error)
 	GetTool(context.Context, identity.Principal, string) (configassets.Tool, error)
 	ListToolUsage(context.Context, identity.Principal, string) ([]configassets.AssetUsage, error)
 	CreateTool(context.Context, identity.Principal, configassets.CreateToolRequest) (configassets.Tool, error)
@@ -119,7 +119,7 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 }
 
 func (h Handler) listSkills(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.assets.ListSkills(r.Context(), actor, r.URL.Query().Get("workspace_id"))
+	items, err := h.assets.ListSkills(r.Context(), actor, configassets.ListOptions{WorkspaceID: r.URL.Query().Get("workspace_id"), Search: r.URL.Query().Get("search"), Status: r.URL.Query().Get("status")})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -160,7 +160,7 @@ func (h Handler) createSkill(w http.ResponseWriter, r *http.Request, actor ident
 }
 
 func (h Handler) listPlugins(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.assets.ListPlugins(r.Context(), actor)
+	items, err := h.assets.ListPlugins(r.Context(), actor, configassets.ListOptions{Search: r.URL.Query().Get("search"), Status: r.URL.Query().Get("status")})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -214,7 +214,7 @@ func (h Handler) enablePlugin(w http.ResponseWriter, r *http.Request, actor iden
 }
 
 func (h Handler) listTools(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.assets.ListTools(r.Context(), actor)
+	items, err := h.assets.ListTools(r.Context(), actor, configassets.ListOptions{Search: r.URL.Query().Get("search"), Status: r.URL.Query().Get("status")})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

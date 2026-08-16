@@ -69,9 +69,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - **Admin configuration UX:** Skills, Plugins, and Tools can be registered,
   listed, explicitly activated/deprecated/retired, and an Agent Draft can
   select exact catalog references. Metadata detail, Agent usage, Plugin
-  enablement visibility, and Tool descriptor schema display are available.
-  Package upload materialization and content inspection, catalog
-  search/filtering, Plugin contained-asset inspection, Tool discovery/health,
+  enablement visibility, Tool descriptor schema display, and catalog
+  search/filtering are available. Agent Drafts also expose the Agent-owned
+  prompt/model fields and explicit Tool operation constraints. Package upload materialization and content
+  inspection, Plugin contained-asset inspection, Tool discovery/health,
   descriptor schema authoring, and narrow binding constraints are not complete.
 - **Admin lifecycle UX:** The core lifecycle is usable. Policies, evaluations,
   run operations, audit search, integrations, and platform administration are
