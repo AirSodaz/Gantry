@@ -9,7 +9,7 @@ const mocked = vi.hoisted(() => ({
   api: {
     getTask: vi.fn(),
     createEventsTicket: vi.fn(),
-    getArtifact: vi.fn(),
+    requestArtifactDownload: vi.fn(),
     cancelRun: vi.fn(),
     retryTask: vi.fn(),
     appendTaskMessage: vi.fn(),
@@ -70,7 +70,8 @@ describe('TaskPage', () => {
   it('shows retry only for failed tasks and starts a new task run', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'failed', current_run: { id: 'run_1', status: 'failed', status_reason: 'Runner disconnected.' } });
     mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
-    mocked.api.retryTask.mockResolvedValue({ ...baseTask, status: 'queued', current_run: { id: 'run_2', status: 'assigned' } });
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'failed', conversation_etag: '"1"', current_run: { id: 'run_1', status: 'failed', status_reason: 'Runner disconnected.' } });
+    mocked.api.retryTask.mockResolvedValue({ ...baseTask, status: 'queued', conversation_etag: '"2"', current_run: { id: 'run_2', status: 'assigned' } });
     const user = userEvent.setup();
     renderTask();
 
@@ -78,7 +79,7 @@ describe('TaskPage', () => {
     const retry = screen.getByRole('button', { name: /Retry task/ });
     await user.click(retry);
 
-    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1', expect.any(String)));
+    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1', expect.any(String), '"1"'));
   });
 
   it('accumulates event output and reconnects with the rendered cursor', async () => {
@@ -99,7 +100,7 @@ describe('TaskPage', () => {
   it('shows a retry action when an artifact download fails', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'completed', current_run: { id: 'run_1', status: 'completed' }, artifacts: [{ id: 'art_1', filename: 'result.txt', media_type: 'text/plain', size_bytes: 3, state: 'available', scan_status: 'passed' }] });
     mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
-    mocked.api.getArtifact.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ download_url: 'http://example.test/result.txt' });
+    mocked.api.requestArtifactDownload.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ download_url: 'http://example.test/result.txt' });
     const user = userEvent.setup();
     renderTask();
 
@@ -109,7 +110,7 @@ describe('TaskPage', () => {
   });
 
   it('continues an approval-rejected task through a new idempotent message', async () => {
-    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'awaiting_requester_input', current_run: { id: 'run_1', status: 'failed' }, messages: [{ id: 'msg_1', role: 'requester', content: 'Update the record', created_at: '2026-08-16T08:00:00Z' }] });
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'awaiting_requester_input', conversation_etag: '"4"', current_run: { id: 'run_1', status: 'failed' }, messages: [{ id: 'msg_1', role: 'requester', content: 'Update the record', created_at: '2026-08-16T08:00:00Z' }] });
     mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
     mocked.api.appendTaskMessage.mockResolvedValue({ ...baseTask, status: 'queued', current_run: { id: 'run_2', status: 'queued' } });
     const user = userEvent.setup();
@@ -118,7 +119,7 @@ describe('TaskPage', () => {
     await user.type(await screen.findByLabelText('Continue this task'), 'Use a different target');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await waitFor(() => expect(mocked.api.appendTaskMessage).toHaveBeenCalledWith('tsk_1', { message: 'Use a different target' }, expect.any(String)));
+    await waitFor(() => expect(mocked.api.appendTaskMessage).toHaveBeenCalledWith('tsk_1', { message: 'Use a different target' }, expect.any(String), '"4"'));
   });
 });
 

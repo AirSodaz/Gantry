@@ -175,10 +175,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   contract.
 - The complete Copilot target contract is documented in
   [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
-  Current routes do not yet provide the target conversation ETag, Task-level
-  cross-Run cursor, explicit audited Artifact download command, complete typed
-  message parts, or any of the remaining approval capabilities identified
-  above.
+  Current routes do not yet provide complete typed message parts or any of the
+  remaining approval capabilities identified above.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a

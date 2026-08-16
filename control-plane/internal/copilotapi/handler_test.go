@@ -27,15 +27,16 @@ type fakeTaskService struct {
 	submit             func(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
 	list               func(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
 	get                func(context.Context, identity.Principal, string) (tasks.Task, error)
-	append             func(context.Context, identity.Principal, string, string, tasks.AppendMessageRequest) (tasks.Task, bool, error)
+	append             func(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
 	runs               func(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
 	artifacts          func(context.Context, identity.Principal, string, string, int) ([]tasks.Artifact, error)
+	downloadArtifact   func(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error)
 	createAttachment   func(context.Context, identity.Principal, tasks.CreateAttachmentRequest) (tasks.Attachment, error)
 	getAttachment      func(context.Context, identity.Principal, string) (tasks.Attachment, error)
 	uploadAttachment   func(context.Context, identity.Principal, string, string, io.Reader) error
 	completeAttachment func(context.Context, identity.Principal, string) (tasks.Attachment, error)
 	cancel             func(context.Context, identity.Principal, string, string, string) (tasks.CancelResult, error)
-	retry              func(context.Context, identity.Principal, string, bool, string) (tasks.Task, error)
+	retry              func(context.Context, identity.Principal, string, bool, string, int64) (tasks.Task, error)
 }
 
 type fakeApprovalService struct {
@@ -96,9 +97,9 @@ func (s fakeTaskService) Get(ctx context.Context, actor identity.Principal, task
 	return s.get(ctx, actor, taskID)
 }
 
-func (s fakeTaskService) AppendMessage(ctx context.Context, actor identity.Principal, taskID, key string, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+func (s fakeTaskService) AppendMessage(ctx context.Context, actor identity.Principal, taskID, key string, revision int64, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
 	if s.append != nil {
-		return s.append(ctx, actor, taskID, key, request)
+		return s.append(ctx, actor, taskID, key, revision, request)
 	}
 	return tasks.Task{}, false, tasks.ErrNotFound
 }
@@ -115,6 +116,13 @@ func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Pri
 		return s.artifacts(ctx, actor, taskID, classification, limit)
 	}
 	return nil, nil
+}
+
+func (s fakeTaskService) DownloadArtifact(ctx context.Context, actor identity.Principal, artifactID string) (tasks.ArtifactDownloadGrant, error) {
+	if s.downloadArtifact != nil {
+		return s.downloadArtifact(ctx, actor, artifactID)
+	}
+	return tasks.ArtifactDownloadGrant{}, tasks.ErrNotFound
 }
 
 func (s fakeTaskService) CreateAttachment(ctx context.Context, actor identity.Principal, request tasks.CreateAttachmentRequest) (tasks.Attachment, error) {
@@ -152,9 +160,9 @@ func (s fakeTaskService) Cancel(ctx context.Context, actor identity.Principal, t
 	return tasks.CancelResult{}, tasks.ErrNotFound
 }
 
-func (s fakeTaskService) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string) (tasks.Task, error) {
+func (s fakeTaskService) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string, revision int64) (tasks.Task, error) {
 	if s.retry != nil {
-		return s.retry(ctx, actor, taskID, useLatest, key)
+		return s.retry(ctx, actor, taskID, useLatest, key, revision)
 	}
 	return tasks.Task{}, tasks.ErrNotFound
 }
@@ -255,6 +263,69 @@ func TestSubmitTaskReturnsOKForIdempotentRetry(t *testing.T) {
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestGetTaskReturnsConversationETag(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{get: func(context.Context, identity.Principal, string) (tasks.Task, error) {
+			return tasks.Task{ID: "tsk_1", ConversationRevision: 7}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/tasks/tsk_1", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || response.Header().Get("ETag") != `"7"` {
+		t.Fatalf("status=%d etag=%q body=%s", response.Code, response.Header().Get("ETag"), response.Body.String())
+	}
+}
+
+func TestAppendMessageRequiresConversationETag(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1/messages", strings.NewReader(`{"message":"Use a different target"}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "follow-up-1")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusPreconditionRequired || !strings.Contains(response.Body.String(), "conversation_etag_required") {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestAppendMessageReturnsCurrentTaskOnConversationConflict(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{
+			append: func(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+				return tasks.Task{}, false, tasks.ErrConversationChanged
+			},
+			get: func(context.Context, identity.Principal, string) (tasks.Task, error) {
+				return tasks.Task{ID: "tsk_1", Status: "awaiting_requester_input", ConversationRevision: 8}, nil
+			},
+		},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1/messages", strings.NewReader(`{"message":"Use a different target"}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "follow-up-1")
+	request.Header.Set("If-Match", `"7"`)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusConflict || response.Header().Get("ETag") != `"8"` || !strings.Contains(response.Body.String(), "conversation_changed") || !strings.Contains(response.Body.String(), `"current_resource"`) {
+		t.Fatalf("status=%d etag=%q body=%s", response.Code, response.Header().Get("ETag"), response.Body.String())
 	}
 }
 
@@ -385,9 +456,9 @@ func TestCancelOperationParsesColonSuffix(t *testing.T) {
 func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{retry: func(_ context.Context, _ identity.Principal, taskID string, useLatest bool, key string) (tasks.Task, error) {
-			if taskID != "tsk_1" || !useLatest || key != "retry-1" {
-				t.Fatalf("task=%q useLatest=%t key=%q", taskID, useLatest, key)
+		fakeTaskService{retry: func(_ context.Context, _ identity.Principal, taskID string, useLatest bool, key string, revision int64) (tasks.Task, error) {
+			if taskID != "tsk_1" || !useLatest || key != "retry-1" || revision != 3 {
+				t.Fatalf("task=%q useLatest=%t key=%q revision=%d", taskID, useLatest, key, revision)
 			}
 			return tasks.Task{}, tasks.ErrInvalidState
 		}},
@@ -398,6 +469,7 @@ func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1:retry", strings.NewReader(`{"use_latest_version":true}`))
 	request.Header.Set("Authorization", "Bearer access-token")
 	request.Header.Set("Idempotency-Key", "retry-1")
+	request.Header.Set("If-Match", `"3"`)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 
@@ -411,7 +483,10 @@ func TestAppendMessageUsesHeaderIdempotencyKeyAndDispatchesNewRun(t *testing.T) 
 	var receivedKey, receivedTask, receivedMessage string
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{append: func(_ context.Context, _ identity.Principal, taskID, key string, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+		fakeTaskService{append: func(_ context.Context, _ identity.Principal, taskID, key string, revision int64, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+			if revision != 5 {
+				t.Fatalf("revision=%d", revision)
+			}
 			receivedTask, receivedKey, receivedMessage = taskID, key, request.Message
 			return tasks.Task{ID: taskID, Status: "queued", CurrentRun: tasks.Run{ID: "run_2", Status: "queued"}}, false, nil
 		}},
@@ -422,6 +497,7 @@ func TestAppendMessageUsesHeaderIdempotencyKeyAndDispatchesNewRun(t *testing.T) 
 	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1/messages", strings.NewReader(`{"message":"Use a different target"}`))
 	request.Header.Set("Authorization", "Bearer access-token")
 	request.Header.Set("Idempotency-Key", "follow-up-1")
+	request.Header.Set("If-Match", `"5"`)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusCreated {
@@ -488,6 +564,52 @@ func TestListArtifactsPassesOnlyRequesterFilters(t *testing.T) {
 	}
 }
 
+func TestArtifactDownloadIssuesOnlyACommandScopedGrant(t *testing.T) {
+	var requestedID string
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{downloadArtifact: func(_ context.Context, actor identity.Principal, artifactID string) (tasks.ArtifactDownloadGrant, error) {
+			if actor.ID != "principal-1" {
+				t.Fatalf("actor=%q", actor.ID)
+			}
+			requestedID = artifactID
+			return tasks.ArtifactDownloadGrant{ArtifactID: artifactID, DownloadURL: "https://downloads.example.test/art_1", ExpiresAt: time.Date(2026, 8, 17, 1, 0, 0, 0, time.UTC)}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/artifacts/art_1:download", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	if requestedID != "art_1" || !strings.Contains(response.Body.String(), `"artifact_id":"art_1"`) || !strings.Contains(response.Body.String(), `"download_url"`) {
+		t.Fatalf("requested=%q body=%s", requestedID, response.Body.String())
+	}
+}
+
+func TestArtifactDownloadRejectsUnavailableArtifact(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{downloadArtifact: func(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error) {
+			return tasks.ArtifactDownloadGrant{}, tasks.ErrInvalidState
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/artifacts/art_1:download", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "artifact_unavailable") {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 func TestApprovalReadsResolveExpiredRequestsBeforeListing(t *testing.T) {
 	dispatcher := &fakeDispatcher{}
 	handler := New(
@@ -524,8 +646,9 @@ func TestDecideApprovalRequiresExactActionDigest(t *testing.T) {
 		dispatcher,
 		nil,
 	)
-	request := httptest.NewRequest(http.MethodPost, "/approvals/apr_1:decide", strings.NewReader(`{"decision":"approve","action_digest":"sha256:one","idempotency_key":"decision-1"}`))
+	request := httptest.NewRequest(http.MethodPost, "/approvals/apr_1:decide", strings.NewReader(`{"decision":"approve","action_digest":"sha256:one","approval_revision":1}`))
 	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "decision-1")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {

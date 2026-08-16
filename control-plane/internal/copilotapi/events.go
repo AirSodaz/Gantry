@@ -27,7 +27,6 @@ type eventTicketClaims struct {
 
 type eventCursorClaims struct {
 	TaskID string `json:"task_id"`
-	RunID  string `json:"run_id"`
 	Seq    uint64 `json:"sequence"`
 }
 
@@ -77,7 +76,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "not_found"})
 		return
 	}
-	lastSeq, runID, ok := parseAfterCursor(h.eventKey, r.URL.Query().Get("after"), ticket.TaskID, page.RunID)
+	lastSeq, ok := parseAfterCursor(h.eventKey, r.URL.Query().Get("after"), ticket.TaskID)
 	if !ok {
 		_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page))
 		return
@@ -86,7 +85,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page))
 		return
 	}
-	if err := writeEventFrame(ctx, conn, map[string]any{"type": "snapshot", "task": page.Task, "run": page.Task.CurrentRun, "cursor": encodeCursor(h.eventKey, ticket.TaskID, runID, lastSeq)}); err != nil {
+	if err := writeEventFrame(ctx, conn, map[string]any{"type": "snapshot", "task": page.Task, "run": page.Task.CurrentRun, "cursor": encodeCursor(h.eventKey, ticket.TaskID, lastSeq)}); err != nil {
 		return
 	}
 
@@ -110,7 +109,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		case <-readDone:
 			return
 		case <-heartbeat.C:
-			if err := writeEventFrame(ctx, conn, map[string]any{"type": "heartbeat", "cursor": encodeCursor(h.eventKey, ticket.TaskID, runID, lastSeq)}); err != nil {
+			if err := writeEventFrame(ctx, conn, map[string]any{"type": "heartbeat", "cursor": encodeCursor(h.eventKey, ticket.TaskID, lastSeq)}); err != nil {
 				return
 			}
 		case <-poll.C:
@@ -122,17 +121,13 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return
 			}
-			if page.RunID != runID {
-				_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page))
-				return
-			}
 			if page.EarliestSeq != 0 && lastSeq+1 < page.EarliestSeq {
 				_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page))
 				return
 			}
 			for _, event := range page.Events {
 				lastSeq = event.Sequence
-				if err := writeEventFrame(ctx, conn, map[string]any{"type": "event", "cursor": encodeCursor(h.eventKey, ticket.TaskID, runID, lastSeq), "event": event, "provisional": false}); err != nil {
+				if err := writeEventFrame(ctx, conn, map[string]any{"type": "event", "cursor": encodeCursor(h.eventKey, ticket.TaskID, lastSeq), "event": event, "provisional": false}); err != nil {
 					return
 				}
 			}
@@ -145,19 +140,19 @@ func cursorExpiredFrame(key []byte, page tasks.EventPage) map[string]any {
 	if page.EarliestSeq > 0 {
 		seq = page.EarliestSeq - 1
 	}
-	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Task.ID, page.RunID, seq), "snapshot": map[string]any{"task": page.Task, "run": page.Task.CurrentRun}}
+	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Task.ID, seq), "snapshot": map[string]any{"task": page.Task, "run": page.Task.CurrentRun}}
 }
 
-func parseAfterCursor(key []byte, raw, taskID, runID string) (uint64, string, bool) {
+func parseAfterCursor(key []byte, raw, taskID string) (uint64, bool) {
 	if strings.TrimSpace(raw) == "" {
-		return 0, runID, true
+		return 0, true
 	}
 	claims, ok := verifyPayload[eventCursorClaims](key, "cur", raw)
-	return claims.Seq, claims.RunID, ok && claims.TaskID == taskID && claims.RunID == runID
+	return claims.Seq, ok && claims.TaskID == taskID
 }
 
-func encodeCursor(key []byte, taskID, runID string, seq uint64) string {
-	return signPayload(key, "cur", eventCursorClaims{TaskID: taskID, RunID: runID, Seq: seq})
+func encodeCursor(key []byte, taskID string, seq uint64) string {
+	return signPayload(key, "cur", eventCursorClaims{TaskID: taskID, Seq: seq})
 }
 
 func signPayload[T any](key []byte, prefix string, value T) string {

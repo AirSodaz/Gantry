@@ -22,7 +22,7 @@ export function ApprovalDetailPage() {
         idempotencyKey = crypto.randomUUID();
         keys.current.set(key, idempotencyKey);
       }
-      return api.decideApproval(approvalId, decision, detail.data?.action_digest ?? '', reason, idempotencyKey);
+      return api.decideApproval(approvalId, decision, detail.data?.action_digest ?? '', detail.data?.approval_revision ?? 0, reason, idempotencyKey);
     },
     onSuccess: async () => {
       await Promise.all([
@@ -37,7 +37,7 @@ export function ApprovalDetailPage() {
   if (detail.isError || !detail.data) return <div className="page-wrap"><ErrorState message={detail.error instanceof Error ? detail.error.message : 'This approval could not be loaded.'} onRetry={() => void detail.refetch()} /></div>;
   const approval = detail.data;
   const preview = approval.action_preview ?? {};
-  const canDecide = approval.status === 'pending' && Boolean(approval.action_digest);
+  const canDecide = approval.status === 'pending' && Boolean(approval.action_digest) && (approval.approval_revision ?? 0) > 0;
   const decision = approval.latest_decision;
 
   return <div className="page-wrap narrow-page approval-detail-page">

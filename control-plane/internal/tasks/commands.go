@@ -57,7 +57,7 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='canceled', status_reason='canceled before assignment', completed_at=now() WHERE id=$1`, runID); err != nil {
 			return CancelResult{}, err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceled' WHERE id=$1`, taskID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceled', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
 			return CancelResult{}, err
 		}
 		if err := appendEvent(ctx, tx, runID, "run.canceled"); err != nil {
@@ -68,7 +68,7 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='canceling' WHERE id=$1`, runID); err != nil {
 			return CancelResult{}, err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceling' WHERE id=$1`, taskID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='canceling', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
 			return CancelResult{}, err
 		}
 		if err := appendEvent(ctx, tx, runID, "run.cancel_requested"); err != nil {
@@ -86,10 +86,13 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 	return result, nil
 }
 
-func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string) (Task, error) {
+func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string, expectedRevision int64) (Task, error) {
 	key = strings.TrimSpace(key)
 	if key == "" || len(key) > 256 {
 		return Task{}, ErrInvalidInput
+	}
+	if expectedRevision < 1 {
+		return Task{}, ErrPreconditionRequired
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -107,12 +110,16 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return s.Get(ctx, actor, taskID)
 	}
 	var agentID, workspaceID, revisionID, deploymentID, oldRunID, oldStatus string
-	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &deploymentID, &oldRunID, &oldStatus)
+	var currentRevision int64
+	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status, t.conversation_revision FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &deploymentID, &oldRunID, &oldStatus, &currentRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
 	if err != nil {
 		return Task{}, err
+	}
+	if currentRevision != expectedRevision {
+		return Task{}, ErrConversationChanged
 	}
 	if oldStatus != "failed" && oldStatus != "canceled" {
 		return Task{}, ErrInvalidState
@@ -141,7 +148,7 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, deployment_id, manifest_digest, attempt_number, status) VALUES ($1,$2,$3,$4,$5,$6,'queued')`, runID, taskID, revisionID, deploymentID, manifestDigest, attempt); err != nil {
 		return Task{}, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued' WHERE id=$1`, taskID, runID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID, runID); err != nil {
 		return Task{}, err
 	}
 	if err := appendEvent(ctx, tx, runID, "run.queued"); err != nil {

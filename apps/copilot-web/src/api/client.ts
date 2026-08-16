@@ -1,4 +1,4 @@
-import type { Agent, AppendTaskMessageInput, Approval, ApprovalDecisionResponse, Artifact, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task } from './types';
+import type { Agent, AppendTaskMessageInput, Approval, ApprovalDecisionResponse, Artifact, ArtifactDownloadGrant, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
@@ -34,21 +34,22 @@ export class CopilotApi {
     return this.request<{ items: Approval[] }>(`/approvals`);
   }
 
-  decideApproval(approvalId: string, decision: 'approve' | 'reject', actionDigest: string, reason = '', idempotencyKey: string = crypto.randomUUID()) {
+  decideApproval(approvalId: string, decision: 'approve' | 'reject', actionDigest: string, approvalRevision: number, reason = '', idempotencyKey: string = crypto.randomUUID()) {
     return this.request<ApprovalDecisionResponse>(`/approvals/${encodeURIComponent(approvalId)}:decide`, {
       method: 'POST',
-      body: JSON.stringify({ decision, action_digest: actionDigest, reason, idempotency_key: idempotencyKey }),
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ decision, action_digest: actionDigest, approval_revision: approvalRevision, reason }),
     });
   }
 
   getTask(taskId: string) {
-    return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}`);
+    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}`);
   }
 
-  appendTaskMessage(taskId: string, input: AppendTaskMessageInput, idempotencyKey: string) {
-    return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}/messages`, {
+  appendTaskMessage(taskId: string, input: AppendTaskMessageInput, idempotencyKey: string, conversationETag: string) {
+    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}/messages`, {
       method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
+      headers: { 'Idempotency-Key': idempotencyKey, 'If-Match': conversationETag },
       body: JSON.stringify(input),
     });
   }
@@ -66,6 +67,10 @@ export class CopilotApi {
 
   getArtifact(artifactId: string) {
     return this.request<Artifact>(`/artifacts/${encodeURIComponent(artifactId)}`);
+  }
+
+  requestArtifactDownload(artifactId: string) {
+    return this.request<ArtifactDownloadGrant>(`/artifacts/${encodeURIComponent(artifactId)}:download`, { method: 'POST' });
   }
 
   listArtifacts(taskId = '', classification = '') {
@@ -138,15 +143,26 @@ export class CopilotApi {
     });
   }
 
-  retryTask(taskId: string, idempotencyKey: string) {
-    return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}:retry`, {
+  retryTask(taskId: string, idempotencyKey: string, conversationETag: string) {
+    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}:retry`, {
       method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
+      headers: { 'Idempotency-Key': idempotencyKey, 'If-Match': conversationETag },
       body: '{}',
     });
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await this.response(path, init);
+    return response.json() as Promise<T>;
+  }
+
+  private async requestTask(path: string, init: RequestInit = {}): Promise<Task> {
+    const response = await this.response(path, init);
+    const task = await response.json() as Task;
+    return { ...task, conversation_etag: response.headers.get('ETag') ?? undefined };
+  }
+
+  private async response(path: string, init: RequestInit = {}): Promise<Response> {
     const token = this.tokenProvider();
     if (!token) throw new CopilotApiError(401, 'Your session has expired.');
     const response = await fetch(`${baseUrl}${path}`, {
@@ -168,6 +184,6 @@ export class CopilotApi {
       }
       throw new CopilotApiError(response.status, message);
     }
-    return response.json() as Promise<T>;
+    return response;
   }
 }

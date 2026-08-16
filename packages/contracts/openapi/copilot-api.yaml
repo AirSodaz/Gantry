@@ -186,6 +186,11 @@ paths:
       responses:
         "200":
           description: Task details
+          headers:
+            ETag:
+              required: true
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -203,6 +208,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -212,12 +222,22 @@ paths:
       responses:
         "200":
           description: Original task returned for an idempotent retry
+          headers:
+            ETag:
+              required: true
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
         "201":
           description: Follow-up accepted and next run queued
+          headers:
+            ETag:
+              required: true
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -293,6 +313,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -301,6 +326,11 @@ paths:
       responses:
         "201":
           description: New run created
+          headers:
+            ETag:
+              required: true
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -330,6 +360,11 @@ paths:
       parameters:
         - name: approval_id
           in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
           required: true
           schema:
             type: string
@@ -379,7 +414,7 @@ paths:
   /artifacts/{artifact_id}:
     get:
       operationId: getArtifact
-      summary: Get artifact metadata and download URL
+      summary: Get artifact metadata
       tags: [Artifacts]
       parameters:
         - name: artifact_id
@@ -389,11 +424,34 @@ paths:
             type: string
       responses:
         "200":
-          description: Artifact metadata with download URL
+          description: Artifact metadata
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ArtifactResponse"
+
+  /artifacts/{artifact_id}:download:
+    post:
+      operationId: createArtifactDownloadGrant
+      summary: Authorize and issue a short-lived artifact download reference
+      tags: [Artifacts]
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Authorized short-lived download reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactDownloadGrant"
+        "404":
+          description: Artifact was not found
+        "409":
+          description: Artifact is not available for download
 
   /artifacts:
     get:
@@ -522,7 +580,7 @@ components:
 
     TaskResponse:
       type: object
-      required: [id, agent_id, status]
+      required: [id, agent_id, status, conversation_revision]
       properties:
         id:
           type: string
@@ -533,6 +591,10 @@ components:
         status:
           type: string
           enum: [queued, provisioning, running, awaiting_approval, awaiting_requester_input, suspended, canceling, completed, failed, canceled]
+        conversation_revision:
+          type: integer
+          format: int64
+          minimum: 1
         current_run:
           $ref: "#/components/schemas/RunStatus"
         artifacts:
@@ -548,19 +610,57 @@ components:
 
     TaskMessage:
       type: object
-      required: [id, role, content, created_at]
+      required: [id, task_sequence, role, parts, created_at]
       properties:
         id:
           type: string
         run_id:
           type: string
+        task_sequence:
+          type: integer
+          format: int64
         role:
           type: string
-          enum: [requester, agent]
-        content:
-          type: string
+          enum: [requester, agent, system_summary]
+        parts:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/TextPart"
+              - $ref: "#/components/schemas/ArtifactPart"
+              - $ref: "#/components/schemas/ActionSummaryPart"
+              - $ref: "#/components/schemas/StatusPart"
         created_at:
           $ref: "#/components/schemas/Timestamp"
+
+    TextPart:
+      type: object
+      required: [type, text]
+      properties:
+        type: { type: string, enum: [text] }
+        text: { type: string }
+    ArtifactPart:
+      type: object
+      required: [type, artifact_id, label]
+      properties:
+        type: { type: string, enum: [artifact] }
+        artifact_id: { type: string }
+        label: { type: string }
+    ActionSummaryPart:
+      type: object
+      required: [type, action_id, summary, state]
+      properties:
+        type: { type: string, enum: [action_summary] }
+        action_id: { type: string }
+        summary: { type: string }
+        state: { type: string }
+    StatusPart:
+      type: object
+      required: [type, code, message]
+      properties:
+        type: { type: string, enum: [status] }
+        code: { type: string }
+        message: { type: string }
 
     AppendTaskMessageRequest:
       type: object
@@ -631,7 +731,7 @@ components:
     # --- Approvals ---
     CopilotApproval:
       type: object
-      required: [id, run_id, action_id, action_digest, tool_name, operation, action_preview, status]
+      required: [id, run_id, action_id, action_digest, approval_revision, tool_name, operation, action_preview, status]
       properties:
         id:
           type: string
@@ -641,6 +741,9 @@ components:
           type: string
         action_digest:
           type: string
+        approval_revision:
+          type: integer
+          format: int64
         tool_name:
           type: string
         operation:
@@ -694,7 +797,7 @@ components:
 
     ApprovalDecisionRequest:
       type: object
-      required: [decision, action_digest, idempotency_key]
+      required: [decision, action_digest, approval_revision]
       properties:
         decision:
           type: string
@@ -703,8 +806,9 @@ components:
           type: string
         action_digest:
           type: string
-        idempotency_key:
-          type: string
+        approval_revision:
+          type: integer
+          format: int64
 
     ApprovalDecisionResponse:
       type: object
@@ -763,10 +867,17 @@ components:
         scan_status:
           type: string
           enum: [pending, passed, failed]
+
+    ArtifactDownloadGrant:
+      type: object
+      required: [artifact_id, download_url, expires_at]
+      properties:
+        artifact_id:
+          type: string
         download_url:
           type: string
-          description: Short-lived pre-signed download URL
-        download_url_expires_at:
+          format: uri
+        expires_at:
           $ref: "#/components/schemas/Timestamp"
 
     ArtifactList:

@@ -107,11 +107,11 @@ upload, completion, and scan-state reads.
 
 The complete target schemas, command preconditions, route semantics, event
 frames, and requester-only authorization matrix are defined in
-[Copilot Resource Contracts](copilot-resource-contracts.md). Target deltas such
-as Task-level cursors, conversation ETags, header-based command idempotency, and
-an explicit audited Artifact download command are not callable until they
-appear in the OpenAPI document, generated client, owning handler, and focused
-tests.
+[Copilot Resource Contracts](copilot-resource-contracts.md). Task-level
+cursors, conversation ETags, and the explicit audited Artifact download command
+are callable through the OpenAPI document, generated client, owning handler,
+and focused tests. Approval idempotency remains a separate command-shape delta
+because that request still carries the key in its body.
 
 The Copilot API uses employee-oriented response types. It does not return raw
 agent specs and rely on the frontend to hide privileged fields. Task and Run
@@ -430,10 +430,9 @@ Protocol requirements:
 - The stream sends an initial resource snapshot and 20-second heartbeats. A
   ticket expiry closes the stream; clients request a new ticket before reconnecting.
 
-The target multi-Run Task stream uses a Task-level sequence that orders requester
-messages and Run projections. The checked-in implementation still encodes the
-current `run_id` in its cursor and returns `cursor_expired` when the current Run
-changes; this is an implementation limitation, not the final multi-Run contract.
+The checked-in multi-Run Task stream uses a Task-level sequence that orders
+committed Run projections. Its opaque cursor stays valid when the current Run
+changes; each event also retains its diagnostic `run_sequence`.
 
 ## 6. Runner gRPC Protocol
 

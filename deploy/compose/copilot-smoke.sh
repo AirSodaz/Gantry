@@ -107,7 +107,7 @@ wait_task_status "$complete_task" completed
 request POST "/api/copilot/v1/tasks/${complete_task}/events:ticket" '{}'
 [[ $response_status == 200 && -n $(json_value ticket) ]]
 artifact_id=$(wait_artifact "$complete_task")
-request GET "/api/copilot/v1/artifacts/${artifact_id}"
+request POST "/api/copilot/v1/artifacts/${artifact_id}:download" '{}'
 [[ $response_status == 200 ]]
 artifact_url=$(json_value download_url)
 [[ -n $artifact_url ]]

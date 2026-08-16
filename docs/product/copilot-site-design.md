@@ -258,9 +258,9 @@ permits evidence display, not the removed content.
 ## 11. Realtime and Command Semantics
 
 - Initial Task and approval data use HTTPS JSON APIs.
-- Task streams use a short-lived ticket and, in the target multi-Run contract, an
-  opaque Task-level cursor. The current implementation's cursor is Run-bound and
-  signals `cursor_expired` when the current Run changes.
+- Task streams use a short-lived ticket and an opaque Task-level cursor that
+  continues across Run attempts. `cursor_expired` is reserved for retained
+  history or projection replacement, not a normal Run transition.
 - Events are deduplicated by durable sequence and rendered within the
   employee's authorized projection.
 - Heartbeats, reconnect backoff, cursor expiry, and ticket expiry are visible

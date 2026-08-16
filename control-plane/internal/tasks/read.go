@@ -2,7 +2,9 @@ package tasks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/jackc/pgx/v5"
@@ -29,7 +31,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 	if filter.RequesterAction != "" && filter.RequesterAction != "approval" && filter.RequesterAction != "input" {
 		return nil, ErrInvalidInput
 	}
-	rows, err := s.pool.Query(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) ORDER BY t.created_at DESC, t.id DESC LIMIT $6`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, boundedLimit(limit))
+	rows, err := s.pool.Query(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) ORDER BY t.created_at DESC, t.id DESC LIMIT $6`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, boundedLimit(limit))
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +39,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 	items := make([]Task, 0)
 	for rows.Next() {
 		var task Task
-		if err := rows.Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.CreatedAt); err != nil {
+		if err := rows.Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt); err != nil {
 			return nil, err
 		}
 		task.Status = publicStatus(task.Status)
@@ -90,7 +92,7 @@ func (s *Service) ListRuns(ctx context.Context, actor identity.Principal, taskID
 }
 
 func (s *Service) listMessages(ctx context.Context, actor identity.Principal, taskID string) ([]Message, error) {
-	rows, err := s.pool.Query(ctx, `SELECT tm.id, COALESCE(tm.run_id, ''), tm.role, tm.content, tm.created_at FROM gantry.task_messages tm JOIN gantry.tasks t ON t.id=tm.task_id WHERE tm.task_id=$1 AND t.requester_principal_id=$2 ORDER BY tm.created_at, tm.id`, taskID, actor.ID)
+	rows, err := s.pool.Query(ctx, `SELECT tm.id, COALESCE(tm.run_id, ''), tm.task_sequence, tm.role, tm.parts, tm.content, tm.created_at FROM gantry.task_messages tm JOIN gantry.tasks t ON t.id=tm.task_id WHERE tm.task_id=$1 AND t.requester_principal_id=$2 ORDER BY tm.task_sequence, tm.created_at, tm.id`, taskID, actor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +100,11 @@ func (s *Service) listMessages(ctx context.Context, actor identity.Principal, ta
 	items := make([]Message, 0)
 	for rows.Next() {
 		var item Message
-		if err := rows.Scan(&item.ID, &item.RunID, &item.Role, &item.Content, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.TaskSequence, &item.Role, &item.Parts, &item.Content, &item.CreatedAt); err != nil {
 			return nil, err
+		}
+		if len(item.Parts) == 0 || string(item.Parts) == "[]" {
+			item.Parts = json.RawMessage(`[{"type":"text","text":` + strconv.Quote(item.Content) + `}]`)
 		}
 		items = append(items, item)
 	}
@@ -121,7 +126,7 @@ func loadTask(ctx context.Context, querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, actor identity.Principal, taskID string) (Task, error) {
 	var task Task
-	err := querier.QueryRow(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2`, taskID, actor.ID).Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.CreatedAt)
+	err := querier.QueryRow(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2`, taskID, actor.ID).Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}

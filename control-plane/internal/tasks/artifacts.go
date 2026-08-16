@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"strconv"
@@ -71,23 +72,61 @@ func (s *Service) GetArtifact(ctx context.Context, actor identity.Principal, art
 		return Artifact{}, ErrNotFound
 	}
 	var item Artifact
-	var objectKey string
-	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.object_key, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE ar.id=$1 AND (t.requester_principal_id=$2 OR ar.visibility='workspace' AND t.workspace_id IN (SELECT workspace_id FROM gantry.workspace_memberships WHERE principal_id=$2))`, artifactID, actor.ID).Scan(&item.ID, &item.TaskID, &item.RunID, &objectKey, &item.Filename, &item.MediaType, &item.SizeBytes, &item.Digest, &item.Classification, &item.ScanStatus, &item.State, &item.CreatedAt)
+	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE ar.id=$1 AND t.requester_principal_id=$2`, artifactID, actor.ID).Scan(&item.ID, &item.TaskID, &item.RunID, &item.Filename, &item.MediaType, &item.SizeBytes, &item.Digest, &item.Classification, &item.ScanStatus, &item.State, &item.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Artifact{}, ErrNotFound
 	}
 	if err != nil {
 		return Artifact{}, err
 	}
-	if item.State == "available" && item.ScanStatus == "passed" {
-		url, expiresAt, err := s.store.PresignGet(ctx, objectKey, 2*time.Minute)
-		if err != nil {
-			return Artifact{}, err
-		}
-		item.DownloadURL = url
-		item.DownloadURLExpires = expiresAt
-	}
 	return item, nil
+}
+
+// DownloadArtifact reauthorizes the requester against the exact artifact,
+// verifies its current availability, records the access, then returns a
+// short-lived object-store reference. Metadata reads never mint this grant.
+func (s *Service) DownloadArtifact(ctx context.Context, actor identity.Principal, artifactID string) (ArtifactDownloadGrant, error) {
+	if s.store == nil {
+		return ArtifactDownloadGrant{}, ErrNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var objectKey, taskID, runID, workspaceID, classification, state, scanStatus string
+	err = tx.QueryRow(ctx, `SELECT ar.object_key, ar.task_id, ar.run_id, t.workspace_id, ar.classification, ar.state, ar.scan_status FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE ar.id=$1 AND t.requester_principal_id=$2 FOR SHARE OF ar, t`, artifactID, actor.ID).Scan(&objectKey, &taskID, &runID, &workspaceID, &classification, &state, &scanStatus)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ArtifactDownloadGrant{}, ErrNotFound
+	}
+	if err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	if state != "available" || scanStatus != "passed" {
+		return ArtifactDownloadGrant{}, ErrInvalidState
+	}
+	url, expiresAt, err := s.store.PresignGet(ctx, objectKey, 2*time.Minute)
+	if err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	payload, err := json.Marshal(map[string]string{
+		"workspace_id":   workspaceID,
+		"task_id":        taskID,
+		"run_id":         runID,
+		"classification": classification,
+		"expires_at":     expiresAt.UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.audit_events (organization_id, actor_principal_id, resource_type, resource_id, event_type, payload) VALUES ($1,$2,'artifact',$3,'artifact.download_granted',$4::jsonb)`, actor.OrganizationID, actor.ID, artifactID, string(payload)); err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ArtifactDownloadGrant{}, err
+	}
+	return ArtifactDownloadGrant{ArtifactID: artifactID, DownloadURL: url, ExpiresAt: expiresAt.UTC()}, nil
 }
 
 func (s *Service) DeclareArtifact(ctx context.Context, runnerID string, runID string, epoch uint64, input Artifact) (Artifact, string, time.Time, error) {
@@ -175,8 +214,11 @@ func (s *Service) UploadArtifact(ctx context.Context, artifactID, token string, 
 	if result.RowsAffected() != 1 {
 		return ErrInvalidInput
 	}
-	var runID string
-	if err := tx.QueryRow(ctx, `SELECT run_id FROM gantry.artifacts WHERE id=$1`, artifactID).Scan(&runID); err == nil {
+	var runID, taskID string
+	if err := tx.QueryRow(ctx, `SELECT run_id, task_id FROM gantry.artifacts WHERE id=$1`, artifactID).Scan(&runID, &taskID); err == nil {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
+			return err
+		}
 		if err := appendEventPayload(ctx, tx, runID, "artifact.uploaded", `{"artifact_id":"`+artifactID+`"}`); err != nil {
 			return err
 		}

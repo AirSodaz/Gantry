@@ -67,7 +67,11 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 		return Task{}, false, err
 	}
 	if message := strings.TrimSpace(request.Message); message != "" {
-		if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, role, content) VALUES ($1,$2,$3,'requester',$4)`, newID("msg"), taskID, runID, message); err != nil {
+		var taskSequence int64
+		if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&taskSequence); err != nil {
+			return Task{}, false, err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, task_sequence, role, parts, content) VALUES ($1,$2,$3,$4,'requester',jsonb_build_array(jsonb_build_object('type','text','text',$5)),$5)`, newID("msg"), taskID, runID, taskSequence, message); err != nil {
 			return Task{}, false, err
 		}
 	}
@@ -80,7 +84,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if err := tx.Commit(ctx); err != nil {
 		return Task{}, false, err
 	}
-	return Task{ID: taskID, AgentID: request.AgentID, AgentDisplayName: displayName, Status: "queued", CurrentRun: Run{ID: runID, Status: "queued"}, CreatedAt: time.Now().UTC()}, false, nil
+	return Task{ID: taskID, AgentID: request.AgentID, AgentDisplayName: displayName, Status: "queued", CurrentRun: Run{ID: runID, Status: "queued"}, ConversationRevision: 1, CreatedAt: time.Now().UTC()}, false, nil
 }
 
 func resolveProductionAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, deploymentID, revisionID, displayName string, err error) {

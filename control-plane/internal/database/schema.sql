@@ -266,8 +266,14 @@ CREATE TABLE IF NOT EXISTS gantry.tasks (
   input_json jsonb NOT NULL,
   current_run_id text,
   status text NOT NULL CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled')),
+  conversation_revision bigint NOT NULL DEFAULT 1,
+  task_event_sequence bigint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE gantry.tasks
+  ADD COLUMN IF NOT EXISTS conversation_revision bigint NOT NULL DEFAULT 1;
+ALTER TABLE gantry.tasks
+  ADD COLUMN IF NOT EXISTS task_event_sequence bigint NOT NULL DEFAULT 0;
 ALTER TABLE gantry.tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
 ALTER TABLE gantry.tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled'));
 
@@ -296,20 +302,57 @@ ALTER TABLE gantry.runs
 CREATE TABLE IF NOT EXISTS gantry.run_events (
   run_id text NOT NULL REFERENCES gantry.runs(id),
   sequence bigint NOT NULL,
+  task_sequence bigint NOT NULL DEFAULT 0,
   event_type text NOT NULL,
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (run_id, sequence)
 );
+ALTER TABLE gantry.run_events
+  ADD COLUMN IF NOT EXISTS task_sequence bigint;
+WITH ordered_task_events AS (
+  SELECT e.run_id, e.sequence,
+    row_number() OVER (PARTITION BY r.task_id ORDER BY e.created_at, e.run_id, e.sequence) AS task_sequence
+  FROM gantry.run_events e
+  JOIN gantry.runs r ON r.id=e.run_id
+  WHERE e.task_sequence IS NULL
+)
+UPDATE gantry.run_events e
+SET task_sequence=ordered_task_events.task_sequence
+FROM ordered_task_events
+WHERE e.run_id=ordered_task_events.run_id AND e.sequence=ordered_task_events.sequence;
+ALTER TABLE gantry.run_events
+  ALTER COLUMN task_sequence SET NOT NULL;
+UPDATE gantry.tasks t
+SET task_event_sequence=COALESCE((
+  SELECT MAX(e.task_sequence)
+  FROM gantry.run_events e
+  JOIN gantry.runs r ON r.id=e.run_id
+  WHERE r.task_id=t.id
+), 0)
+WHERE task_event_sequence=0;
 
 CREATE TABLE IF NOT EXISTS gantry.task_messages (
   id text PRIMARY KEY,
   task_id text NOT NULL REFERENCES gantry.tasks(id),
   run_id text REFERENCES gantry.runs(id),
+  task_sequence bigint NOT NULL,
   role text NOT NULL CHECK (role IN ('requester', 'agent')),
+  parts jsonb NOT NULL DEFAULT '[]'::jsonb,
   content text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE gantry.task_messages
+  ADD COLUMN IF NOT EXISTS task_sequence bigint;
+UPDATE gantry.task_messages
+SET task_sequence=0
+WHERE task_sequence IS NULL;
+ALTER TABLE gantry.task_messages
+  ALTER COLUMN task_sequence SET DEFAULT 0;
+ALTER TABLE gantry.task_messages
+  ALTER COLUMN task_sequence SET NOT NULL;
+ALTER TABLE gantry.task_messages
+  ADD COLUMN IF NOT EXISTS parts jsonb NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS task_messages_task_created_idx ON gantry.task_messages (task_id, created_at, id);
 
 CREATE TABLE IF NOT EXISTS gantry.run_content_segments (

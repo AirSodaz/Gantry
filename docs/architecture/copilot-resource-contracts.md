@@ -596,11 +596,9 @@ All routes are relative to `/api/copilot/v1`.
 | `GET /artifacts/{id}` | none | `200 Artifact` | Metadata only |
 | `POST /artifacts/{id}:download` | none | `200 ArtifactDownloadGrant` | Rechecks auth, scan, retention; audited access |
 
-The checked-in contract currently returns an Artifact download URL from
-`GET /artifacts/{id}` and carries approval idempotency in the request body. The
-target replaces those shapes with an explicit audited download command and the
-common command header; no compatibility route is required before a public API
-release.
+The checked-in contract uses the explicit audited Artifact download command.
+Approval idempotency remains carried in the request body until that distinct
+command shape is aligned with the common command header.
 
 ## 6. State and Command Semantics
 

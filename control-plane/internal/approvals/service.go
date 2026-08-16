@@ -24,6 +24,7 @@ var (
 	ErrNotEligible    = errors.New("principal is not eligible to decide approval")
 	ErrAlreadyDecided = errors.New("approval already decided")
 	ErrExpired        = errors.New("approval has expired")
+	ErrChanged        = errors.New("approval has changed")
 	ErrIdempotency    = errors.New("approval idempotency key reused")
 )
 
@@ -36,6 +37,7 @@ type Request struct {
 	RunID         string    `json:"run_id"`
 	ActionID      string    `json:"action_id"`
 	ActionDigest  string    `json:"action_digest"`
+	Revision      int64     `json:"approval_revision"`
 	ToolName      string    `json:"tool_name"`
 	Operation     string    `json:"operation"`
 	Target        string    `json:"target,omitempty"`
@@ -78,6 +80,7 @@ type DecisionInput struct {
 	Decision     string
 	Reason       string
 	Idempotency  string
+	Revision     int64
 }
 
 // Expire advances the current requester's elapsed approval requests into a
@@ -137,7 +140,7 @@ func (s *Service) expire(ctx context.Context, principalID string) ([]Resolution,
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
 			return nil, err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_requester_input' WHERE current_run_id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_requester_input', conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
 			return nil, err
 		}
 		if err := appendEvent(ctx, tx, resolution.RunID, "approval.expired", map[string]any{"approval_id": resolution.ApprovalID, "action_digest": resolution.ActionDigest}); err != nil {
@@ -179,14 +182,14 @@ func (s *Service) Propose(ctx context.Context, tx pgx.Tx, action policy.Action, 
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.approval_requests (id, action_id, run_id, action_digest, action_preview, risk_class, status, requested_by_principal_id, assigned_principal_id, expires_at) VALUES ($1,$2,$3,$4,$5::jsonb,$6,'pending',$7,$7,$8)`, approvalID, actionID, canonical.RunID, digest, string(preview(canonical)), riskClass(canonical.Effect), canonical.RequestedBy, expiresAt); err != nil {
 		return Request{}, policy.Evaluation{}, err
 	}
-	return Request{ID: approvalID, RunID: canonical.RunID, ActionID: actionID, ActionDigest: digest, ToolName: canonical.ToolName, Operation: canonical.Operation, Target: canonical.Target, Effect: canonical.Effect, ActionPreview: previewMap(canonical), RiskClass: riskClass(canonical.Effect), Status: "pending", RequestedBy: canonical.RequestedBy, AssignedTo: canonical.RequestedBy, ExpiresAt: expiresAt}, evaluation, nil
+	return Request{ID: approvalID, RunID: canonical.RunID, ActionID: actionID, ActionDigest: digest, Revision: 1, ToolName: canonical.ToolName, Operation: canonical.Operation, Target: canonical.Target, Effect: canonical.Effect, ActionPreview: previewMap(canonical), RiskClass: riskClass(canonical.Effect), Status: "pending", RequestedBy: canonical.RequestedBy, AssignedTo: canonical.RequestedBy, ExpiresAt: expiresAt}, evaluation, nil
 }
 
 func (s *Service) List(ctx context.Context, actor identity.Principal, limit int) ([]Request, error) {
 	if limit < 1 || limit > 100 {
 		limit = 25
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) ORDER BY ar.created_at, ar.id LIMIT $2`, actor.ID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) ORDER BY ar.created_at, ar.id LIMIT $2`, actor.ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +198,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
@@ -211,7 +214,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 func (s *Service) Get(ctx context.Context, actor identity.Principal, approvalID string) (Request, error) {
 	var item Request
 	var previewJSON []byte
-	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion)
+	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Request{}, ErrNotFound
 	}
@@ -236,7 +239,7 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	input.ActionDigest = strings.TrimSpace(input.ActionDigest)
 	input.Decision = strings.TrimSpace(input.Decision)
 	input.Idempotency = strings.TrimSpace(input.Idempotency)
-	if input.ID == "" || input.ActionDigest == "" || input.Idempotency == "" || (input.Decision != "approve" && input.Decision != "reject") {
+	if input.ID == "" || input.ActionDigest == "" || input.Idempotency == "" || input.Revision < 1 || (input.Decision != "approve" && input.Decision != "reject") {
 		return Resolution{}, ErrInvalidInput
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -248,7 +251,8 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	var expiresAt time.Time
 	var permitExpiresAt *time.Time
 	var leaseEpoch, permitLeaseEpoch uint64
-	err = tx.QueryRow(ctx, `SELECT ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest, ar.expires_at, a.state, COALESCE(a.execution_permit_id,''), a.execution_permit_expires_at, a.execution_permit_lease_epoch, r.lease_epoch FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id WHERE ar.id=$1 FOR UPDATE`, input.ID).Scan(&status, &requestedBy, &assignedTo, &runID, &actionID, &callID, &digest, &expiresAt, &actionState, &permitID, &permitExpiresAt, &permitLeaseEpoch, &leaseEpoch)
+	var revision int64
+	err = tx.QueryRow(ctx, `SELECT ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest, ar.expires_at, a.state, a.revision, COALESCE(a.execution_permit_id,''), a.execution_permit_expires_at, a.execution_permit_lease_epoch, r.lease_epoch FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id WHERE ar.id=$1 FOR UPDATE`, input.ID).Scan(&status, &requestedBy, &assignedTo, &runID, &actionID, &callID, &digest, &expiresAt, &actionState, &revision, &permitID, &permitExpiresAt, &permitLeaseEpoch, &leaseEpoch)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Resolution{}, ErrNotFound
 	}
@@ -263,6 +267,9 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	}
 	if digest != input.ActionDigest {
 		return Resolution{}, ErrInvalidDigest
+	}
+	if revision != input.Revision {
+		return Resolution{}, ErrChanged
 	}
 	var existingDecision, existingKey string
 	err = tx.QueryRow(ctx, `SELECT decision, idempotency_key FROM gantry.approval_decisions WHERE approval_id=$1 AND principal_id=$2`, input.ID, actor.ID).Scan(&existingDecision, &existingKey)
@@ -322,7 +329,7 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if input.Decision == "approve" {
 		taskStatus = "running"
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2 WHERE current_run_id=$1 AND status='awaiting_approval'`, runID, taskStatus); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2, conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, runID, taskStatus); err != nil {
 		return Resolution{}, err
 	}
 	eventType := "approval.rejected"
@@ -347,11 +354,16 @@ func appendEvent(ctx context.Context, tx pgx.Tx, runID, eventType string, payloa
 	if err != nil {
 		return err
 	}
-	var sequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET event_sequence=event_sequence+1 WHERE id=$1 RETURNING event_sequence`, runID).Scan(&sequence); err != nil {
+	var runSequence int64
+	var taskID string
+	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET event_sequence=event_sequence+1 WHERE id=$1 RETURNING task_id, event_sequence`, runID).Scan(&taskID, &runSequence); err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO gantry.run_events (run_id, sequence, event_type, payload) VALUES ($1,$2,$3,$4::jsonb)`, runID, sequence, eventType, string(data))
+	var taskSequence int64
+	if err := tx.QueryRow(ctx, `UPDATE gantry.tasks SET task_event_sequence=task_event_sequence+1 WHERE id=$1 RETURNING task_event_sequence`, taskID).Scan(&taskSequence); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO gantry.run_events (run_id, sequence, task_sequence, event_type, payload) VALUES ($1,$2,$3,$4,$5::jsonb)`, runID, runSequence, taskSequence, eventType, string(data))
 	return err
 }
 

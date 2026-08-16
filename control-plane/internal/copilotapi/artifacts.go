@@ -27,6 +27,33 @@ func (h Handler) getArtifact(w http.ResponseWriter, r *http.Request, actor ident
 	writeJSON(w, http.StatusOK, artifact)
 }
 
+func (h Handler) downloadArtifact(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	reader, ok := h.tasks.(artifactDownloadService)
+	if !ok {
+		writeInternal(w, errors.New("artifact service is unavailable"))
+		return
+	}
+	artifactID, ok := operationTarget(r.PathValue("operation"), ":download")
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	grant, err := reader.DownloadArtifact(r.Context(), actor, artifactID)
+	if errors.Is(err, tasks.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Artifact was not found.")
+		return
+	}
+	if errors.Is(err, tasks.ErrInvalidState) {
+		writeError(w, http.StatusConflict, "artifact_unavailable", "The artifact is not available for download.")
+		return
+	}
+	if err != nil {
+		writeInternal(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, grant)
+}
+
 func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	reader, ok := h.tasks.(artifactListReader)
 	if !ok {
@@ -49,4 +76,9 @@ type artifactListReader interface {
 	ListMyArtifacts(context.Context, identity.Principal, string, string, int) ([]tasks.Artifact, error)
 }
 
+type artifactDownloadService interface {
+	DownloadArtifact(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error)
+}
+
 var _ artifactListReader = (*tasks.Service)(nil)
+var _ artifactDownloadService = (*tasks.Service)(nil)

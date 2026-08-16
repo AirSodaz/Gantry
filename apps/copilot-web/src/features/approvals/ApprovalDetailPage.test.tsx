@@ -19,6 +19,7 @@ const approval = {
   run_id: 'run_1',
   action_id: 'act_1',
   action_digest: 'sha256:exact-action',
+  approval_revision: 1,
   tool_name: 'Directory',
   operation: 'update',
   target: 'employee/123',
@@ -47,7 +48,7 @@ describe('ApprovalDetailPage', () => {
     expect(await screen.findByText('sha256:exact-action')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Approve action' }));
 
-    await waitFor(() => expect(mocked.api.decideApproval).toHaveBeenCalledWith('apr_1', 'approve', 'sha256:exact-action', '', expect.any(String)));
+    await waitFor(() => expect(mocked.api.decideApproval).toHaveBeenCalledWith('apr_1', 'approve', 'sha256:exact-action', 1, '', expect.any(String)));
   });
 
   it('renders server-winning decision evidence instead of decision controls', async () => {

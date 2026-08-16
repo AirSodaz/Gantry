@@ -42,8 +42,10 @@ export function TaskPage() {
   });
   const retryMutation = useMutation({
     mutationFn: () => {
+		const conversationETag = taskQuery.data?.conversation_etag;
+		if (!conversationETag) throw new Error('This task needs to be refreshed before retrying.');
       if (!retryKeyRef.current) retryKeyRef.current = crypto.randomUUID();
-      return api.retryTask(taskId, retryKeyRef.current);
+      return api.retryTask(taskId, retryKeyRef.current, conversationETag);
     },
     onSuccess: () => {
       retryKeyRef.current = null;
@@ -52,8 +54,10 @@ export function TaskPage() {
   });
   const followUpMutation = useMutation({
     mutationFn: () => {
+		const conversationETag = taskQuery.data?.conversation_etag;
+		if (!conversationETag) throw new Error('This task needs to be refreshed before continuing.');
       if (!followUpKeyRef.current) followUpKeyRef.current = crypto.randomUUID();
-      return api.appendTaskMessage(taskId, { message: followUp }, followUpKeyRef.current);
+      return api.appendTaskMessage(taskId, { message: followUp }, followUpKeyRef.current, conversationETag);
     },
     onSuccess: (nextTask) => {
       setFollowUp('');
@@ -169,7 +173,7 @@ export function TaskPage() {
         <section className="conversation-panel">
           <div className="conversation-heading"><div><span className="eyebrow">Task detail</span><h1>{task.agent_display_name ?? task.agent_id}</h1><p>Task {task.id}</p></div><StatusMark status={task.status} /></div>
           <div className="conversation-messages" aria-label="Task conversation">
-            {task.messages?.map((message) => <div className={`request-message ${message.role === 'agent' ? 'agent-message' : ''}`} key={message.id}><span className="message-label">{message.role === 'agent' ? 'Agent' : 'Your request'}</span><p>{message.content}</p></div>)}
+            {task.messages?.map((message) => <div className={`request-message ${message.role === 'agent' ? 'agent-message' : ''}`} key={message.id}><span className="message-label">{message.role === 'agent' ? 'Agent' : 'Your request'}</span><p>{messageText(message.parts)}</p></div>)}
             {!task.messages?.length ? <div className="request-message"><span className="message-label">Your request</span><p>This task was submitted to {task.agent_display_name ?? task.agent_id}.</p></div> : null}
           </div>
           <div className="run-output" aria-live="polite">
@@ -189,7 +193,7 @@ export function TaskPage() {
             <Button variant="quiet" onClick={() => navigate('/tasks')}>Back to history</Button>
           </div>
           {task.artifacts?.length ? <div className="artifact-list"><h2>Artifacts</h2>{task.artifacts.map((artifact) => <ArtifactRow key={artifact.id} artifact={artifact} onDownload={async () => {
-            const result = await api.getArtifact(artifact.id);
+            const result = await api.requestArtifactDownload(artifact.id);
             if (result.download_url) window.open(result.download_url, '_blank', 'noopener,noreferrer');
           }} />)}</div> : null}
           {runsQuery.data?.items.length ? <section className="run-attempts"><h2>Run attempts</h2>{runsQuery.data.items.map((run) => <div className="run-attempt-row" key={run.id}><span>Attempt {run.attempt_number}</span><StatusMark status={run.status} /><span>{run.status_reason || formatDate(run.completed_at ?? run.started_at ?? run.created_at)}</span></div>)}</section> : null}
@@ -250,4 +254,14 @@ function buildTimeline(status?: string) {
 function formatDate(value?: string) {
   if (!value) return 'Recently';
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+function messageText(parts: Array<Record<string, unknown>> | undefined) {
+  return (parts ?? []).map((part) => {
+    if (part.type === 'text' && typeof part.text === 'string') return part.text;
+    if (part.type === 'status' && typeof part.message === 'string') return part.message;
+    if (part.type === 'action_summary' && typeof part.summary === 'string') return part.summary;
+    if (part.type === 'artifact' && typeof part.label === 'string') return part.label;
+    return '';
+  }).filter(Boolean).join('\n');
 }

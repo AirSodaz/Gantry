@@ -7,18 +7,15 @@ import (
 
 func TestEventCursorIsSignedAndBoundToTaskAndRun(t *testing.T) {
 	key := []byte("test-event-key")
-	cursor := encodeCursor(key, "tsk_1", "run_1", 42)
-	sequence, runID, ok := parseAfterCursor(key, cursor, "tsk_1", "run_1")
-	if !ok || sequence != 42 || runID != "run_1" {
-		t.Fatalf("valid cursor parsed as sequence=%d run=%q ok=%t", sequence, runID, ok)
+	cursor := encodeCursor(key, "tsk_1", 42)
+	sequence, ok := parseAfterCursor(key, cursor, "tsk_1")
+	if !ok || sequence != 42 {
+		t.Fatalf("valid cursor parsed as sequence=%d ok=%t", sequence, ok)
 	}
-	if _, _, ok := parseAfterCursor(key, cursor, "tsk_2", "run_1"); ok {
+	if _, ok := parseAfterCursor(key, cursor, "tsk_2"); ok {
 		t.Fatal("cursor was accepted for another task")
 	}
-	if _, _, ok := parseAfterCursor(key, cursor, "tsk_1", "run_2"); ok {
-		t.Fatal("cursor was accepted for another run")
-	}
-	if _, _, ok := parseAfterCursor(key, cursor+"x", "tsk_1", "run_1"); ok {
+	if _, ok := parseAfterCursor(key, cursor+"x", "tsk_1"); ok {
 		t.Fatal("tampered cursor was accepted")
 	}
 }

@@ -40,7 +40,7 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET status='assigned', runner_id=$2, lease_epoch=lease_epoch+1, started_at=COALESCE(started_at, now()) WHERE id=$1 RETURNING lease_epoch`, runID, runnerID).Scan(&epoch); err != nil {
 		return Assignment{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='running' WHERE current_run_id=$1`, runID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='running', conversation_revision=conversation_revision+1 WHERE current_run_id=$1`, runID); err != nil {
 		return Assignment{}, false, err
 	}
 	if err := appendEvent(ctx, tx, runID, "run.assigned"); err != nil {
@@ -136,7 +136,7 @@ func (s *Service) RecordEvents(ctx context.Context, runnerID, runID string, epoc
 				if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='awaiting_approval' WHERE id=$1`, runID); err != nil {
 					return RecordEventsResult{}, err
 				}
-				if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_approval' WHERE current_run_id=$1`, runID); err != nil {
+				if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_approval', conversation_revision=conversation_revision+1 WHERE current_run_id=$1`, runID); err != nil {
 					return RecordEventsResult{}, err
 				}
 				payload, _ := json.Marshal(map[string]any{"approval_id": request.ID, "action_digest": request.ActionDigest})
@@ -348,7 +348,7 @@ func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint
 			taskStatus = "awaiting_requester_input"
 		}
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2 WHERE id=$1`, taskID, taskStatus); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2, conversation_revision=conversation_revision+1 WHERE id=$1`, taskID, taskStatus); err != nil {
 		return err
 	}
 	if err := appendEvent(ctx, tx, runID, "run."+terminal); err != nil {
@@ -377,7 +377,7 @@ func (s *Service) FailActive(ctx context.Context, runnerID, runID, reason string
 	if err := markExecutingActionsUnknown(ctx, tx, runID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed' WHERE id=$1`, taskID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed', conversation_revision=conversation_revision+1 WHERE id=$1`, taskID); err != nil {
 		return err
 	}
 	if err := appendEvent(ctx, tx, runID, "run.failed"); err != nil {
@@ -417,7 +417,7 @@ func (s *Service) FailInFlight(ctx context.Context, reason string) (int, error) 
 		return 0, err
 	}
 	for _, run := range failed {
-		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed' WHERE id=$1 AND current_run_id=$2`, run.taskID, run.id); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='failed', conversation_revision=conversation_revision+1 WHERE id=$1 AND current_run_id=$2`, run.taskID, run.id); err != nil {
 			return 0, err
 		}
 		if err := appendEvent(ctx, tx, run.id, "run.failed"); err != nil {

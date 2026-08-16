@@ -27,10 +27,10 @@ type taskService interface {
 	Submit(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
 	List(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
 	Get(context.Context, identity.Principal, string) (tasks.Task, error)
-	AppendMessage(context.Context, identity.Principal, string, string, tasks.AppendMessageRequest) (tasks.Task, bool, error)
+	AppendMessage(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
 	ListRuns(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
 	Cancel(context.Context, identity.Principal, string, string, string) (tasks.CancelResult, error)
-	Retry(context.Context, identity.Principal, string, bool, string) (tasks.Task, error)
+	Retry(context.Context, identity.Principal, string, bool, string, int64) (tasks.Task, error)
 }
 
 type eventReader interface {
@@ -78,6 +78,7 @@ func New(auth authenticator, taskService taskService, approvalService approvalSe
 	mux.Handle("POST /tasks/{taskID}/events:ticket", h.withActor(h.issueEventTicket))
 	mux.HandleFunc("GET /tasks/{taskID}/events", h.events)
 	mux.Handle("GET /artifacts/{artifactID}", h.withActor(h.getArtifact))
+	mux.Handle("POST /artifacts/{operation...}", h.withActor(h.downloadArtifact))
 	mux.Handle("GET /artifacts", h.withActor(h.listArtifacts))
 	mux.Handle("POST /attachments", h.withActor(h.createAttachment))
 	mux.Handle("GET /attachments/{attachmentID}", h.withActor(h.getAttachment))
@@ -130,6 +131,7 @@ func (h Handler) submitTask(w http.ResponseWriter, r *http.Request, actor identi
 	if duplicate {
 		status = http.StatusOK
 	}
+	w.Header().Set("ETag", task.ConversationETag())
 	writeJSON(w, status, task)
 }
 func (h Handler) listTasks(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -155,6 +157,7 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request, actor identity.
 		writeTaskError(w, err)
 		return
 	}
+	w.Header().Set("ETag", task.ConversationETag())
 	writeJSON(w, http.StatusOK, task)
 }
 func (h Handler) appendMessage(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -163,8 +166,17 @@ func (h Handler) appendMessage(w http.ResponseWriter, r *http.Request, actor ide
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	task, duplicate, err := h.tasks.AppendMessage(r.Context(), actor, r.PathValue("taskID"), r.Header.Get("Idempotency-Key"), request)
+	expectedRevision, err := parseConversationETag(r.Header.Get("If-Match"))
 	if err != nil {
+		writeError(w, http.StatusPreconditionRequired, "conversation_etag_required", "If-Match must contain the current conversation ETag.")
+		return
+	}
+	task, duplicate, err := h.tasks.AppendMessage(r.Context(), actor, r.PathValue("taskID"), r.Header.Get("Idempotency-Key"), expectedRevision, request)
+	if err != nil {
+		if errors.Is(err, tasks.ErrConversationChanged) {
+			h.writeConversationChanged(w, r, actor, r.PathValue("taskID"))
+			return
+		}
 		writeTaskError(w, err)
 		return
 	}
@@ -175,6 +187,7 @@ func (h Handler) appendMessage(w http.ResponseWriter, r *http.Request, actor ide
 	if duplicate {
 		status = http.StatusOK
 	}
+	w.Header().Set("ETag", task.ConversationETag())
 	writeJSON(w, status, task)
 }
 func (h Handler) listRuns(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -230,7 +243,7 @@ func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor id
 		Decision     string `json:"decision"`
 		Reason       string `json:"reason"`
 		ActionDigest string `json:"action_digest"`
-		Idempotency  string `json:"idempotency_key"`
+		Revision     int64  `json:"approval_revision"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
@@ -241,7 +254,7 @@ func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor id
 		http.NotFound(w, r)
 		return
 	}
-	resolution, err := h.approvals.Decide(r.Context(), actor, approvals.DecisionInput{ID: approvalID, Decision: request.Decision, Reason: request.Reason, ActionDigest: request.ActionDigest, Idempotency: request.Idempotency})
+	resolution, err := h.approvals.Decide(r.Context(), actor, approvals.DecisionInput{ID: approvalID, Decision: request.Decision, Reason: request.Reason, ActionDigest: request.ActionDigest, Idempotency: r.Header.Get("Idempotency-Key"), Revision: request.Revision})
 	if err != nil {
 		writeApprovalError(w, err)
 		return
@@ -298,20 +311,52 @@ func (h Handler) retryOperation(w http.ResponseWriter, r *http.Request, actor id
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion, r.Header.Get("Idempotency-Key"))
+	expectedRevision, err := parseConversationETag(r.Header.Get("If-Match"))
 	if err != nil {
+		writeError(w, http.StatusPreconditionRequired, "conversation_etag_required", "If-Match must contain the current conversation ETag.")
+		return
+	}
+	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion, r.Header.Get("Idempotency-Key"), expectedRevision)
+	if err != nil {
+		if errors.Is(err, tasks.ErrConversationChanged) {
+			h.writeConversationChanged(w, r, actor, taskID)
+			return
+		}
 		writeTaskError(w, err)
 		return
 	}
 	if err := h.dispatcher.Dispatch(r.Context()); err != nil {
 		h.logger.Error("retried task dispatch failed", "error", err, "task_id", task.ID)
 	}
+	w.Header().Set("ETag", task.ConversationETag())
 	writeJSON(w, http.StatusCreated, task)
+}
+
+func (h Handler) writeConversationChanged(w http.ResponseWriter, r *http.Request, actor identity.Principal, taskID string) {
+	current, err := h.tasks.Get(r.Context(), actor, taskID)
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	w.Header().Set("ETag", current.ConversationETag())
+	writeJSON(w, http.StatusConflict, map[string]any{"error": map[string]any{"code": "conversation_changed", "message": "The task changed; review the latest conversation before continuing.", "current_resource": current}})
 }
 
 func operationTarget(operation, suffix string) (string, bool) {
 	target, ok := strings.CutSuffix(operation, suffix)
 	return target, ok && target != "" && !strings.Contains(target, "/")
+}
+
+func parseConversationETag(raw string) (int64, error) {
+	value := strings.TrimSpace(raw)
+	if len(value) < 3 || value[0] != '"' || value[len(value)-1] != '"' {
+		return 0, tasks.ErrPreconditionRequired
+	}
+	revision, err := strconv.ParseInt(value[1:len(value)-1], 10, 64)
+	if err != nil || revision < 1 {
+		return 0, tasks.ErrPreconditionRequired
+	}
+	return revision, nil
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
@@ -337,6 +382,8 @@ func writeTaskError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "invalid_state", "The task is not in a state that permits this operation.")
 	case errors.Is(err, tasks.ErrIdempotencyConflict):
 		writeError(w, http.StatusConflict, "idempotency_key_reused", "The idempotency key was used for a different request.")
+	case errors.Is(err, tasks.ErrPreconditionRequired):
+		writeError(w, http.StatusPreconditionRequired, "conversation_etag_required", "If-Match must contain the current conversation ETag.")
 	default:
 		writeInternal(w, err)
 	}
@@ -353,6 +400,8 @@ func writeApprovalError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusForbidden, "forbidden", "You are not eligible to decide this approval.")
 	case errors.Is(err, approvals.ErrAlreadyDecided):
 		writeError(w, http.StatusConflict, "already_decided", "The approval has already been decided.")
+	case errors.Is(err, approvals.ErrChanged):
+		writeError(w, http.StatusConflict, "approval_changed", "The approval changed and must be reviewed again.")
 	case errors.Is(err, approvals.ErrExpired):
 		writeError(w, http.StatusConflict, "approval_expired", "The approval request has expired.")
 	case errors.Is(err, approvals.ErrIdempotency):

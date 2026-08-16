@@ -267,10 +267,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get artifact metadata and download URL */
+        /** Get artifact metadata */
         get: operations["getArtifact"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artifacts/{artifact_id}:download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize and issue a short-lived artifact download reference */
+        post: operations["createArtifactDownloadGrant"];
         delete?: never;
         options?: never;
         head?: never;
@@ -330,6 +347,8 @@ export interface components {
             agent_display_name?: string;
             /** @enum {string} */
             status: "queued" | "provisioning" | "running" | "awaiting_approval" | "awaiting_requester_input" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
+            /** Format: int64 */
+            conversation_revision: number;
             current_run?: components["schemas"]["RunStatus"];
             artifacts?: components["schemas"]["ArtifactResponse"][];
             messages?: components["schemas"]["TaskMessage"][];
@@ -338,10 +357,36 @@ export interface components {
         TaskMessage: {
             id: string;
             run_id?: string;
+            /** Format: int64 */
+            task_sequence: number;
             /** @enum {string} */
-            role: "requester" | "agent";
-            content: string;
+            role: "requester" | "agent" | "system_summary";
+            parts: (components["schemas"]["TextPart"] | components["schemas"]["ArtifactPart"] | components["schemas"]["ActionSummaryPart"] | components["schemas"]["StatusPart"])[];
             created_at: components["schemas"]["Timestamp"];
+        };
+        TextPart: {
+            /** @enum {string} */
+            type: "text";
+            text: string;
+        };
+        ArtifactPart: {
+            /** @enum {string} */
+            type: "artifact";
+            artifact_id: string;
+            label: string;
+        };
+        ActionSummaryPart: {
+            /** @enum {string} */
+            type: "action_summary";
+            action_id: string;
+            summary: string;
+            state: string;
+        };
+        StatusPart: {
+            /** @enum {string} */
+            type: "status";
+            code: string;
+            message: string;
         };
         AppendTaskMessageRequest: {
             message: string;
@@ -377,6 +422,8 @@ export interface components {
             run_id: string;
             action_id: string;
             action_digest: string;
+            /** Format: int64 */
+            approval_revision: number;
             tool_name: string;
             operation: string;
             target?: string;
@@ -408,7 +455,8 @@ export interface components {
             decision: "approve" | "reject";
             reason?: string;
             action_digest: string;
-            idempotency_key: string;
+            /** Format: int64 */
+            approval_revision: number;
         };
         ApprovalDecisionResponse: {
             /** @enum {string} */
@@ -439,9 +487,12 @@ export interface components {
             state: "declared" | "uploaded" | "available" | "rejected";
             /** @enum {string} */
             scan_status: "pending" | "passed" | "failed";
-            /** @description Short-lived pre-signed download URL */
-            download_url?: string;
-            download_url_expires_at?: components["schemas"]["Timestamp"];
+        };
+        ArtifactDownloadGrant: {
+            artifact_id: string;
+            /** Format: uri */
+            download_url: string;
+            expires_at: components["schemas"]["Timestamp"];
         };
         ArtifactList: {
             items: components["schemas"]["ArtifactResponse"][];
@@ -688,6 +739,7 @@ export interface operations {
             /** @description Task details */
             200: {
                 headers: {
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -701,6 +753,7 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                "If-Match": string;
             };
             path: {
                 task_id: components["parameters"]["TaskIdParam"];
@@ -716,6 +769,7 @@ export interface operations {
             /** @description Original task returned for an idempotent retry */
             200: {
                 headers: {
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -725,6 +779,7 @@ export interface operations {
             /** @description Follow-up accepted and next run queued */
             201: {
                 headers: {
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -816,6 +871,7 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                "If-Match": string;
             };
             path: {
                 task_id: components["parameters"]["TaskIdParam"];
@@ -831,6 +887,7 @@ export interface operations {
             /** @description New run created */
             201: {
                 headers: {
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -865,7 +922,9 @@ export interface operations {
     decideApproval: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 approval_id: string;
             };
@@ -956,7 +1015,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Artifact metadata with download URL */
+            /** @description Artifact metadata */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -964,6 +1023,42 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ArtifactResponse"];
                 };
+            };
+        };
+    };
+    createArtifactDownloadGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized short-lived download reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactDownloadGrant"];
+                };
+            };
+            /** @description Artifact was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Artifact is not available for download */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
