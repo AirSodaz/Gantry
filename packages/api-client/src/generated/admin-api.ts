@@ -833,13 +833,23 @@ export interface components {
             agent_id: string;
             revision_hash: string;
             source_draft_id: string;
+            source_draft_name: string;
             message: string;
             spec: Record<string, never>;
             spec_digest: string;
+            schema_version: string;
             runtime_image_digest?: string;
             /** Format: date-time */
             created_at: string;
             created_by: string;
+            /** @enum {string} */
+            review_status: "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
+            production_deployed: boolean;
+            test_deployed: boolean;
+            run_count: number;
+            latest_run_status?: string;
+            /** Format: date-time */
+            latest_run_at?: string;
             prompt_snapshot: components["schemas"]["PromptSnapshot"];
         };
         AgentRevisionList: {

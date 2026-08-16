@@ -310,9 +310,23 @@ func (s *Service) GetTargetOverview(ctx context.Context, actor identity.Principa
 
 const revisionSelect = `
 	SELECT r.id, r.agent_id, r.revision_hash, r.source_draft_id, r.message, r.spec_json, r.spec_digest,
-		r.runtime_image_digest, r.created_at, COALESCE(p.display_name, ''), r.prompt_snapshot_json
+		r.runtime_image_digest, r.created_at, COALESCE(p.display_name, ''), r.prompt_snapshot_json,
+		d.name, d.schema_version, COALESCE(review.status, 'not_submitted'),
+		EXISTS (SELECT 1 FROM gantry.agent_deployments deployment WHERE deployment.revision_id=r.id AND deployment.environment_kind='production' AND deployment.status='active'),
+		EXISTS (SELECT 1 FROM gantry.agent_deployments deployment WHERE deployment.revision_id=r.id AND deployment.environment_kind='test' AND deployment.status='active'),
+		(SELECT count(*) FROM gantry.runs run WHERE run.agent_revision_id=r.id),
+		COALESCE(latest_run.status, ''), latest_run.observed_at
 	FROM gantry.agent_revisions r
-	JOIN gantry.principals p ON p.id=r.created_by_principal_id`
+	JOIN gantry.principals p ON p.id=r.created_by_principal_id
+	JOIN gantry.agent_draft_workspaces d ON d.id=r.source_draft_id
+	LEFT JOIN gantry.agent_revision_reviews review ON review.revision_id=r.id
+	LEFT JOIN LATERAL (
+		SELECT status, COALESCE(completed_at, started_at, created_at) AS observed_at
+		FROM gantry.runs
+		WHERE agent_revision_id=r.id
+		ORDER BY created_at DESC, id DESC
+		LIMIT 1
+	) latest_run ON true`
 
 func revisionHash(agentID, draftID, message, actorID string, createdAt time.Time, specDigest string) (string, error) {
 	envelope, err := json.Marshal(struct {
@@ -387,8 +401,9 @@ func loadMainDraft(ctx context.Context, querier interface {
 func scanRevision(row rowScanner) (Revision, error) {
 	var item Revision
 	var createdAt time.Time
+	var latestRunAt *time.Time
 	var prompt []byte
-	err := row.Scan(&item.ID, &item.AgentID, &item.RevisionHash, &item.SourceDraftID, &item.Message, &item.Spec, &item.SpecDigest, &item.RuntimeImageDigest, &createdAt, &item.CreatedBy, &prompt)
+	err := row.Scan(&item.ID, &item.AgentID, &item.RevisionHash, &item.SourceDraftID, &item.Message, &item.Spec, &item.SpecDigest, &item.RuntimeImageDigest, &createdAt, &item.CreatedBy, &prompt, &item.SourceDraftName, &item.SchemaVersion, &item.ReviewStatus, &item.ProductionDeployed, &item.TestDeployed, &item.RunCount, &item.LatestRunStatus, &latestRunAt)
 	if err != nil {
 		return Revision{}, err
 	}
@@ -396,6 +411,9 @@ func scanRevision(row rowScanner) (Revision, error) {
 		return Revision{}, err
 	}
 	item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+	if latestRunAt != nil {
+		item.LatestRunAt = latestRunAt.UTC().Format(time.RFC3339)
+	}
 	return item, nil
 }
 

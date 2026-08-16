@@ -888,18 +888,26 @@ components:
         message: {type: string, maxLength: 4000}
     AgentRevision:
       type: object
-      required: [id, agent_id, revision_hash, source_draft_id, message, spec, spec_digest, created_at, created_by, prompt_snapshot]
+      required: [id, agent_id, revision_hash, source_draft_id, source_draft_name, message, spec, spec_digest, schema_version, created_at, created_by, review_status, production_deployed, test_deployed, run_count, prompt_snapshot]
       properties:
         id: {type: string}
         agent_id: {type: string}
         revision_hash: {type: string}
         source_draft_id: {type: string}
+        source_draft_name: {type: string}
         message: {type: string}
         spec: {type: object}
         spec_digest: {type: string}
+        schema_version: {type: string}
         runtime_image_digest: {type: string}
         created_at: {type: string, format: date-time}
         created_by: {type: string}
+        review_status: {type: string, enum: [not_submitted, pending, approved, rejected, superseded]}
+        production_deployed: {type: boolean}
+        test_deployed: {type: boolean}
+        run_count: {type: integer}
+        latest_run_status: {type: string}
+        latest_run_at: {type: string, format: date-time}
         prompt_snapshot: {$ref: "#/components/schemas/PromptSnapshot"}
     AgentRevisionList:
       type: object

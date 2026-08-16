@@ -26,12 +26,20 @@ type Revision struct {
 	AgentID            string          `json:"agent_id"`
 	RevisionHash       string          `json:"revision_hash"`
 	SourceDraftID      string          `json:"source_draft_id"`
+	SourceDraftName    string          `json:"source_draft_name"`
 	Message            string          `json:"message"`
 	Spec               json.RawMessage `json:"spec"`
 	SpecDigest         string          `json:"spec_digest"`
+	SchemaVersion      string          `json:"schema_version"`
 	RuntimeImageDigest string          `json:"runtime_image_digest,omitempty"`
 	CreatedAt          string          `json:"created_at"`
 	CreatedBy          string          `json:"created_by"`
+	ReviewStatus       string          `json:"review_status"`
+	ProductionDeployed bool            `json:"production_deployed"`
+	TestDeployed       bool            `json:"test_deployed"`
+	RunCount           int             `json:"run_count"`
+	LatestRunStatus    string          `json:"latest_run_status,omitempty"`
+	LatestRunAt        string          `json:"latest_run_at,omitempty"`
 	PromptSnapshot     PromptSnapshot  `json:"prompt_snapshot"`
 }
 
