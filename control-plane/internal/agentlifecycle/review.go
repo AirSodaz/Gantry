@@ -25,31 +25,9 @@ type DiffSummary struct {
 	Low    int `json:"low"`
 }
 
-type Review struct {
-	ID            string      `json:"id,omitempty"`
-	AgentID       string      `json:"agent_id"`
-	DraftRevision int         `json:"draft_revision"`
-	DraftDigest   string      `json:"draft_digest"`
-	BaseVersionID string      `json:"base_version_id,omitempty"`
-	BaseVersion   int         `json:"base_version,omitempty"`
-	ReleaseNotes  string      `json:"release_notes"`
-	Diff          []DiffEntry `json:"diff"`
-	RiskSummary   DiffSummary `json:"risk_summary"`
-	Status        string      `json:"status"`
-	SubmittedBy   string      `json:"submitted_by,omitempty"`
-	ReviewedBy    string      `json:"reviewed_by,omitempty"`
-	ReviewReason  string      `json:"review_reason,omitempty"`
-	SubmittedAt   string      `json:"submitted_at,omitempty"`
-	ReviewedAt    string      `json:"reviewed_at,omitempty"`
-}
-
 type ReviewDecisionRequest struct {
 	Decision string `json:"decision"`
 	Reason   string `json:"reason"`
-}
-
-type RollbackRequest struct {
-	VersionID string `json:"version_id"`
 }
 
 func buildDiff(before, after json.RawMessage) ([]DiffEntry, DiffSummary, error) {

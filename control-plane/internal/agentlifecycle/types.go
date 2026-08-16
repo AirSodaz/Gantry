@@ -1,5 +1,5 @@
-// Package agentlifecycle owns administrative agent drafts, immutable versions,
-// and publication state.
+// Package agentlifecycle owns administrative Agent Drafts, immutable Revisions,
+// and Deployment state.
 package agentlifecycle
 
 import (
@@ -104,31 +104,7 @@ type Agent struct {
 	Description                   string `json:"description"`
 	Category                      string `json:"category"`
 	LifecycleStatus               string `json:"lifecycle_status"`
-	CurrentPublishedVersionID     string `json:"current_published_version_id,omitempty"`
 	CurrentProductionRevisionHash string `json:"current_production_revision_hash,omitempty"`
-}
-
-type Draft struct {
-	AgentID            string          `json:"agent_id"`
-	Revision           int             `json:"revision"`
-	Spec               json.RawMessage `json:"spec"`
-	ValidationStatus   string          `json:"validation_status"`
-	ValidationFindings []Finding       `json:"validation_findings"`
-	UpdatedBy          string          `json:"updated_by"`
-}
-
-type Version struct {
-	ID                  string          `json:"id"`
-	AgentID             string          `json:"agent_id"`
-	Version             int             `json:"version"`
-	SourceDraftRevision int             `json:"source_draft_revision"`
-	Spec                json.RawMessage `json:"spec"`
-	SpecDigest          string          `json:"spec_digest"`
-	CreatedAt           string          `json:"created_at,omitempty"`
-	CreatedBy           string          `json:"created_by,omitempty"`
-	Published           bool            `json:"published"`
-	PublishedAt         string          `json:"published_at,omitempty"`
-	PromptSnapshot      PromptSnapshot  `json:"prompt_snapshot"`
 }
 
 const PromptCompilerVersion = "prompt-compiler/v1"
@@ -143,14 +119,6 @@ type PromptSnapshot struct {
 	SystemPrompt    string         `json:"system_prompt,omitempty"`
 	UserInput       string         `json:"user_input,omitempty"`
 	Rules           []RuleSnapshot `json:"rules,omitempty"`
-}
-
-type AgentOverview struct {
-	Agent          Agent          `json:"agent"`
-	Draft          Draft          `json:"draft"`
-	CurrentVersion *Version       `json:"current_version,omitempty"`
-	VersionCount   int            `json:"version_count"`
-	RecentActivity []ActivityItem `json:"recent_activity"`
 }
 
 type ActivityItem struct {

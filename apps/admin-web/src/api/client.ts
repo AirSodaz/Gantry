@@ -1,4 +1,4 @@
-import type { AdminOverview, Agent, AgentDeployment, AgentLifecycleOverview, AgentOverview, AgentRevision, AgentRevisionReview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminOverview, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -64,7 +64,6 @@ export class AdminApi {
     return this.request<{ items: Agent[] }>(`/agents${query}`);
   }
   getAgent(agentId: string) { return this.request<Agent>(`/agents/${encodeURIComponent(agentId)}`); }
-  getAgentOverview(agentId: string) { return this.request<AgentOverview>(`/agents/${encodeURIComponent(agentId)}/overview`); }
   getAgentLifecycle(agentId: string) { return this.request<AgentLifecycleOverview>(`/agents/${encodeURIComponent(agentId)}/lifecycle`); }
   listDrafts(agentId: string) { return this.request<{ items: NamedAgentDraft[] }>(`/agents/${encodeURIComponent(agentId)}/drafts`); }
   getNamedDraft(agentId: string, draftId: string) { return this.request<NamedAgentDraft>(`/agents/${encodeURIComponent(agentId)}/drafts/${encodeURIComponent(draftId)}`); }
@@ -82,26 +81,6 @@ export class AdminApi {
   createTestDeployment(agentId: string, input: { name: string; revision_hash: string; purpose?: string; expires_at?: string; environment_policy?: Record<string, unknown> }) { return this.request<AgentDeployment>(`/agents/${encodeURIComponent(agentId)}/deployments`, { method: 'POST', body: JSON.stringify(input) }); }
   stopTestDeployment(agentId: string, deploymentId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}/deployments/${encodeURIComponent(deploymentId)}:stop`, { method: 'POST', body: '{}' }); }
   createAgent(input: CreateAgentInput) { return this.request<Agent>('/agents', { method: 'POST', body: JSON.stringify(input) }); }
-  getDraft(agentId: string) { return this.request<Draft>(`/agents/${encodeURIComponent(agentId)}/draft`); }
-  updateDraft(agentId: string, revision: number, spec: unknown) {
-    return this.request<Draft>(`/agents/${encodeURIComponent(agentId)}/draft`, {
-      method: 'PUT', headers: { 'If-Match': String(revision) }, body: JSON.stringify({ spec }),
-    });
-  }
-  listVersions(agentId: string) { return this.request<{ items: AgentVersion[] }>(`/agents/${encodeURIComponent(agentId)}/versions`); }
-  getVersion(agentId: string, versionId: string) { return this.request<AgentVersion>(`/agents/${encodeURIComponent(agentId)}/versions/${encodeURIComponent(versionId)}`); }
-  getReview(agentId: string) { return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}/review`); }
-  submitReview(agentId: string, revision: number, releaseNotes: string) {
-    return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}:review`, { method: 'POST', headers: { 'If-Match': String(revision) }, body: JSON.stringify({ release_notes: releaseNotes }) });
-  }
-  decideReview(agentId: string, decision: 'approve' | 'reject', reason: string) {
-    return this.request<AgentReview>(`/agents/${encodeURIComponent(agentId)}:review-decision`, { method: 'POST', body: JSON.stringify({ decision, reason }) });
-  }
-  publish(agentId: string, revision: number) {
-    return this.request<AgentVersion>(`/agents/${encodeURIComponent(agentId)}:publish`, { method: 'POST', headers: { 'If-Match': String(revision) }, body: '{}' });
-  }
-  retire(agentId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:retire`, { method: 'POST', body: '{}' }); }
-  rollback(agentId: string, versionId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}:rollback`, { method: 'POST', body: JSON.stringify({ version_id: versionId }) }); }
 
   private assetStatus(path: string, reason: string) {
     return this.request<void>(path, { method: 'POST', body: JSON.stringify({ reason }) });

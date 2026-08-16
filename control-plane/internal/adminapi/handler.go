@@ -31,17 +31,6 @@ type lifecycleService interface {
 	ListAgents(context.Context, identity.Principal, agentlifecycle.AgentListOptions) ([]agentlifecycle.Agent, error)
 	Create(context.Context, identity.Principal, agentlifecycle.CreateRequest) (agentlifecycle.Agent, error)
 	Get(context.Context, identity.Principal, string) (agentlifecycle.Agent, error)
-	GetOverview(context.Context, identity.Principal, string) (agentlifecycle.AgentOverview, error)
-	GetDraft(context.Context, identity.Principal, string) (agentlifecycle.Draft, error)
-	UpdateDraft(context.Context, identity.Principal, string, int, json.RawMessage) (agentlifecycle.Draft, error)
-	ListVersions(context.Context, identity.Principal, string) ([]agentlifecycle.Version, error)
-	GetVersion(context.Context, identity.Principal, string, string) (agentlifecycle.Version, error)
-	GetReview(context.Context, identity.Principal, string) (agentlifecycle.Review, error)
-	SubmitReview(context.Context, identity.Principal, string, int, string) (agentlifecycle.Review, error)
-	DecideReview(context.Context, identity.Principal, string, string, string) (agentlifecycle.Review, error)
-	Publish(context.Context, identity.Principal, string, int) (agentlifecycle.Version, bool, error)
-	Retire(context.Context, identity.Principal, string) error
-	Rollback(context.Context, identity.Principal, string, string) error
 }
 
 type targetLifecycleService interface {
@@ -130,12 +119,6 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 	mux.Handle("GET /agents", h.withActor(h.listAgents))
 	mux.Handle("POST /agents", h.withActor(h.createAgent))
 	mux.Handle("GET /agents/{agentID}", h.withActor(h.getAgent))
-	mux.Handle("GET /agents/{agentID}/overview", h.withActor(h.getAgentOverview))
-	mux.Handle("GET /agents/{agentID}/draft", h.withActor(h.getDraft))
-	mux.Handle("PUT /agents/{agentID}/draft", h.withActor(h.updateDraft))
-	mux.Handle("GET /agents/{agentID}/versions", h.withActor(h.listVersions))
-	mux.Handle("GET /agents/{agentID}/versions/{versionID}", h.withActor(h.getVersion))
-	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
 	if target != nil {
 		h.registerTargetRoutes(mux)
 	}
@@ -158,7 +141,6 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 		mux.Handle("POST /plugins/{operation...}", h.withActor(h.pluginCommand))
 		mux.Handle("POST /tools/{operation...}", h.withActor(h.toolCommand))
 	}
-	mux.Handle("POST /agents/{operation...}", h.withActor(h.command))
 	return mux
 }
 
@@ -474,148 +456,6 @@ func (h Handler) getAgent(w http.ResponseWriter, r *http.Request, actor identity
 		return
 	}
 	writeJSON(w, http.StatusOK, agent)
-}
-
-func (h Handler) getAgentOverview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	overview, err := h.service.GetOverview(r.Context(), actor, r.PathValue("agentID"))
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, overview)
-}
-
-func (h Handler) getDraft(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	draft, err := h.service.GetDraft(r.Context(), actor, r.PathValue("agentID"))
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, draft)
-}
-
-func (h Handler) updateDraft(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	revision, err := revisionHeader(r)
-	if err != nil {
-		writeError(w, http.StatusPreconditionRequired, "revision_required", "If-Match must contain the current draft revision.")
-		return
-	}
-	var request struct {
-		Spec json.RawMessage `json:"spec"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
-		return
-	}
-	draft, err := h.service.UpdateDraft(r.Context(), actor, r.PathValue("agentID"), revision, request.Spec)
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, draft)
-}
-
-func (h Handler) listVersions(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.service.ListVersions(r.Context(), actor, r.PathValue("agentID"))
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]bool{"has_more": false}})
-}
-
-func (h Handler) getVersion(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	version, err := h.service.GetVersion(r.Context(), actor, r.PathValue("agentID"), r.PathValue("versionID"))
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, version)
-}
-
-func (h Handler) getReview(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	review, err := h.service.GetReview(r.Context(), actor, r.PathValue("agentID"))
-	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, review)
-}
-
-func (h Handler) command(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	agentID, operation, ok := strings.Cut(r.PathValue("operation"), ":")
-	if !ok || agentID == "" {
-		http.NotFound(w, r)
-		return
-	}
-	switch operation {
-	case "review":
-		revision, err := revisionHeader(r)
-		if err != nil {
-			writeError(w, http.StatusPreconditionRequired, "revision_required", "If-Match must contain the current draft revision.")
-			return
-		}
-		var request struct {
-			ReleaseNotes string `json:"release_notes"`
-		}
-		if err := decodeJSON(w, r, &request); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
-			return
-		}
-		review, err := h.service.SubmitReview(r.Context(), actor, agentID, revision, request.ReleaseNotes)
-		if err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusCreated, review)
-	case "review-decision":
-		var request agentlifecycle.ReviewDecisionRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
-			return
-		}
-		review, err := h.service.DecideReview(r.Context(), actor, agentID, request.Decision, request.Reason)
-		if err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, review)
-	case "publish":
-		revision, err := revisionHeader(r)
-		if err != nil {
-			writeError(w, http.StatusPreconditionRequired, "revision_required", "If-Match must contain the current draft revision.")
-			return
-		}
-		version, duplicate, err := h.service.Publish(r.Context(), actor, agentID, revision)
-		if err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		status := http.StatusCreated
-		if duplicate {
-			status = http.StatusOK
-		}
-		writeJSON(w, status, version)
-	case "retire":
-		if err := h.service.Retire(r.Context(), actor, agentID); err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	case "rollback":
-		var request agentlifecycle.RollbackRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
-			return
-		}
-		if err := h.service.Rollback(r.Context(), actor, agentID, request.VersionID); err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		http.NotFound(w, r)
-	}
 }
 
 func revisionHeader(r *http.Request) (int, error) {

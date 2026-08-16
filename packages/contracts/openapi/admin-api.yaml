@@ -426,21 +426,6 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
-  /agents/{agent_id}/overview:
-    get:
-      operationId: getAgentOverview
-      summary: Get an agent overview and recent activity
-      tags: [Agents]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      responses:
-        "200":
-          description: Agent overview
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentOverview"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
   /agents/{agent_id}/lifecycle:
     get:
       operationId: getAgentLifecycle
@@ -631,180 +616,6 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/InvalidState"}
-  /agents/{agent_id}/draft:
-    get:
-      operationId: getAgentDraft
-      summary: Get the editable current draft
-      tags: [Drafts]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      responses:
-        "200":
-          description: Draft
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentDraft"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-    put:
-      operationId: updateAgentDraft
-      summary: Replace an agent draft with optimistic concurrency
-      tags: [Drafts]
-      parameters:
-        - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/UpdateDraftRequest"}
-      responses:
-        "200":
-          description: Updated draft
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentDraft"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "412": {$ref: "#/components/responses/RevisionConflict"}
-        "422": {$ref: "#/components/responses/InvalidInput"}
-  /agents/{agent_id}/versions:
-    get:
-      operationId: listAgentVersions
-      summary: List immutable versions
-      tags: [Versions]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      responses:
-        "200":
-          description: Version history
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentVersionList"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-  /agents/{agent_id}/versions/{version_id}:
-    get:
-      operationId: getAgentVersion
-      summary: Inspect one immutable agent version
-      tags: [Versions]
-      parameters:
-        - $ref: "#/components/parameters/AgentId"
-        - name: version_id
-          in: path
-          required: true
-          schema: {type: string}
-      responses:
-        "200":
-          description: Immutable agent version
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentVersion"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-  /agents/{agent_id}/review:
-    get:
-      operationId: getAgentReview
-      summary: Get the current draft review and semantic diff
-      tags: [Reviews]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      responses:
-        "200":
-          description: Current review state
-          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-  /agents/{agent_id}:publish:
-    post:
-      operationId: publishAgentDraft
-      summary: Freeze and publish the current valid draft
-      tags: [Publications]
-      parameters:
-        - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/IfMatch"
-      responses:
-        "200":
-          description: Version from an idempotent publication retry
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentVersion"}
-        "201":
-          description: Published immutable version
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/AgentVersion"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/InvalidState"}
-        "412": {$ref: "#/components/responses/RevisionConflict"}
-  /agents/{agent_id}:review:
-    post:
-      operationId: submitAgentReview
-      summary: Submit the current draft for review
-      tags: [Reviews]
-      parameters:
-        - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: "#/components/schemas/SubmitReviewRequest"}}}
-      responses:
-        "201":
-          description: Review submitted
-          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/InvalidState"}
-        "412": {$ref: "#/components/responses/RevisionConflict"}
-  /agents/{agent_id}:review-decision:
-    post:
-      operationId: decideAgentReview
-      summary: Approve or reject the current draft review
-      tags: [Reviews]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: "#/components/schemas/ReviewDecisionRequest"}}}
-      responses:
-        "200":
-          description: Review decision recorded
-          content: {application/json: {schema: {$ref: "#/components/schemas/AgentReview"}}}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/InvalidState"}
-  /agents/{agent_id}:retire:
-    post:
-      operationId: retireAgent
-      summary: Retire the currently published agent
-      tags: [Publications]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      responses:
-        "204": {description: Agent retired}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/InvalidState"}
-  /agents/{agent_id}:rollback:
-    post:
-      operationId: rollbackAgent
-      summary: Roll back to an immutable published version
-      tags: [Publications]
-      parameters: [{$ref: "#/components/parameters/AgentId"}]
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: "#/components/schemas/RollbackRequest"}}}
-      responses:
-        "204": {description: Agent rolled back}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/InvalidState"}
 components:
   securitySchemes:
     oauth2:
@@ -825,7 +636,7 @@ components:
       in: header
       required: true
       schema: {type: string}
-      description: Current draft revision.
+      description: Current named Draft working-copy ETag.
   responses:
     Unauthorized:
       description: Authentication is required.
@@ -1168,18 +979,6 @@ components:
         test_deployments: {type: array, items: {$ref: "#/components/schemas/AgentDeployment"}}
         revision_count: {type: integer}
         recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
-    AgentDraft:
-      type: object
-      required: [agent_id, revision, spec, validation_status, validation_findings, updated_by]
-      properties:
-        agent_id: {type: string}
-        revision: {type: integer}
-        spec: {type: object}
-        validation_status: {type: string, enum: [valid, invalid]}
-        validation_findings:
-          type: array
-          items: {$ref: "#/components/schemas/ValidationFinding"}
-        updated_by: {type: string}
     UpdateDraftRequest:
       type: object
       required: [spec]
@@ -1191,27 +990,6 @@ components:
       properties:
         path: {type: string}
         message: {type: string}
-    AgentVersion:
-      type: object
-      required: [id, agent_id, version, source_draft_revision, spec, spec_digest, published, prompt_snapshot]
-      properties:
-        id: {type: string}
-        agent_id: {type: string}
-        version: {type: integer}
-        source_draft_revision: {type: integer}
-        spec: {type: object}
-        spec_digest: {type: string}
-        created_at: {type: string, format: date-time}
-        created_by: {type: string}
-        published: {type: boolean}
-        published_at: {type: string, format: date-time}
-        prompt_snapshot: {$ref: "#/components/schemas/PromptSnapshot"}
-    AgentVersionList:
-      type: object
-      required: [items, page_info]
-      properties:
-        items: {type: array, items: {$ref: "#/components/schemas/AgentVersion"}}
-        page_info: {$ref: "#/components/schemas/PageInfo"}
     PromptSnapshot:
       type: object
       required: [compiler_version, content_digest, compiled_text]
@@ -1278,18 +1056,6 @@ components:
         recent_publications: {type: array, items: {$ref: "#/components/schemas/AdminOverviewPublication"}}
         recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
         unavailable_signals: {type: array, items: {type: string}}
-    AgentOverview:
-      type: object
-      required: [agent, draft, version_count, recent_activity]
-      properties:
-        agent: {$ref: "#/components/schemas/Agent"}
-        draft: {$ref: "#/components/schemas/AgentDraft"}
-        current_version:
-          oneOf:
-            - {$ref: "#/components/schemas/AgentVersion"}
-            - {type: 'null'}
-        version_count: {type: integer}
-        recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
     SubmitReviewRequest:
       type: object
       required: [release_notes]
@@ -1301,11 +1067,6 @@ components:
       properties:
         decision: {type: string, enum: [approve, reject]}
         reason: {type: string, maxLength: 4000}
-    RollbackRequest:
-      type: object
-      required: [version_id]
-      properties:
-        version_id: {type: string}
     DiffEntry:
       type: object
       required: [path, change, category, risk]
@@ -1324,22 +1085,3 @@ components:
         high: {type: integer}
         medium: {type: integer}
         low: {type: integer}
-    AgentReview:
-      type: object
-      required: [agent_id, draft_revision, draft_digest, release_notes, diff, risk_summary, status]
-      properties:
-        id: {type: string}
-        agent_id: {type: string}
-        draft_revision: {type: integer}
-        draft_digest: {type: string}
-        base_version_id: {type: string}
-        base_version: {type: integer}
-        release_notes: {type: string}
-        diff: {type: array, items: {$ref: "#/components/schemas/DiffEntry"}}
-        risk_summary: {$ref: "#/components/schemas/RiskSummary"}
-        status: {type: string, enum: [not_submitted, pending, approved, rejected, superseded]}
-        submitted_by: {type: string}
-        reviewed_by: {type: string}
-        review_reason: {type: string}
-        submitted_at: {type: string, format: date-time}
-        reviewed_at: {type: string, format: date-time}

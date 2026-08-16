@@ -330,26 +330,6 @@ func revisionHash(agentID, draftID, message, actorID string, createdAt time.Time
 	return "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
-func (s *Service) getTargetAgent(ctx context.Context, actor identity.Principal, agentID string) (Agent, error) {
-	var agent Agent
-	err := s.pool.QueryRow(ctx, `
-		SELECT a.id, a.organization_id, a.workspace_id, a.slug, a.display_name, a.description, a.category,
-			COALESCE(production.status, 'draft'), COALESCE(production.revision_hash, '')
-		FROM gantry.agents a
-		LEFT JOIN gantry.agent_deployments production ON production.agent_id=a.id AND production.environment_kind='production' AND production.status='active'
-		WHERE a.id=$1`, agentID).Scan(&agent.ID, &agent.OrganizationID, &agent.WorkspaceID, &agent.Slug, &agent.DisplayName, &agent.Description, &agent.Category, &agent.LifecycleStatus, &agent.CurrentProductionRevisionHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Agent{}, ErrNotFound
-	}
-	if err != nil {
-		return Agent{}, err
-	}
-	if err := s.authz.RequireWorkspace(ctx, actor, agent.WorkspaceID); err != nil {
-		return Agent{}, err
-	}
-	return agent, nil
-}
-
 func (s *Service) appendTargetAudit(ctx context.Context, actor identity.Principal, resourceType, resourceID, eventType string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {

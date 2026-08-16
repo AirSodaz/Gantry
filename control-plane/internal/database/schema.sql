@@ -135,74 +135,8 @@ CREATE TABLE IF NOT EXISTS gantry.agents (
   UNIQUE (workspace_id, slug)
 );
 
-CREATE TABLE IF NOT EXISTS gantry.agent_drafts (
-  agent_id text PRIMARY KEY REFERENCES gantry.agents(id),
-  revision integer NOT NULL CHECK (revision > 0),
-  spec_json jsonb NOT NULL,
-  validation_status text NOT NULL CHECK (validation_status IN ('valid', 'invalid')),
-  validation_findings jsonb NOT NULL DEFAULT '[]'::jsonb,
-  updated_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS gantry.agent_versions (
-  id text PRIMARY KEY,
-  agent_id text NOT NULL REFERENCES gantry.agents(id),
-  version integer NOT NULL CHECK (version > 0),
-  source_draft_revision integer NOT NULL CHECK (source_draft_revision > 0),
-  spec_json jsonb NOT NULL,
-  spec_digest text NOT NULL,
-  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (agent_id, version),
-  UNIQUE (agent_id, source_draft_revision),
-  UNIQUE (id, agent_id)
-);
-ALTER TABLE gantry.agent_versions
-  ADD COLUMN IF NOT EXISTS prompt_snapshot_json jsonb NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE gantry.agent_versions
-  ADD COLUMN IF NOT EXISTS prompt_snapshot_digest text NOT NULL DEFAULT '';
-ALTER TABLE gantry.agent_versions
-  ADD COLUMN IF NOT EXISTS prompt_compiler_version text NOT NULL DEFAULT 'prompt-compiler/v1';
-
-CREATE TABLE IF NOT EXISTS gantry.agent_publications (
-  id text PRIMARY KEY,
-  agent_id text NOT NULL REFERENCES gantry.agents(id),
-  agent_version_id text NOT NULL,
-  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
-  status text NOT NULL CHECK (status IN ('published', 'retired')),
-  published_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  retired_at timestamptz,
-  UNIQUE (agent_version_id, workspace_id),
-  FOREIGN KEY (agent_version_id, agent_id) REFERENCES gantry.agent_versions(id, agent_id)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS agent_publications_one_current_idx
-  ON gantry.agent_publications (agent_id, workspace_id) WHERE status = 'published';
-
-CREATE TABLE IF NOT EXISTS gantry.agent_reviews (
-  id text PRIMARY KEY,
-  agent_id text NOT NULL REFERENCES gantry.agents(id),
-  draft_revision integer NOT NULL CHECK (draft_revision > 0),
-  draft_digest text NOT NULL,
-  base_version_id text REFERENCES gantry.agent_versions(id),
-  release_notes text NOT NULL DEFAULT '',
-  diff_json jsonb NOT NULL DEFAULT '[]'::jsonb,
-  risk_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
-  status text NOT NULL CHECK (status IN ('pending', 'approved', 'rejected', 'superseded')),
-  submitted_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
-  reviewed_by_principal_id text REFERENCES gantry.principals(id),
-  review_reason text NOT NULL DEFAULT '',
-  submitted_at timestamptz NOT NULL DEFAULT now(),
-  reviewed_at timestamptz,
-  UNIQUE (agent_id, draft_revision)
-);
-CREATE INDEX IF NOT EXISTS agent_reviews_current_idx ON gantry.agent_reviews (agent_id, status, draft_revision DESC);
-
 -- The target Agent lifecycle is intentionally flat. Named Draft working copies,
 -- immutable hash-addressed Revisions, and Deployments are separate resources.
--- The earlier single-Draft/publication tables remain only for previously
--- initialized development databases and are not read by the current domain.
 CREATE TABLE IF NOT EXISTS gantry.agent_draft_workspaces (
   id text PRIMARY KEY,
   agent_id text NOT NULL REFERENCES gantry.agents(id),
@@ -331,11 +265,6 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   completed_at timestamptz,
   UNIQUE (task_id, attempt_number)
 );
-ALTER TABLE gantry.runs ADD COLUMN IF NOT EXISTS agent_revision_id text REFERENCES gantry.agent_revisions(id);
-ALTER TABLE gantry.runs ADD COLUMN IF NOT EXISTS agent_version_id text;
-ALTER TABLE gantry.runs ALTER COLUMN agent_revision_id DROP NOT NULL;
-ALTER TABLE gantry.runs ALTER COLUMN agent_version_id DROP NOT NULL;
-
 CREATE TABLE IF NOT EXISTS gantry.run_events (
   run_id text NOT NULL REFERENCES gantry.runs(id),
   sequence bigint NOT NULL,
