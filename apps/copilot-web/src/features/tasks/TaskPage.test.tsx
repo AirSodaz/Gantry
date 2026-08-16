@@ -12,6 +12,9 @@ const mocked = vi.hoisted(() => ({
     getArtifact: vi.fn(),
     cancelRun: vi.fn(),
     retryTask: vi.fn(),
+    appendTaskMessage: vi.fn(),
+    listTaskRuns: vi.fn(),
+    listApprovals: vi.fn(),
   },
 }));
 vi.mock('../../api/ApiProvider', () => ({ useCopilotApi: () => mocked.api }));
@@ -52,7 +55,7 @@ describe('TaskPage', () => {
     const cancel = await screen.findByRole('button', { name: /Cancel run/ });
     await user.click(cancel);
 
-    await waitFor(() => expect(mocked.api.cancelRun).toHaveBeenCalledWith('tsk_1', 'run_1'));
+    await waitFor(() => expect(mocked.api.cancelRun).toHaveBeenCalledWith('tsk_1', 'run_1', expect.any(String)));
   });
 
   it('polls while the task remains active', async () => {
@@ -75,7 +78,7 @@ describe('TaskPage', () => {
     const retry = screen.getByRole('button', { name: /Retry task/ });
     await user.click(retry);
 
-    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1'));
+    await waitFor(() => expect(mocked.api.retryTask).toHaveBeenCalledWith('tsk_1', expect.any(String)));
   });
 
   it('accumulates event output and reconnects with the rendered cursor', async () => {
@@ -103,6 +106,19 @@ describe('TaskPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Download' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Download failed');
     expect(screen.getByRole('button', { name: 'Retry download' })).toBeInTheDocument();
+  });
+
+  it('continues an approval-rejected task through a new idempotent message', async () => {
+    mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'awaiting_requester_input', current_run: { id: 'run_1', status: 'failed' }, messages: [{ id: 'msg_1', role: 'requester', content: 'Update the record', created_at: '2026-08-16T08:00:00Z' }] });
+    mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', expires_at: '2026-08-14T08:01:00Z' });
+    mocked.api.appendTaskMessage.mockResolvedValue({ ...baseTask, status: 'queued', current_run: { id: 'run_2', status: 'queued' } });
+    const user = userEvent.setup();
+    renderTask();
+
+    await user.type(await screen.findByLabelText('Continue this task'), 'Use a different target');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => expect(mocked.api.appendTaskMessage).toHaveBeenCalledWith('tsk_1', { message: 'Use a different target' }, expect.any(String)));
   });
 });
 

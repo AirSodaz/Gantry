@@ -4,17 +4,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, runID string) (CancelResult, error) {
+const (
+	cancelRoute = "POST /api/copilot/v1/tasks/{task_id}/runs/{run_id}:cancel"
+	retryRoute  = "POST /api/copilot/v1/tasks/{task_id}:retry"
+)
+
+func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, runID, key string) (CancelResult, error) {
+	key = strings.TrimSpace(key)
+	if key == "" || len(key) > 256 {
+		return CancelResult{}, ErrInvalidInput
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return CancelResult{}, err
 	}
 	defer tx.Rollback(ctx)
+	duplicate, err := reserveTaskCommand(ctx, tx, actor.ID, cancelRoute, key, requestDigest(taskID, "cancel\n"+runID), taskID)
+	if err != nil {
+		return CancelResult{}, err
+	}
+	if duplicate {
+		if err := tx.Commit(ctx); err != nil {
+			return CancelResult{}, err
+		}
+		existing, err := s.GetRun(ctx, actor, runID)
+		if err != nil {
+			return CancelResult{}, err
+		}
+		if existing.TaskID != taskID {
+			return CancelResult{}, ErrNotFound
+		}
+		return CancelResult{Run: existing.Run}, nil
+	}
 	var status string
 	var epoch, acknowledgedSequence uint64
 	err = tx.QueryRow(ctx, `SELECT r.status, r.lease_epoch, r.runner_event_sequence FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=$1 AND r.task_id=$2 AND t.requester_principal_id=$3 FOR UPDATE`, runID, taskID, actor.ID).Scan(&status, &epoch, &acknowledgedSequence)
@@ -59,12 +86,26 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, taskID, 
 	return result, nil
 }
 
-func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool) (Task, error) {
+func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string) (Task, error) {
+	key = strings.TrimSpace(key)
+	if key == "" || len(key) > 256 {
+		return Task{}, ErrInvalidInput
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Task{}, err
 	}
 	defer tx.Rollback(ctx)
+	duplicate, err := reserveTaskCommand(ctx, tx, actor.ID, retryRoute, key, requestDigest(taskID, fmt.Sprintf("retry\n%t", useLatest)), taskID)
+	if err != nil {
+		return Task{}, err
+	}
+	if duplicate {
+		if err := tx.Commit(ctx); err != nil {
+			return Task{}, err
+		}
+		return s.Get(ctx, actor, taskID)
+	}
 	var agentID, workspaceID, revisionID, deploymentID, oldRunID, oldStatus string
 	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, COALESCE(r.deployment_id, ''), r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &deploymentID, &oldRunID, &oldStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -110,4 +151,22 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, err
 	}
 	return s.Get(ctx, actor, taskID)
+}
+
+func reserveTaskCommand(ctx context.Context, tx pgx.Tx, principalID, route, key, digest, taskID string) (bool, error) {
+	var storedDigest, storedTaskID string
+	err := tx.QueryRow(ctx, `INSERT INTO gantry.idempotency_tombstones (principal_id, route, idempotency_key, request_digest, task_id) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING request_digest, task_id`, principalID, route, key, digest, taskID).Scan(&storedDigest, &storedTaskID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err := tx.QueryRow(ctx, `SELECT request_digest, task_id FROM gantry.idempotency_tombstones WHERE principal_id=$1 AND route=$2 AND idempotency_key=$3 FOR UPDATE`, principalID, route, key).Scan(&storedDigest, &storedTaskID); err != nil {
+			return false, err
+		}
+		if storedDigest != digest || storedTaskID != taskID {
+			return false, ErrIdempotencyConflict
+		}
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil
 }

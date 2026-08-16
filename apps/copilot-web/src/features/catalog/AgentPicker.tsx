@@ -1,4 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Check, Search, Tag } from 'lucide-react';
 import { Select, type SelectOption, TextInput } from '@gantry/design-system';
 import { useQuery } from '@tanstack/react-query';
@@ -14,9 +15,15 @@ export function AgentPicker({
   onSelect: (agent: Agent) => void;
 }) {
   const api = useCopilotApi();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [params, setParams] = useSearchParams();
+  const search = params.get('search') ?? '';
+  const category = params.get('category') ?? '';
   const deferredSearch = useDeferredValue(search);
+  const setFilter = (key: 'search' | 'category', value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
+  };
 
   const query = useQuery({
     queryKey: ['agents', deferredSearch, category],
@@ -67,7 +74,7 @@ export function AgentPicker({
         <TextInput
           label="Search agents"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => setFilter('search', event.target.value)}
           placeholder="Search by name or description"
           icon={<Search size={16} />}
         />
@@ -77,7 +84,7 @@ export function AgentPicker({
             label="Category"
             options={categoryOptions}
             value={category}
-            onChange={setCategory}
+            onChange={(value) => setFilter('category', value)}
             placeholder="All categories"
           />
         </div>
@@ -112,6 +119,7 @@ export function AgentPicker({
               <span className="agent-option-copy">
                 <strong>{agent.display_name}</strong>
                 <span>{agent.description}</span>
+                {agent.owner_name ? <small>Owner: {agent.owner_name}</small> : null}
               </span>
               {isSelected ? (
                 <Check size={18} className="agent-check-icon" aria-label="Selected" />

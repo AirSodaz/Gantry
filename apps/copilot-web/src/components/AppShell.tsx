@@ -13,12 +13,15 @@ import {
   X,
 } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
+import { useCopilotApi } from '../api/ApiProvider';
 
 const SIDEBAR_STORAGE_KEY = 'gantry_sidebar_collapsed';
 
 export function AppShell() {
   const { user, signOut } = useAuth();
+  const api = useCopilotApi();
   const navigate = useNavigate();
   const location = useLocation();
   const displayName = user?.profile.preferred_username ?? user?.profile.name ?? 'Copilot user';
@@ -44,6 +47,8 @@ export function AppShell() {
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
   const isNewTaskActive = location.pathname === '/' || location.pathname === '';
+  const approvals = useQuery({ queryKey: ['approvals', 'shell'], queryFn: () => api.listApprovals(), refetchInterval: 30_000 });
+  const pendingApprovals = approvals.data?.items.length ?? 0;
 
   return (
     <div
@@ -162,16 +167,22 @@ export function AppShell() {
           >
             <FileCheck2 size={17} aria-hidden="true" className="nav-link-icon" />
             {!isCollapsed ? <span>Approvals</span> : null}
+            {pendingApprovals > 0 ? <span className="nav-count" aria-label={`${pendingApprovals} pending approvals`}>{pendingApprovals > 99 ? '99+' : pendingApprovals}</span> : null}
           </NavLink>
 
-          <span
-            className={`nav-link nav-link-disabled ${isCollapsed ? 'nav-link-collapsed' : ''}`}
-            title="Not available in this release"
-            aria-disabled="true"
+          <NavLink
+            to="/artifacts"
+            onClick={closeMobile}
+            title={isCollapsed ? 'Artifacts' : undefined}
+            className={({ isActive }) =>
+              `nav-link ${isActive ? 'nav-link-active' : ''} ${
+                isCollapsed ? 'nav-link-collapsed' : ''
+              }`
+            }
           >
             <PackageOpen size={17} aria-hidden="true" className="nav-link-icon" />
             {!isCollapsed ? <span>Artifacts</span> : null}
-          </span>
+          </NavLink>
         </nav>
 
         {/* Sidebar Footer with Theme Toggle and User Profile */}

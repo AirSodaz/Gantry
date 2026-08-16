@@ -55,9 +55,14 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   are persisted and rendered read-only in catalog detail views.
 - Plugin workspace enablement now supports explicit, audited disablement; each
   exact Plugin Version remains independently enabled or disabled per workspace.
-- Copilot catalog, task submission, idempotency, task history, cancellation,
-  retry, live task events, action approvals assigned to the requester, and
-  artifact download.
+- Copilot catalog, task submission, requester follow-up messages after a
+  rejected action, idempotency for submission/follow-up/cancel/retry commands,
+  Task message projection, compact Run history, server-authorized Task history
+  filters (status, Agent, time, requester action), cancellation, retry, live
+  task events, requester-scoped approval list/detail/decision, Artifact
+  browse/detail, artifact download, requester-owned attachment upload and
+  validation before Task binding, and URL-preserved Agent search/category filters
+  with an owner projection.
 - Persistent tasks, runs, ordered semantic events, bounded content segments,
   artifacts, durable action records, approval requests, and approval decisions.
 - Runner V1 agent loop with deterministic and development provider adapters,
@@ -82,12 +87,22 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   full resource-role model, group assignment, policy intersection, and
   revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
-  Expiry processing, retained/durable suspension, revocation, rejection resume,
-  cancel/retry command idempotency, multi-Run continuation, and general
+  Requester-visible reads expire elapsed approvals and open Task follow-up input;
+  cancellation/retry and rejection/expiry continuation are idempotent. A durable
+  background expiry worker, retained suspension, revocation, and general
   tool-gateway execution remain incomplete.
-- **Artifacts and streams:** Upload, storage, download, live events, and content
-  segments exist. Production malware scanning, preview isolation, retention,
-  compaction, backpressure evidence, and object-store failure handling remain.
+- **Artifacts, attachments, and streams:** Output upload, storage, download,
+  requester attachment quarantine/binding, live events, and content segments
+  exist. The private Runner contract does not yet define a scoped attachment
+  materialization/read path, so bound input files are not consumable by an Agent
+  until that contract exists. Production malware scanning, preview isolation,
+  retention, compaction, backpressure evidence, and object-store failure
+  handling remain.
+- **Copilot Agent projection:** Search/category filters and published owner
+  projection exist. Typical input/output, data classification, action
+  disclosure, publication-specific availability restriction, favorites, and
+  recent-use persistence remain unimplemented because their Revision,
+  Deployment, and requester-owned data contracts have not yet been defined.
 - **Scheduling and isolation:** Runner registration, assignment, leases,
   cancellation, and runner-loss handling exist. Production runner pools,
   Kubernetes Jobs, gVisor, network enforcement, resource accounting, and
@@ -145,11 +160,18 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   capabilities. Current authorization is workspace-role based.
 - Production credential broker, LLM gateway, tool gateway, egress gateway, and
   secret-store integration.
-- Credential Reference/Lease, attachment input lifecycle, full settings
-  idempotency/audit correlation, and production authorization/health
-  projections. Model Provider/Route, Runner Pool/Runner, Limit Policy,
+- Credential Reference/Lease, full settings idempotency/audit correlation, and
+  production authorization/health projections. Model Provider/Route, Runner Pool/Runner, Limit Policy,
   Environment Profile, and composed Settings management are implemented only as
   a partial Admin metadata slice.
+- A scoped Runner attachment-read/materialization contract, including what
+  immutable metadata and short-lived reference a Runner receives after the
+  requester-bound attachment lifecycle completes.
+- Published Copilot Agent metadata and personal-use preferences: revision-bound
+  input/output and disclosures, deployment-bound availability restriction, and
+  requester-bound favorites/recent use. The product design names these fields,
+  but does not yet define their Admin authoring, publication, or persistence
+  contract.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a

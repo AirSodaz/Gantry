@@ -6,6 +6,7 @@ import (
 	"github.com/AirSodaz/gantry/internal/approvals"
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/tasks"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,15 +24,38 @@ func (a fakeAuthenticator) Authenticate(context.Context, string) (identity.Princ
 }
 
 type fakeTaskService struct {
-	submit func(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
-	get    func(context.Context, identity.Principal, string) (tasks.Task, error)
-	cancel func(context.Context, identity.Principal, string, string) (tasks.CancelResult, error)
-	retry  func(context.Context, identity.Principal, string, bool) (tasks.Task, error)
+	submit             func(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
+	list               func(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
+	get                func(context.Context, identity.Principal, string) (tasks.Task, error)
+	append             func(context.Context, identity.Principal, string, string, tasks.AppendMessageRequest) (tasks.Task, bool, error)
+	runs               func(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
+	artifacts          func(context.Context, identity.Principal, string, string, int) ([]tasks.Artifact, error)
+	createAttachment   func(context.Context, identity.Principal, tasks.CreateAttachmentRequest) (tasks.Attachment, error)
+	getAttachment      func(context.Context, identity.Principal, string) (tasks.Attachment, error)
+	uploadAttachment   func(context.Context, identity.Principal, string, string, io.Reader) error
+	completeAttachment func(context.Context, identity.Principal, string) (tasks.Attachment, error)
+	cancel             func(context.Context, identity.Principal, string, string, string) (tasks.CancelResult, error)
+	retry              func(context.Context, identity.Principal, string, bool, string) (tasks.Task, error)
 }
 
 type fakeApprovalService struct {
 	list   func(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	get    func(context.Context, identity.Principal, string) (approvals.Request, error)
+	expire func(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	decide func(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
+}
+
+func (s fakeApprovalService) Get(ctx context.Context, actor identity.Principal, approvalID string) (approvals.Request, error) {
+	if s.get != nil {
+		return s.get(ctx, actor, approvalID)
+	}
+	return approvals.Request{}, approvals.ErrNotFound
+}
+func (s fakeApprovalService) Expire(ctx context.Context, actor identity.Principal) ([]approvals.Resolution, error) {
+	if s.expire != nil {
+		return s.expire(ctx, actor)
+	}
+	return nil, nil
 }
 
 func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, limit int) ([]approvals.Request, error) {
@@ -58,7 +82,10 @@ func (s fakeTaskService) Submit(ctx context.Context, actor identity.Principal, k
 	return s.submit(ctx, actor, key, request)
 }
 
-func (s fakeTaskService) List(context.Context, identity.Principal, string, int) ([]tasks.Task, error) {
+func (s fakeTaskService) List(ctx context.Context, actor identity.Principal, filter tasks.ListFilter, limit int) ([]tasks.Task, error) {
+	if s.list != nil {
+		return s.list(ctx, actor, filter, limit)
+	}
 	return nil, nil
 }
 
@@ -69,24 +96,75 @@ func (s fakeTaskService) Get(ctx context.Context, actor identity.Principal, task
 	return s.get(ctx, actor, taskID)
 }
 
-func (s fakeTaskService) Cancel(ctx context.Context, actor identity.Principal, taskID, runID string) (tasks.CancelResult, error) {
+func (s fakeTaskService) AppendMessage(ctx context.Context, actor identity.Principal, taskID, key string, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+	if s.append != nil {
+		return s.append(ctx, actor, taskID, key, request)
+	}
+	return tasks.Task{}, false, tasks.ErrNotFound
+}
+
+func (s fakeTaskService) ListRuns(ctx context.Context, actor identity.Principal, taskID string, limit int) ([]tasks.RunAttempt, error) {
+	if s.runs != nil {
+		return s.runs(ctx, actor, taskID, limit)
+	}
+	return nil, tasks.ErrNotFound
+}
+
+func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, limit int) ([]tasks.Artifact, error) {
+	if s.artifacts != nil {
+		return s.artifacts(ctx, actor, taskID, classification, limit)
+	}
+	return nil, nil
+}
+
+func (s fakeTaskService) CreateAttachment(ctx context.Context, actor identity.Principal, request tasks.CreateAttachmentRequest) (tasks.Attachment, error) {
+	if s.createAttachment != nil {
+		return s.createAttachment(ctx, actor, request)
+	}
+	return tasks.Attachment{}, tasks.ErrNotFound
+}
+
+func (s fakeTaskService) GetAttachment(ctx context.Context, actor identity.Principal, attachmentID string) (tasks.Attachment, error) {
+	if s.getAttachment != nil {
+		return s.getAttachment(ctx, actor, attachmentID)
+	}
+	return tasks.Attachment{}, tasks.ErrNotFound
+}
+
+func (s fakeTaskService) UploadAttachment(ctx context.Context, actor identity.Principal, attachmentID, token string, body io.Reader) error {
+	if s.uploadAttachment != nil {
+		return s.uploadAttachment(ctx, actor, attachmentID, token, body)
+	}
+	return tasks.ErrNotFound
+}
+
+func (s fakeTaskService) CompleteAttachment(ctx context.Context, actor identity.Principal, attachmentID string) (tasks.Attachment, error) {
+	if s.completeAttachment != nil {
+		return s.completeAttachment(ctx, actor, attachmentID)
+	}
+	return tasks.Attachment{}, tasks.ErrNotFound
+}
+
+func (s fakeTaskService) Cancel(ctx context.Context, actor identity.Principal, taskID, runID, key string) (tasks.CancelResult, error) {
 	if s.cancel != nil {
-		return s.cancel(ctx, actor, taskID, runID)
+		return s.cancel(ctx, actor, taskID, runID, key)
 	}
 	return tasks.CancelResult{}, tasks.ErrNotFound
 }
 
-func (s fakeTaskService) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool) (tasks.Task, error) {
+func (s fakeTaskService) Retry(ctx context.Context, actor identity.Principal, taskID string, useLatest bool, key string) (tasks.Task, error) {
 	if s.retry != nil {
-		return s.retry(ctx, actor, taskID, useLatest)
+		return s.retry(ctx, actor, taskID, useLatest, key)
 	}
 	return tasks.Task{}, tasks.ErrNotFound
 }
 
 type fakeDispatcher struct {
-	dispatches    int
-	canceledRun   string
-	canceledEpoch uint64
+	dispatches       int
+	canceledRun      string
+	canceledEpoch    uint64
+	resolvedRun      string
+	resolvedDecision string
 }
 
 func (d *fakeDispatcher) Dispatch(context.Context) error {
@@ -99,7 +177,9 @@ func (d *fakeDispatcher) RequestCancel(runID string, epoch uint64, _ string) boo
 	d.canceledEpoch = epoch
 	return true
 }
-func (d *fakeDispatcher) ResolveApproval(string, string, string, string, string, string, string, uint64, time.Time) bool {
+func (d *fakeDispatcher) ResolveApproval(runID, _ string, decision, _ string, _ string, _ string, _ string, _ uint64, _ time.Time) bool {
+	d.resolvedRun = runID
+	d.resolvedDecision = decision
 	return true
 }
 
@@ -178,6 +258,58 @@ func TestSubmitTaskReturnsOKForIdempotentRetry(t *testing.T) {
 	}
 }
 
+func TestCreateAttachmentReturnsOnlyTheRequestersUploadGrant(t *testing.T) {
+	var received tasks.CreateAttachmentRequest
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1", OrganizationID: "org-1"}},
+		fakeTaskService{createAttachment: func(_ context.Context, actor identity.Principal, request tasks.CreateAttachmentRequest) (tasks.Attachment, error) {
+			if actor.ID != "principal-1" {
+				t.Fatalf("actor=%q", actor.ID)
+			}
+			received = request
+			return tasks.Attachment{ID: "att_1", Filename: request.Filename, State: "declared", ScanStatus: "pending", UploadURL: "/api/copilot/v1/attachments/att_1/content", UploadToken: "short-lived"}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/attachments", strings.NewReader(`{"filename":"brief.txt","media_type":"text/plain","size_bytes":5,"digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	if received.Filename != "brief.txt" || received.SizeBytes != 5 {
+		t.Fatalf("request=%#v", received)
+	}
+	if !strings.Contains(response.Body.String(), `"upload_token":"short-lived"`) {
+		t.Fatalf("body=%s", response.Body.String())
+	}
+}
+
+func TestCompleteAttachmentParsesColonSuffix(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{completeAttachment: func(_ context.Context, _ identity.Principal, attachmentID string) (tasks.Attachment, error) {
+			if attachmentID != "att_1" {
+				t.Fatalf("attachment=%q", attachmentID)
+			}
+			return tasks.Attachment{ID: attachmentID, State: "available", ScanStatus: "passed"}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/attachments/att_1:complete", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 func TestTaskLookupDoesNotExposeOtherUsersResources(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-2"}},
@@ -198,13 +330,37 @@ func TestTaskLookupDoesNotExposeOtherUsersResources(t *testing.T) {
 	}
 }
 
+func TestListTasksParsesRequesterFilters(t *testing.T) {
+	var received tasks.ListFilter
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{list: func(_ context.Context, _ identity.Principal, filter tasks.ListFilter, _ int) ([]tasks.Task, error) {
+			received = filter
+			return nil, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/tasks?status=completed&agent_id=agt_1&requester_action=input&created_after=2026-08-16T00:00:00Z", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", response.Code, response.Body.String())
+	}
+	if received.Status != "completed" || received.AgentID != "agt_1" || received.RequesterAction != "input" || received.CreatedAfter == nil {
+		t.Fatalf("filter = %#v", received)
+	}
+}
+
 func TestCancelOperationParsesColonSuffix(t *testing.T) {
 	dispatcher := &fakeDispatcher{}
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{cancel: func(_ context.Context, _ identity.Principal, taskID, runID string) (tasks.CancelResult, error) {
-			if taskID != "tsk_1" || runID != "run_1" {
-				t.Fatalf("task=%q run=%q", taskID, runID)
+		fakeTaskService{cancel: func(_ context.Context, _ identity.Principal, taskID, runID, key string) (tasks.CancelResult, error) {
+			if taskID != "tsk_1" || runID != "run_1" || key != "cancel-1" {
+				t.Fatalf("task=%q run=%q key=%q", taskID, runID, key)
 			}
 			return tasks.CancelResult{Run: tasks.Run{ID: runID, Status: "canceling", LeaseEpoch: 7}, Deliver: true}, nil
 		}},
@@ -214,6 +370,7 @@ func TestCancelOperationParsesColonSuffix(t *testing.T) {
 	)
 	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1/runs/run_1:cancel", nil)
 	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "cancel-1")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 
@@ -228,9 +385,9 @@ func TestCancelOperationParsesColonSuffix(t *testing.T) {
 func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{retry: func(_ context.Context, _ identity.Principal, taskID string, useLatest bool) (tasks.Task, error) {
-			if taskID != "tsk_1" || !useLatest {
-				t.Fatalf("task=%q useLatest=%t", taskID, useLatest)
+		fakeTaskService{retry: func(_ context.Context, _ identity.Principal, taskID string, useLatest bool, key string) (tasks.Task, error) {
+			if taskID != "tsk_1" || !useLatest || key != "retry-1" {
+				t.Fatalf("task=%q useLatest=%t key=%q", taskID, useLatest, key)
 			}
 			return tasks.Task{}, tasks.ErrInvalidState
 		}},
@@ -240,11 +397,117 @@ func TestRetryOperationMapsInvalidStateToConflict(t *testing.T) {
 	)
 	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1:retry", strings.NewReader(`{"use_latest_version":true}`))
 	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "retry-1")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 
 	if response.Code != http.StatusConflict {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestAppendMessageUsesHeaderIdempotencyKeyAndDispatchesNewRun(t *testing.T) {
+	dispatcher := &fakeDispatcher{}
+	var receivedKey, receivedTask, receivedMessage string
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{append: func(_ context.Context, _ identity.Principal, taskID, key string, request tasks.AppendMessageRequest) (tasks.Task, bool, error) {
+			receivedTask, receivedKey, receivedMessage = taskID, key, request.Message
+			return tasks.Task{ID: taskID, Status: "queued", CurrentRun: tasks.Run{ID: "run_2", Status: "queued"}}, false, nil
+		}},
+		nil,
+		dispatcher,
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/tasks/tsk_1/messages", strings.NewReader(`{"message":"Use a different target"}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "follow-up-1")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if receivedTask != "tsk_1" || receivedKey != "follow-up-1" || receivedMessage != "Use a different target" {
+		t.Fatalf("received task=%q key=%q message=%q", receivedTask, receivedKey, receivedMessage)
+	}
+	if dispatcher.dispatches != 1 {
+		t.Fatalf("dispatches = %d", dispatcher.dispatches)
+	}
+}
+
+func TestListRunsAndApprovalDetailAreRequesterScoped(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{runs: func(_ context.Context, _ identity.Principal, taskID string, _ int) ([]tasks.RunAttempt, error) {
+			if taskID != "tsk_1" {
+				t.Fatalf("task ID = %q", taskID)
+			}
+			return []tasks.RunAttempt{{ID: "run_1", Attempt: 1, Status: "failed"}}, nil
+		}},
+		fakeApprovalService{get: func(_ context.Context, _ identity.Principal, approvalID string) (approvals.Request, error) {
+			if approvalID != "apr_1" {
+				t.Fatalf("approval ID = %q", approvalID)
+			}
+			return approvals.Request{ID: approvalID, TaskID: "tsk_1", Status: "rejected", Decision: &approvals.Decision{Decision: "reject"}}, nil
+		}},
+		&fakeDispatcher{},
+		nil,
+	)
+	for _, path := range []string{"/tasks/tsk_1/runs", "/approvals/apr_1"} {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.Header.Set("Authorization", "Bearer access-token")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s status = %d, body = %s", path, response.Code, response.Body.String())
+		}
+	}
+}
+
+func TestListArtifactsPassesOnlyRequesterFilters(t *testing.T) {
+	var taskID, classification string
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{artifacts: func(_ context.Context, _ identity.Principal, task, class string, _ int) ([]tasks.Artifact, error) {
+			taskID, classification = task, class
+			return []tasks.Artifact{{ID: "art_1", TaskID: task, Classification: class}}, nil
+		}},
+		nil,
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/artifacts?task_id=tsk_1&classification=internal", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if taskID != "tsk_1" || classification != "internal" {
+		t.Fatalf("filters task=%q classification=%q", taskID, classification)
+	}
+}
+
+func TestApprovalReadsResolveExpiredRequestsBeforeListing(t *testing.T) {
+	dispatcher := &fakeDispatcher{}
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{},
+		fakeApprovalService{expire: func(_ context.Context, _ identity.Principal) ([]approvals.Resolution, error) {
+			return []approvals.Resolution{{ApprovalID: "apr_1", RunID: "run_1", Decision: "reject", Reason: "approval expired"}}, nil
+		}},
+		dispatcher,
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodGet, "/approvals", nil)
+	request.Header.Set("Authorization", "Bearer access-token")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if dispatcher.resolvedRun != "run_1" || dispatcher.resolvedDecision != "reject" {
+		t.Fatalf("resolution = %#v", dispatcher)
 	}
 }
 

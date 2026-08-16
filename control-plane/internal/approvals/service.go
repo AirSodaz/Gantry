@@ -47,6 +47,16 @@ type Request struct {
 	AssignedTo    string    `json:"assigned_to"`
 	ExpiresAt     time.Time `json:"expires_at"`
 	CreatedAt     time.Time `json:"created_at"`
+	TaskID        string    `json:"task_id,omitempty"`
+	PolicyVersion string    `json:"policy_version,omitempty"`
+	Decision      *Decision `json:"latest_decision,omitempty"`
+}
+
+type Decision struct {
+	Decision  string    `json:"decision"`
+	Reason    string    `json:"reason,omitempty"`
+	DecidedBy string    `json:"decided_by"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Resolution struct {
@@ -68,6 +78,58 @@ type DecisionInput struct {
 	Decision     string
 	Reason       string
 	Idempotency  string
+}
+
+// Expire advances the current requester's elapsed approval requests into a
+// terminal non-executing state. The caller delivers each returned resolution to
+// an active runner, when one still owns the matching lease.
+func (s *Service) Expire(ctx context.Context, actor identity.Principal) ([]Resolution, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id WHERE ar.status='pending' AND ar.expires_at <= now() AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) FOR UPDATE OF ar, a`, actor.ID)
+	if err != nil {
+		return nil, err
+	}
+	deferred := make([]Resolution, 0)
+	for rows.Next() {
+		var resolution Resolution
+		if err := rows.Scan(&resolution.ApprovalID, &resolution.RunID, &resolution.ActionID, &resolution.CallID, &resolution.ActionDigest); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		resolution.Decision = "reject"
+		resolution.Reason = "approval expired"
+		deferred = append(deferred, resolution)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	for _, resolution := range deferred {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.approval_requests SET status='expired', decided_at=now() WHERE id=$1 AND status='pending'`, resolution.ApprovalID); err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE gantry.actions SET state='rejected', revision=revision+1, updated_at=now() WHERE id=$1 AND state='awaiting_approval'`, resolution.ActionID); err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_requester_input' WHERE current_run_id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
+			return nil, err
+		}
+		if err := appendEvent(ctx, tx, resolution.RunID, "approval.expired", map[string]any{"approval_id": resolution.ApprovalID, "action_digest": resolution.ActionDigest}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return deferred, nil
 }
 
 // Propose evaluates and persists a concrete action in the caller's
@@ -106,7 +168,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 	if limit < 1 || limit > 100 {
 		limit = 25
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) ORDER BY ar.created_at, ar.id LIMIT $2`, actor.ID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) ORDER BY ar.created_at, ar.id LIMIT $2`, actor.ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +177,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
@@ -124,6 +186,31 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, limit int)
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+// Get returns the requester-authorized approval projection, including the
+// server-winning decision evidence when the request is no longer pending.
+func (s *Service) Get(ctx context.Context, actor identity.Principal, approvalID string) (Request, error) {
+	var item Request
+	var previewJSON []byte
+	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Request{}, ErrNotFound
+	}
+	if err != nil {
+		return Request{}, err
+	}
+	if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
+		return Request{}, err
+	}
+	var decision Decision
+	err = s.pool.QueryRow(ctx, `SELECT decision, reason, principal_id, created_at FROM gantry.approval_decisions WHERE approval_id=$1 ORDER BY created_at DESC LIMIT 1`, approvalID).Scan(&decision.Decision, &decision.Reason, &decision.DecidedBy, &decision.CreatedAt)
+	if err == nil {
+		item.Decision = &decision
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return Request{}, err
+	}
+	return item, nil
 }
 
 func (s *Service) Decide(ctx context.Context, actor identity.Principal, input DecisionInput) (Resolution, error) {
@@ -177,6 +264,9 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return Resolution{}, err
 	}
+	if status == "expired" {
+		return Resolution{}, ErrExpired
+	}
 	if status != "pending" || actionState != "awaiting_approval" {
 		return Resolution{}, ErrAlreadyDecided
 	}
@@ -210,7 +300,11 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, runID); err != nil {
 		return Resolution{}, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='running' WHERE current_run_id=$1 AND status='awaiting_approval'`, runID); err != nil {
+	taskStatus := "awaiting_requester_input"
+	if input.Decision == "approve" {
+		taskStatus = "running"
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2 WHERE current_run_id=$1 AND status='awaiting_approval'`, runID, taskStatus); err != nil {
 		return Resolution{}, err
 	}
 	eventType := "approval.rejected"

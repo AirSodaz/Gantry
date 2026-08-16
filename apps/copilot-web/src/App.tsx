@@ -9,6 +9,9 @@ import { NewTaskPage } from './features/tasks/NewTaskPage';
 import { MyTasksPage } from './features/tasks/MyTasksPage';
 import { TaskPage } from './features/tasks/TaskPage';
 import { ApprovalsPage } from './features/approvals/ApprovalsPage';
+import { ApprovalDetailPage } from './features/approvals/ApprovalDetailPage';
+import { ArtifactDetailPage } from './features/artifacts/ArtifactDetailPage';
+import { ArtifactsPage } from './features/artifacts/ArtifactsPage';
 
 function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -22,6 +25,9 @@ function App() {
         <Route path="tasks" element={<MyTasksPage />} />
         <Route path="tasks/:taskId" element={<TaskPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
+        <Route path="approvals/:approvalId" element={<ApprovalDetailPage />} />
+        <Route path="artifacts" element={<ArtifactsPage />} />
+        <Route path="artifacts/:artifactId" element={<ArtifactDetailPage />} />
         <Route path="*" element={<NewTaskPage />} />
       </Route>
     </Routes>

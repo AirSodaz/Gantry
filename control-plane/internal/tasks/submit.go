@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -58,8 +60,16 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tasks (id, organization_id, workspace_id, requester_principal_id, agent_id, input_json, current_run_id, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'queued')`, taskID, actor.OrganizationID, workspaceID, actor.ID, request.AgentID, input, runID); err != nil {
 		return Task{}, false, err
 	}
+	if err := bindAttachments(ctx, tx, actor, taskID, workspaceID, request.AttachmentIDs); err != nil {
+		return Task{}, false, err
+	}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, deployment_id, manifest_digest, attempt_number, status) VALUES ($1,$2,$3,$4,$5,1,'queued')`, runID, taskID, revisionID, deploymentID, manifestDigest); err != nil {
 		return Task{}, false, err
+	}
+	if message := strings.TrimSpace(request.Message); message != "" {
+		if _, err := tx.Exec(ctx, `INSERT INTO gantry.task_messages (id, task_id, run_id, role, content) VALUES ($1,$2,$3,'requester',$4)`, newID("msg"), taskID, runID, message); err != nil {
+			return Task{}, false, err
+		}
 	}
 	if err := appendEvent(ctx, tx, runID, "task.accepted"); err != nil {
 		return Task{}, false, err
@@ -94,9 +104,6 @@ func manifestDigestForRevision(ctx context.Context, tx pgx.Tx, revisionID string
 }
 
 func normalizeInput(request SubmitRequest) (string, error) {
-	if len(request.AttachmentIDs) != 0 {
-		return "", ErrInvalidInput
-	}
 	message := strings.TrimSpace(request.Message)
 	var structured any
 	if len(request.StructuredInput) != 0 && string(request.StructuredInput) != "null" {
@@ -107,8 +114,50 @@ func normalizeInput(request SubmitRequest) (string, error) {
 	if message == "" && structured == nil {
 		return "", ErrInvalidInput
 	}
-	payload, err := json.Marshal(map[string]any{"message": message, "structured_input": structured})
+	attachmentIDs, err := normalizedAttachmentIDs(request.AttachmentIDs)
+	if err != nil {
+		return "", err
+	}
+	payload, err := json.Marshal(map[string]any{"message": message, "structured_input": structured, "attachment_ids": attachmentIDs})
 	return string(payload), err
+}
+
+func normalizedAttachmentIDs(ids []string) ([]string, error) {
+	if len(ids) > 10 {
+		return nil, ErrInvalidInput
+	}
+	result := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil, ErrInvalidInput
+		}
+		if _, exists := seen[id]; exists {
+			return nil, ErrInvalidInput
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+func bindAttachments(ctx context.Context, tx pgx.Tx, actor identity.Principal, taskID, workspaceID string, attachmentIDs []string) error {
+	attachmentIDs, err := normalizedAttachmentIDs(attachmentIDs)
+	if err != nil {
+		return err
+	}
+	for _, attachmentID := range attachmentIDs {
+		result, err := tx.Exec(ctx, `UPDATE gantry.attachments SET bound_task_id=$1, workspace_id=$2 WHERE id=$3 AND organization_id=$4 AND requester_principal_id=$5 AND bound_task_id IS NULL AND state='available' AND scan_status='passed'`, taskID, workspaceID, attachmentID, actor.OrganizationID, actor.ID)
+		if err != nil {
+			return err
+		}
+		if result.RowsAffected() != 1 {
+			return fmt.Errorf("%w: attachment is not ready", ErrInvalidInput)
+		}
+	}
+	return nil
 }
 
 func requestDigest(agentID, input string) string {

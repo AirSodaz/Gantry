@@ -338,7 +338,17 @@ func (s *Service) Finish(ctx context.Context, runnerID, runID string, epoch uint
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status=$2, status_reason=$3, completed_at=now() WHERE id=$1`, runID, terminal, reason); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2 WHERE id=$1`, taskID, terminal); err != nil {
+	taskStatus := terminal
+	if terminal == "failed" {
+		var rejected bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gantry.run_events WHERE run_id=$1 AND event_type IN ('approval.rejected','approval.expired'))`, runID).Scan(&rejected); err != nil {
+			return err
+		}
+		if rejected {
+			taskStatus = "awaiting_requester_input"
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2 WHERE id=$1`, taskID, taskStatus); err != nil {
 		return err
 	}
 	if err := appendEvent(ctx, tx, runID, "run."+terminal); err != nil {

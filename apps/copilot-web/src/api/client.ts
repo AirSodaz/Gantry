@@ -1,4 +1,4 @@
-import type { Agent, Approval, ApprovalDecisionResponse, Artifact, EventsTicket, RunStatus, SubmitTaskInput, Task } from './types';
+import type { Agent, AppendTaskMessageInput, Approval, ApprovalDecisionResponse, Artifact, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
@@ -21,9 +21,12 @@ export class CopilotApi {
     return this.request<{ items: Agent[] }>(`/agents?${params.toString()}`);
   }
 
-  listTasks(status = '') {
+  listTasks(filters: { status?: string; agentId?: string; requesterAction?: string; createdAfter?: string } = {}) {
     const params = new URLSearchParams();
-    if (status) params.set('status', status);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.agentId) params.set('agent_id', filters.agentId);
+    if (filters.requesterAction) params.set('requester_action', filters.requesterAction);
+    if (filters.createdAfter) params.set('created_after', filters.createdAfter);
     return this.request<{ items: Task[] }>(`/tasks?${params.toString()}`);
   }
 
@@ -42,6 +45,18 @@ export class CopilotApi {
     return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}`);
   }
 
+  appendTaskMessage(taskId: string, input: AppendTaskMessageInput, idempotencyKey: string) {
+    return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}/messages`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(input),
+    });
+  }
+
+  listTaskRuns(taskId: string) {
+    return this.request<{ items: RunAttempt[] }>(`/tasks/${encodeURIComponent(taskId)}/runs`);
+  }
+
   createEventsTicket(taskId: string) {
     return this.request<EventsTicket>(`/tasks/${encodeURIComponent(taskId)}/events:ticket`, {
       method: 'POST',
@@ -53,6 +68,60 @@ export class CopilotApi {
     return this.request<Artifact>(`/artifacts/${encodeURIComponent(artifactId)}`);
   }
 
+  listArtifacts(taskId = '', classification = '') {
+    const params = new URLSearchParams();
+    if (taskId) params.set('task_id', taskId);
+    if (classification) params.set('classification', classification);
+    return this.request<{ items: Artifact[] }>(`/artifacts?${params.toString()}`);
+  }
+
+  createAttachment(input: CreateAttachmentInput) {
+    return this.request<Attachment>('/attachments', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  uploadAttachment(attachment: Attachment, file: File, onProgress?: (percent: number) => void) {
+    const token = this.tokenProvider();
+    if (!token) return Promise.reject(new CopilotApiError(401, 'Your session has expired.'));
+    if (!attachment.upload_url || !attachment.upload_token) {
+      return Promise.reject(new CopilotApiError(409, 'This attachment upload grant is no longer available.'));
+    }
+    const uploadURL = attachment.upload_url;
+    const uploadToken = attachment.upload_token;
+    return new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('PUT', uploadURL);
+      request.setRequestHeader('Authorization', `Bearer ${token}`);
+      request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      request.setRequestHeader('X-Gantry-Upload-Token', uploadToken);
+      request.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+      };
+      request.onerror = () => reject(new CopilotApiError(0, 'Attachment upload failed.'));
+      request.onload = () => {
+        if (request.status >= 200 && request.status < 300) {
+          resolve();
+          return;
+        }
+        reject(new CopilotApiError(request.status, 'Attachment upload was rejected.'));
+      };
+      request.send(file);
+    });
+  }
+
+  completeAttachment(attachmentId: string) {
+    return this.request<Attachment>(`/attachments/${encodeURIComponent(attachmentId)}:complete`, {
+      method: 'POST',
+      body: '{}',
+    });
+  }
+
+  getApproval(approvalId: string) {
+    return this.request<Approval>(`/approvals/${encodeURIComponent(approvalId)}`);
+  }
+
   submitTask(input: SubmitTaskInput, idempotencyKey: string) {
     return this.request<Task>('/tasks', {
       method: 'POST',
@@ -61,16 +130,18 @@ export class CopilotApi {
     });
   }
 
-  cancelRun(taskId: string, runId: string) {
+  cancelRun(taskId: string, runId: string, idempotencyKey: string) {
     return this.request<RunStatus>(`/tasks/${encodeURIComponent(taskId)}/runs/${encodeURIComponent(runId)}:cancel`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: '{}',
     });
   }
 
-  retryTask(taskId: string) {
+  retryTask(taskId: string, idempotencyKey: string) {
     return this.request<Task>(`/tasks/${encodeURIComponent(taskId)}:retry`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: '{}',
     });
   }

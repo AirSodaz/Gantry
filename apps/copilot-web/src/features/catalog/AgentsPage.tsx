@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, Bot } from 'lucide-react';
 import { Button } from '@gantry/design-system';
 import { AgentPicker } from './AgentPicker';
@@ -6,7 +6,8 @@ import type { Agent } from '../../api/types';
 
 export function AgentsPage() {
   const navigate = useNavigate();
-  const selectAgent = (agent: Agent) => navigate(`/?agent=${encodeURIComponent(agent.id)}`);
+  const location = useLocation();
+  const selectAgent = (agent: Agent) => navigate(`/?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), agent: agent.id }).toString()}`);
   return (
     <div className="page-wrap narrow-page">
       <div className="page-heading">

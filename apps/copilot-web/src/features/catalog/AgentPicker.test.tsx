@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentPicker } from './AgentPicker';
 
@@ -10,9 +11,9 @@ const agents = [
   { id: 'agt_1', display_name: 'Lifecycle Demo', description: 'A deterministic fixture.', category: 'Development' },
 ];
 
-function renderPicker() {
+function renderPicker(path = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={queryClient}><AgentPicker selectedId="" onSelect={vi.fn()} /></QueryClientProvider>);
+  return render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={[path]}><AgentPicker selectedId="" onSelect={vi.fn()} /></MemoryRouter></QueryClientProvider>);
 }
 
 describe('AgentPicker', () => {
@@ -45,5 +46,12 @@ describe('AgentPicker', () => {
     renderPicker();
     await waitFor(() => expect(screen.getByRole('option', { name: 'Development' })).toBeInTheDocument());
     expect(screen.getByText('Lifecycle Demo')).toBeInTheDocument();
+  });
+
+  it('hydrates catalog filters from the URL', async () => {
+    mocked.api.listAgents.mockResolvedValue({ items: agents });
+    renderPicker('/agents?search=lifecycle&category=Development');
+
+    await waitFor(() => expect(mocked.api.listAgents).toHaveBeenCalledWith('lifecycle', 'Development'));
   });
 });

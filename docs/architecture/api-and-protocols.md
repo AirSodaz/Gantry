@@ -99,15 +99,11 @@ Audience: `gantry-copilot-api`.
 
 Checked-in routes are defined by
 [`packages/contracts/openapi/copilot-api.yaml`](../../packages/contracts/openapi/copilot-api.yaml)
-and currently include agent discovery, task submission/list/detail, event tickets,
-run cancel/retry, approval list/decision, and artifact metadata/download.
-
-The target Copilot contract additionally includes:
-
-- `/api/copilot/v1/tasks/{id}/messages` for requester follow-up messages;
-- `/api/copilot/v1/tasks/{id}/runs` for compact attempt history;
-- `/api/copilot/v1/approvals/{id}` for approval detail;
-- `/api/copilot/v1/artifacts` for a later standalone artifact browser.
+and currently include agent discovery, task submission/list/detail, requester
+follow-up messages, compact Run history, event tickets, run cancel/retry,
+approval list/detail/decision, requester-scoped artifact browsing, and artifact
+metadata/download, plus requester attachment creation, short-lived content
+upload, completion, and scan-state reads.
 
 These target routes are not callable until they appear in the OpenAPI document,
 generated client, owning handler, and focused tests.
@@ -119,16 +115,18 @@ employee-visible Task, compact Run attempts, approvals, events, and artifacts,
 but not Admin runner, lease, credential, raw prompt, or cross-user diagnostic
 fields.
 
-The target Copilot Task Detail is conversation-first. Once the messages route is
-implemented, it will append a requester message only when the Task is in an
-input-eligible state, for example after an action approval is rejected or
-expires. The command will use an idempotency key and create a new Run attempt
-under the same Task; it will never replay or mutate the denied action. A pending
-approval keeps the composer read-only by default until the decision is resolved.
+Copilot Task Detail is conversation-first. The messages route appends a requester
+message only when the Task is in the `awaiting_requester_input` state after an
+action approval is rejected. The command uses an idempotency key and creates a
+new Run attempt under the same Task; it never replays or mutates the denied
+action. A pending approval keeps the composer read-only by default until the
+decision is resolved. Requester-visible approval reads process elapsed requests
+into the same input-eligible state; a production background expiry worker remains
+an incomplete runtime capability.
 
-The target `GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
-redacted technical details, expiry and supersession state, linked Task context,
-and the latest decision version. `POST /api/copilot/v1/approvals/{id}:decide`
+`GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
+redacted technical details, expiry state, linked Task context, and the latest
+decision evidence. `POST /api/copilot/v1/approvals/{id}:decide`
 requires the authenticated Task requester, action digest, decision, and
 idempotency key. A duplicate or stale decision returns the server's winning
 state and never implies that approval resulted in execution.
@@ -164,10 +162,8 @@ Copilot Task record is not a way to enumerate global Runs.
 
 - Resource IDs are opaque and never encode authorization-relevant data.
 - Creation and command endpoints accept `Idempotency-Key`.
-- The checked-in Copilot implementation currently enforces idempotency for task
-  submission and approval decisions. Cancel and retry are target commands and
-  must not be treated as complete until their request digest/key mapping and
-  retry behavior are durable.
+- The checked-in Copilot implementation enforces idempotency for task
+  submission, follow-up messages, cancellation, retry, and approval decisions.
 - An idempotent response is recoverable for at least the resource lifetime plus
   the published maximum client retry interval. After response content expires,
   a tombstone still prevents the same actor and route from reusing the key with
@@ -539,11 +535,14 @@ Target clients create an attachment with
 POST /api/copilot/v1/attachments, receive a short-lived upload reference, and
 finalize it with POST /api/copilot/v1/attachments/{id}:complete.
 GET /api/copilot/v1/attachments/{id} returns only requester-authorized metadata
-and scan state. These routes are not in the current Copilot OpenAPI.
+and scan state. The checked-in API also exposes the granted content path as a
+short-lived, requester-authorized upload operation; it is not an object-store
+credential or a reusable download URL.
 
 - Clients upload attachments through pre-authorized, size-limited upload URLs.
-- Uploaded objects remain quarantined until validation and malware scanning
-  complete.
+- Uploaded objects remain quarantined until validation and scan completion. The
+  current development completion policy validates the declared bytes and digest;
+  production malware scanner integration remains required before production use.
 - Runners declare output metadata and digest before receiving a short-lived,
   lease-bound upload authorization. The runner uploads to Gantry's private
   endpoint and never receives object-storage credentials.

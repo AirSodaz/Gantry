@@ -3,18 +3,22 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowUp,
   Bot,
+  CircleCheck,
   FileCode2,
   HelpCircle,
   Info,
   Lightbulb,
+  LoaderCircle,
+  Paperclip,
   ShieldAlert,
   Sparkles,
+  X,
   Zap,
 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import { AgentPicker } from '../catalog/AgentPicker';
-import type { Agent, SubmitTaskInput } from '../../api/types';
+import type { Agent, Attachment, SubmitTaskInput } from '../../api/types';
 import { getSubmissionKey } from './submission';
 
 const STARTER_PROMPTS = [
@@ -40,6 +44,16 @@ const STARTER_PROMPTS = [
   },
 ];
 
+type PendingAttachment = {
+  localId: string;
+  filename: string;
+  sizeBytes: number;
+  progress: number;
+  state: 'hashing' | 'uploading' | 'validating' | 'available' | 'error';
+  attachment?: Attachment;
+  error?: string;
+};
+
 export function NewTaskPage() {
   const api = useCopilotApi();
   const navigate = useNavigate();
@@ -47,17 +61,54 @@ export function NewTaskPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [message, setMessage] = useState('');
   const [holdOpen, setHoldOpen] = useState(false);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const pendingSubmission = useRef<{ key: string; signature: string } | null>(null);
   const queryAgentId = new URLSearchParams(location.search).get('agent');
+  const hasPendingAttachment = attachments.some((item) => !['available', 'error'].includes(item.state));
+  const attachmentIDs = attachments.flatMap((item) => item.state === 'available' && item.attachment ? [item.attachment.id] : []);
 
   const input = useMemo<SubmitTaskInput | null>(() => {
-    if (!selectedAgent || !message.trim()) return null;
+    if (!selectedAgent || !message.trim() || hasPendingAttachment) return null;
     return {
       agent_id: selectedAgent.id,
       message: message.trim(),
+      ...(attachmentIDs.length ? { attachment_ids: attachmentIDs } : {}),
       ...(import.meta.env.DEV && holdOpen ? { structured_input: { mode: 'await_cancel' } } : {}),
     };
-  }, [holdOpen, message, selectedAgent]);
+  }, [attachmentIDs, hasPendingAttachment, holdOpen, message, selectedAgent]);
+
+  const updateAttachment = (localId: string, patch: Partial<PendingAttachment>) => {
+    setAttachments((current) => current.map((item) => item.localId === localId ? { ...item, ...patch } : item));
+  };
+
+  const selectAttachments = async (files: FileList | null) => {
+    if (!files) return;
+    await Promise.all(Array.from(files).map(async (file) => {
+      const localId = crypto.randomUUID();
+      setAttachments((current) => [...current, { localId, filename: file.name, sizeBytes: file.size, progress: 0, state: 'hashing' }]);
+      try {
+        if (file.size > 64 * 1024 * 1024) throw new Error('Files must be 64 MB or smaller.');
+        const digest = await digestFile(file);
+        const attachment = await api.createAttachment({
+          filename: file.name,
+          media_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+          digest,
+          classification: 'internal',
+        });
+        updateAttachment(localId, { state: 'uploading', attachment });
+        await api.uploadAttachment(attachment, file, (progress) => updateAttachment(localId, { progress }));
+        updateAttachment(localId, { state: 'validating', progress: 100 });
+        const completed = await api.completeAttachment(attachment.id);
+        if (completed.state !== 'available' || completed.scan_status !== 'passed') {
+          throw new Error('The attachment is still being scanned.');
+        }
+        updateAttachment(localId, { state: 'available', attachment: completed });
+      } catch (error) {
+        updateAttachment(localId, { state: 'error', error: error instanceof Error ? error.message : 'Attachment upload failed.' });
+      }
+    }));
+  };
 
   const mutation = useMutation({
     mutationFn: ({
@@ -133,9 +184,29 @@ export function NewTaskPage() {
                 className="chatgpt-prompt-textarea"
               />
 
+              {attachments.length ? (
+                <ul className="attachment-list" aria-label="Selected attachments">
+                  {attachments.map((attachment) => (
+                    <li key={attachment.localId} className={`attachment-item attachment-${attachment.state}`}>
+                      {attachment.state === 'available' ? <CircleCheck size={15} aria-hidden="true" /> : attachment.state === 'error' ? <ShieldAlert size={15} aria-hidden="true" /> : <LoaderCircle size={15} aria-hidden="true" className="ds-spin" />}
+                      <span className="attachment-name">{attachment.filename}</span>
+                      <span className="attachment-status">
+                        {attachment.state === 'hashing' ? 'Preparing' : attachment.state === 'uploading' ? `${attachment.progress}%` : attachment.state === 'validating' ? 'Validating' : attachment.state === 'available' ? 'Ready' : attachment.error}
+                      </span>
+                      <button type="button" className="ds-icon-button ds-icon-button-sm attachment-remove" onClick={() => setAttachments((current) => current.filter((item) => item.localId !== attachment.localId))} aria-label={`Remove ${attachment.filename}`} title={`Remove ${attachment.filename}`}><X size={14} /></button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
               {/* Bottom Action Bar inside Capsule */}
               <div className="chatgpt-prompt-toolbar">
                 <div className="chatgpt-prompt-meta">
+                  <label className="attachment-add" title="Add attachment">
+                    <Paperclip size={15} aria-hidden="true" />
+                    <span className="sr-only">Add attachment</span>
+                    <input type="file" multiple onChange={(event) => { void selectAttachments(event.target.files); event.currentTarget.value = ''; }} />
+                  </label>
                   {selectedAgent ? (
                     <div className="chatgpt-agent-chip">
                       <Bot size={13} strokeWidth={2.2} />
@@ -271,4 +342,11 @@ export function NewTaskPage() {
       </div>
     </div>
   );
+}
+
+async function digestFile(file: File) {
+  if (!crypto.subtle) throw new Error('This browser cannot securely prepare attachments.');
+  const data = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return `sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }

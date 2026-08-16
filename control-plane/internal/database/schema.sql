@@ -265,9 +265,11 @@ CREATE TABLE IF NOT EXISTS gantry.tasks (
   agent_id text NOT NULL REFERENCES gantry.agents(id),
   input_json jsonb NOT NULL,
   current_run_id text,
-  status text NOT NULL CHECK (status IN ('queued', 'running', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
+  status text NOT NULL CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE gantry.tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
+ALTER TABLE gantry.tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled'));
 
 CREATE TABLE IF NOT EXISTS gantry.runs (
   id text PRIMARY KEY,
@@ -299,6 +301,16 @@ CREATE TABLE IF NOT EXISTS gantry.run_events (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (run_id, sequence)
 );
+
+CREATE TABLE IF NOT EXISTS gantry.task_messages (
+  id text PRIMARY KEY,
+  task_id text NOT NULL REFERENCES gantry.tasks(id),
+  run_id text REFERENCES gantry.runs(id),
+  role text NOT NULL CHECK (role IN ('requester', 'agent')),
+  content text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS task_messages_task_created_idx ON gantry.task_messages (task_id, created_at, id);
 
 CREATE TABLE IF NOT EXISTS gantry.run_content_segments (
   id text PRIMARY KEY,
@@ -337,6 +349,31 @@ CREATE TABLE IF NOT EXISTS gantry.artifacts (
   UNIQUE (run_id, filename)
 );
 CREATE INDEX IF NOT EXISTS artifacts_task_idx ON gantry.artifacts (task_id, created_at);
+
+-- Attachments are requester-owned input objects before they are bound to one
+-- task. They intentionally do not share the runner-produced artifact model.
+CREATE TABLE IF NOT EXISTS gantry.attachments (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text REFERENCES gantry.workspaces(id),
+  requester_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  bound_task_id text REFERENCES gantry.tasks(id),
+  object_key text NOT NULL UNIQUE,
+  filename text NOT NULL,
+  media_type text NOT NULL,
+  size_bytes bigint NOT NULL CHECK (size_bytes >= 0),
+  digest text NOT NULL,
+  classification text NOT NULL DEFAULT 'internal',
+  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed')),
+  state text NOT NULL CHECK (state IN ('declared', 'uploaded', 'available', 'rejected')),
+  upload_token_hash text NOT NULL DEFAULT '',
+  upload_expires_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  uploaded_at timestamptz,
+  completed_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS attachments_requester_created_idx ON gantry.attachments (requester_principal_id, created_at DESC, id DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS attachments_bound_task_once_idx ON gantry.attachments (bound_task_id, id) WHERE bound_task_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS gantry.idempotency_tombstones (
   principal_id text NOT NULL REFERENCES gantry.principals(id),

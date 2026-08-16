@@ -25,10 +25,12 @@ type authenticator interface {
 type taskService interface {
 	ListAgents(context.Context, identity.Principal, string, string, int) ([]tasks.Agent, error)
 	Submit(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
-	List(context.Context, identity.Principal, string, int) ([]tasks.Task, error)
+	List(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
 	Get(context.Context, identity.Principal, string) (tasks.Task, error)
-	Cancel(context.Context, identity.Principal, string, string) (tasks.CancelResult, error)
-	Retry(context.Context, identity.Principal, string, bool) (tasks.Task, error)
+	AppendMessage(context.Context, identity.Principal, string, string, tasks.AppendMessageRequest) (tasks.Task, bool, error)
+	ListRuns(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
+	Cancel(context.Context, identity.Principal, string, string, string) (tasks.CancelResult, error)
+	Retry(context.Context, identity.Principal, string, bool, string) (tasks.Task, error)
 }
 
 type eventReader interface {
@@ -47,6 +49,8 @@ type dispatcher interface {
 
 type approvalService interface {
 	List(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	Get(context.Context, identity.Principal, string) (approvals.Request, error)
+	Expire(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	Decide(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
 }
 
@@ -69,10 +73,18 @@ func New(auth authenticator, taskService taskService, approvalService approvalSe
 	mux.Handle("POST /tasks", h.withActor(h.submitTask))
 	mux.Handle("GET /tasks", h.withActor(h.listTasks))
 	mux.Handle("GET /tasks/{taskID}", h.withActor(h.getTask))
+	mux.Handle("POST /tasks/{taskID}/messages", h.withActor(h.appendMessage))
+	mux.Handle("GET /tasks/{taskID}/runs", h.withActor(h.listRuns))
 	mux.Handle("POST /tasks/{taskID}/events:ticket", h.withActor(h.issueEventTicket))
 	mux.HandleFunc("GET /tasks/{taskID}/events", h.events)
 	mux.Handle("GET /artifacts/{artifactID}", h.withActor(h.getArtifact))
+	mux.Handle("GET /artifacts", h.withActor(h.listArtifacts))
+	mux.Handle("POST /attachments", h.withActor(h.createAttachment))
+	mux.Handle("GET /attachments/{attachmentID}", h.withActor(h.getAttachment))
+	mux.Handle("PUT /attachments/{attachmentID}/content", h.withActor(h.uploadAttachment))
+	mux.Handle("POST /attachments/{operation...}", h.withActor(h.completeAttachment))
 	mux.Handle("GET /approvals", h.withActor(h.listApprovals))
+	mux.Handle("GET /approvals/{approvalID}", h.withActor(h.getApproval))
 	mux.Handle("POST /approvals/{operation...}", h.withActor(h.decideApproval))
 	mux.Handle("POST /tasks/{taskID}/runs/{operation...}", h.withActor(h.cancelOperation))
 	mux.Handle("POST /tasks/{operation...}", h.withActor(h.retryOperation))
@@ -121,7 +133,16 @@ func (h Handler) submitTask(w http.ResponseWriter, r *http.Request, actor identi
 	writeJSON(w, status, task)
 }
 func (h Handler) listTasks(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	items, err := h.tasks.List(r.Context(), actor, r.URL.Query().Get("status"), limit(r))
+	filter := tasks.ListFilter{Status: r.URL.Query().Get("status"), AgentID: r.URL.Query().Get("agent_id"), RequesterAction: r.URL.Query().Get("requester_action")}
+	if value := r.URL.Query().Get("created_after"); value != "" {
+		createdAfter, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", "created_after must be an RFC 3339 timestamp.")
+			return
+		}
+		filter.CreatedAfter = &createdAfter
+	}
+	items, err := h.tasks.List(r.Context(), actor, filter, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
@@ -136,9 +157,41 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request, actor identity.
 	}
 	writeJSON(w, http.StatusOK, task)
 }
+func (h Handler) appendMessage(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	var request tasks.AppendMessageRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	task, duplicate, err := h.tasks.AppendMessage(r.Context(), actor, r.PathValue("taskID"), r.Header.Get("Idempotency-Key"), request)
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	if err := h.dispatcher.Dispatch(r.Context()); err != nil {
+		h.logger.Error("follow-up task dispatch failed", "error", err, "task_id", task.ID)
+	}
+	status := http.StatusCreated
+	if duplicate {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, task)
+}
+func (h Handler) listRuns(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	items, err := h.tasks.ListRuns(r.Context(), actor, r.PathValue("taskID"), limit(r))
+	if err != nil {
+		writeTaskError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+}
 func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	if h.approvals == nil {
 		writeInternal(w, errors.New("approval service is unavailable"))
+		return
+	}
+	if !h.expireApprovals(r.Context(), actor) {
+		writeInternal(w, errors.New("approval expiry processing failed"))
 		return
 	}
 	items, err := h.approvals.List(r.Context(), actor, limit(r))
@@ -148,9 +201,29 @@ func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor ide
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
 }
+func (h Handler) getApproval(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	if h.approvals == nil {
+		writeInternal(w, errors.New("approval service is unavailable"))
+		return
+	}
+	if !h.expireApprovals(r.Context(), actor) {
+		writeInternal(w, errors.New("approval expiry processing failed"))
+		return
+	}
+	item, err := h.approvals.Get(r.Context(), actor, r.PathValue("approvalID"))
+	if err != nil {
+		writeApprovalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
 func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	if h.approvals == nil {
 		writeInternal(w, errors.New("approval service is unavailable"))
+		return
+	}
+	if !h.expireApprovals(r.Context(), actor) {
+		writeInternal(w, errors.New("approval expiry processing failed"))
 		return
 	}
 	var request struct {
@@ -182,13 +255,27 @@ func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor id
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": status, "approval_id": resolution.ApprovalID, "run_id": resolution.RunID, "decision": resolution.Decision})
 }
+
+func (h Handler) expireApprovals(ctx context.Context, actor identity.Principal) bool {
+	expired, err := h.approvals.Expire(ctx, actor)
+	if err != nil {
+		h.logger.Error("approval expiry processing failed", "error", err, "principal_id", actor.ID)
+		return false
+	}
+	for _, resolution := range expired {
+		if !h.dispatcher.ResolveApproval(resolution.RunID, resolution.ApprovalID, resolution.Decision, resolution.Reason, resolution.ActionID, resolution.CallID, "", 0, time.Time{}) {
+			h.logger.Warn("expired approval persisted without an active runner session", "approval_id", resolution.ApprovalID, "run_id", resolution.RunID)
+		}
+	}
+	return true
+}
 func (h Handler) cancelOperation(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	runID, ok := operationTarget(r.PathValue("operation"), ":cancel")
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	result, err := h.tasks.Cancel(r.Context(), actor, r.PathValue("taskID"), runID)
+	result, err := h.tasks.Cancel(r.Context(), actor, r.PathValue("taskID"), runID, r.Header.Get("Idempotency-Key"))
 	if err != nil {
 		writeTaskError(w, err)
 		return
@@ -211,7 +298,7 @@ func (h Handler) retryOperation(w http.ResponseWriter, r *http.Request, actor id
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion)
+	task, err := h.tasks.Retry(r.Context(), actor, taskID, request.UseLatestVersion, r.Header.Get("Idempotency-Key"))
 	if err != nil {
 		writeTaskError(w, err)
 		return

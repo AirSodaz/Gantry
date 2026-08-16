@@ -50,6 +50,7 @@ type Agent struct {
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
+	OwnerName   string `json:"owner_name,omitempty"`
 }
 type Run struct {
 	ID                        string `json:"id"`
@@ -65,8 +66,34 @@ type Task struct {
 	AgentDisplayName string     `json:"agent_display_name,omitempty"`
 	Status           string     `json:"status"`
 	CurrentRun       Run        `json:"current_run"`
+	Messages         []Message  `json:"messages,omitempty"`
 	Artifacts        []Artifact `json:"artifacts,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
+}
+
+type ListFilter struct {
+	Status          string
+	AgentID         string
+	RequesterAction string
+	CreatedAfter    *time.Time
+}
+
+type Message struct {
+	ID        string    `json:"id"`
+	RunID     string    `json:"run_id,omitempty"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type RunAttempt struct {
+	ID          string     `json:"id"`
+	Attempt     int        `json:"attempt_number"`
+	Status      string     `json:"status"`
+	Reason      string     `json:"status_reason,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type SubmitRequest struct {
@@ -74,6 +101,10 @@ type SubmitRequest struct {
 	Message         string          `json:"message"`
 	StructuredInput json.RawMessage `json:"structured_input"`
 	AttachmentIDs   []string        `json:"attachment_ids"`
+}
+
+type AppendMessageRequest struct {
+	Message string `json:"message"`
 }
 
 type CancelResult struct {
@@ -120,6 +151,31 @@ type Artifact struct {
 	DownloadURL        string    `json:"download_url,omitempty"`
 	DownloadURLExpires time.Time `json:"download_url_expires_at,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`
+}
+
+// Attachment is a requester-owned input object. Its object key and upload
+// credential are deliberately absent from regular metadata reads.
+type Attachment struct {
+	ID             string    `json:"id"`
+	Filename       string    `json:"filename"`
+	MediaType      string    `json:"media_type"`
+	SizeBytes      int64     `json:"size_bytes"`
+	Digest         string    `json:"digest"`
+	Classification string    `json:"classification"`
+	ScanStatus     string    `json:"scan_status"`
+	State          string    `json:"state"`
+	UploadURL      string    `json:"upload_url,omitempty"`
+	UploadToken    string    `json:"upload_token,omitempty"`
+	UploadExpires  time.Time `json:"upload_expires_at,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type CreateAttachmentRequest struct {
+	Filename       string `json:"filename"`
+	MediaType      string `json:"media_type"`
+	SizeBytes      int64  `json:"size_bytes"`
+	Digest         string `json:"digest"`
+	Classification string `json:"classification"`
 }
 
 type TaskRun struct {

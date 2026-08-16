@@ -21,6 +21,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a requester-owned attachment upload grant */
+        post: operations["createAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get requester-authorized attachment metadata and scan state */
+        get: operations["getAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upload attachment bytes with a short-lived grant */
+        put: operations["uploadAttachmentContent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}:complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate and complete a quarantined attachment upload */
+        post: operations["completeAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks": {
         parameters: {
             query?: never;
@@ -48,6 +116,40 @@ export interface paths {
         };
         /** Get task details */
         get: operations["getTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add requester input and start the next task run */
+        post: operations["appendTaskMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List compact run attempts for one task */
+        get: operations["listTaskRuns"];
         put?: never;
         post?: never;
         delete?: never;
@@ -141,6 +243,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get requester-authorized approval detail and decision evidence */
+        get: operations["getApproval"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/artifacts/{artifact_id}": {
         parameters: {
             query?: never;
@@ -150,6 +269,23 @@ export interface paths {
         };
         /** Get artifact metadata and download URL */
         get: operations["getArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List requester-scoped artifacts across tasks */
+        get: operations["listMyArtifacts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -193,10 +329,35 @@ export interface components {
             agent_id: string;
             agent_display_name?: string;
             /** @enum {string} */
-            status: "queued" | "provisioning" | "running" | "awaiting_approval" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
+            status: "queued" | "provisioning" | "running" | "awaiting_approval" | "awaiting_requester_input" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
             current_run?: components["schemas"]["RunStatus"];
             artifacts?: components["schemas"]["ArtifactResponse"][];
+            messages?: components["schemas"]["TaskMessage"][];
             created_at?: components["schemas"]["Timestamp"];
+        };
+        TaskMessage: {
+            id: string;
+            run_id?: string;
+            /** @enum {string} */
+            role: "requester" | "agent";
+            content: string;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        AppendTaskMessageRequest: {
+            message: string;
+        };
+        RunAttempt: {
+            id: string;
+            attempt_number: number;
+            status: string;
+            status_reason?: string;
+            created_at: components["schemas"]["Timestamp"];
+            started_at?: components["schemas"]["Timestamp"];
+            completed_at?: components["schemas"]["Timestamp"];
+        };
+        RunAttemptList: {
+            items: components["schemas"]["RunAttempt"][];
+            page_info: components["schemas"]["PageInfo"];
         };
         TaskList: {
             items: components["schemas"]["TaskResponse"][];
@@ -233,6 +394,10 @@ export interface components {
             status: "pending" | "satisfied" | "rejected" | "expired";
             expires_at?: components["schemas"]["Timestamp"];
             created_at?: components["schemas"]["Timestamp"];
+            task_id?: string;
+            effect?: string;
+            policy_version?: string;
+            latest_decision?: components["schemas"]["ApprovalDecisionEvidence"];
         };
         CopilotApprovalList: {
             items: components["schemas"]["CopilotApproval"][];
@@ -253,6 +418,13 @@ export interface components {
             /** @enum {string} */
             decision: "approve" | "reject";
         };
+        ApprovalDecisionEvidence: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            reason?: string;
+            decided_by: string;
+            created_at: components["schemas"]["Timestamp"];
+        };
         ArtifactResponse: {
             id: string;
             task_id: string;
@@ -271,6 +443,37 @@ export interface components {
             download_url?: string;
             download_url_expires_at?: components["schemas"]["Timestamp"];
         };
+        ArtifactList: {
+            items: components["schemas"]["ArtifactResponse"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAttachmentRequest: {
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            /** @description SHA-256 digest in sha256:<hex> form */
+            digest: string;
+            classification?: string;
+        };
+        AttachmentResponse: {
+            id: string;
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+            /** @enum {string} */
+            state: "declared" | "uploaded" | "available" | "rejected";
+            /** @enum {string} */
+            scan_status: "pending" | "passed" | "failed";
+            /** @description Short-lived request path for the content upload */
+            upload_url?: string;
+            /** @description Short-lived upload credential, returned only on creation */
+            upload_token?: string;
+            upload_expires_at?: components["schemas"]["Timestamp"];
+        };
         TaskEventsTicket: {
             ticket: string;
             task_id: string;
@@ -282,6 +485,7 @@ export interface components {
         CursorParam: string;
         LimitParam: number;
         TaskIdParam: string;
+        AttachmentIdParam: string;
     };
     requestBodies: never;
     headers: never;
@@ -314,12 +518,109 @@ export interface operations {
             };
         };
     };
+    createAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttachmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Quarantined attachment with a short-lived upload grant */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentResponse"];
+                };
+            };
+        };
+    };
+    getAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentResponse"];
+                };
+            };
+        };
+    };
+    uploadAttachmentContent: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Gantry-Upload-Token": string;
+            };
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Bytes stored in quarantine */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    completeAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment state after validation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentResponse"];
+                };
+            };
+        };
+    };
     listMyTasks: {
         parameters: {
             query?: {
                 cursor?: components["parameters"]["CursorParam"];
                 limit?: components["parameters"]["LimitParam"];
                 status?: string;
+                agent_id?: string;
+                requester_action?: "approval" | "input";
+                created_after?: string;
             };
             header?: never;
             path?: never;
@@ -395,6 +696,67 @@ export interface operations {
             };
         };
     };
+    appendTaskMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                task_id: components["parameters"]["TaskIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppendTaskMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Original task returned for an idempotent retry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Follow-up accepted and next run queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+        };
+    };
+    listTaskRuns: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["LimitParam"];
+            };
+            header?: never;
+            path: {
+                task_id: components["parameters"]["TaskIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requester-authorized run attempt history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunAttemptList"];
+                };
+            };
+        };
+    };
     createTaskEventsTicket: {
         parameters: {
             query?: never;
@@ -427,7 +789,9 @@ export interface operations {
     cancelRun: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 task_id: components["parameters"]["TaskIdParam"];
                 run_id: string;
@@ -450,7 +814,9 @@ export interface operations {
     retryTask: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 task_id: components["parameters"]["TaskIdParam"];
             };
@@ -550,6 +916,35 @@ export interface operations {
             };
         };
     };
+    getApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approval detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotApproval"];
+                };
+            };
+            /** @description Approval request was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getArtifact: {
         parameters: {
             query?: never;
@@ -568,6 +963,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtifactResponse"];
+                };
+            };
+        };
+    };
+    listMyArtifacts: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+                task_id?: string;
+                classification?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requester-scoped artifact list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactList"];
                 };
             };
         };

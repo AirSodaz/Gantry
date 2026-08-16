@@ -33,7 +33,7 @@ organization or Workspace administration selector.
 | Workspace | Agents | `/agents` | Current |
 | Workspace | My tasks | `/tasks` | Current |
 | Governance | Approvals | `/approvals` | Current |
-| Workspace | Artifacts | `/artifacts` | Later; inline Task artifacts are Current |
+| Workspace | Artifacts | `/artifacts` | Current |
 
 The effective Workspace and employee identity come from the authenticated
 projection. If an identity can access more than one Workspace, the API returns
@@ -61,15 +61,14 @@ Admin-style cross-Workspace aggregation.
 | Agent catalog | `/agents` | Browse approved Agents and select one | Current |
 | New task | `/` | Compose and submit an idempotent Task | Current |
 | My tasks | `/tasks` | Requester-scoped Task history and filters | Current |
-| Task detail | `/tasks/:taskId` | Conversation, live state, actions, and Artifacts | Current; expanding Next |
+| Task detail | `/tasks/:taskId` | Conversation, live state, actions, follow-up input, Run history, and Artifacts | Current |
 | Approval queue | `/approvals` | Requester-bound pending action approvals | Current |
-| Approval detail | `/approvals/:approvalId` | Immutable action preview and decision evidence | Next |
-| Artifact browser | `/artifacts` | Cross-Task Artifact discovery within scope | Later |
-| Artifact detail | `/artifacts/:artifactId` | Metadata, retention, scan, and download state | Later |
+| Approval detail | `/approvals/:approvalId` | Immutable action preview and decision evidence | Current |
+| Artifact browser | `/artifacts` | Cross-Task Artifact discovery within scope | Current |
+| Artifact detail | `/artifacts/:artifactId` | Metadata, scan, and download state | Current; retention projection remains Later |
 
-Artifact access remains embedded in Task Detail until the standalone browser is
-needed. It always uses the same Task, classification, scan, and download
-authorization contract.
+The standalone browser uses the same Task, classification, scan, and download
+authorization contract as embedded Task Detail access.
 
 ## 4. Shared State and Interaction Contract
 
@@ -155,9 +154,12 @@ Catalog rows or cards show only employee-relevant metadata:
 - availability and publication-specific use restriction.
 
 Search and category filters serialize to the URL. Selecting an Agent preserves
-the catalog context while opening a preselected New Task composer. Catalog data
-is a server-authorized projection and does not reveal internal Tools, prompts,
-model names, raw permission rules, or unpublished Revisions.
+the catalog context while opening a preselected New Task composer. The current
+projection includes the published owner display name; typical input/output,
+data classification, action disclosure, favorites, and availability restrictions
+remain dependent on their missing published metadata fields. Catalog data is a
+server-authorized projection and does not reveal internal Tools, prompts, model
+names, raw permission rules, or unpublished Revisions.
 
 ## 7. Task Detail Page
 
@@ -231,10 +233,12 @@ show Agent, task title or first request, current outcome, last activity, pending
 requester action, and Artifact availability. Filters cover status, Agent, time,
 and requester action; they remain within the employee's authorized visibility.
 
-Selecting a row opens the same Task Detail projection used for live work. A
-compact Run attempts section can show attempt number, status, start/completion
-time, and user-facing failure or retry reason. It never opens Admin runner,
-lease, credential, raw prompt, or cross-user diagnostic data.
+Selecting a row opens the same Task Detail projection used for live work. The
+status, Agent, time, and requester-action filters serialize to the URL and are
+applied by the requester-authorized API. A compact Run attempts section can show
+attempt number, status, start/completion time, and user-facing failure or retry
+reason. It never opens Admin runner, lease, credential, raw prompt, or cross-user
+diagnostic data.
 
 ## 10. Artifacts
 
@@ -258,10 +262,9 @@ permits evidence display, not the removed content.
   employee's authorized projection.
 - Heartbeats, reconnect backoff, cursor expiry, and ticket expiry are visible
   states rather than silent polling failures.
-- Commands use idempotency keys and server reconciliation. Approval decisions and
-  task submission are currently covered; cancellation, retries, and follow-up
-  messages remain target requirements until their durable key mappings exist.
-  None of these commands may use optimistic terminal states.
+- Commands use idempotency keys and server reconciliation. Task submission,
+  follow-up messages, cancellation, retries, and approval decisions use durable
+  key mappings. None of these commands may use optimistic terminal states.
 - When a session expires, the page preserves unsent local text where safe but
   does not replay a mutation until the user re-authenticates and submits again.
 

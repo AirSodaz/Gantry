@@ -36,7 +36,7 @@ func (l *Lifecycle) Cancel(ctx context.Context, runID string) (tasks.CancelResul
 	if err != nil {
 		return tasks.CancelResult{}, err
 	}
-	return l.tasks.Cancel(ctx, demoActor(), run.TaskID, runID)
+	return l.tasks.Cancel(ctx, demoActor(), run.TaskID, runID, newID())
 }
 func demoActor() identity.Principal {
 	return identity.Principal{ID: DevelopmentPrincipalID, OrganizationID: OrganizationID}

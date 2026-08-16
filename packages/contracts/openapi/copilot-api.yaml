@@ -41,6 +41,78 @@ paths:
               schema:
                 $ref: "#/components/schemas/CopilotAgentList"
 
+  /attachments:
+    post:
+      operationId: createAttachment
+      summary: Create a requester-owned attachment upload grant
+      tags: [Attachments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAttachmentRequest"
+      responses:
+        "201":
+          description: Quarantined attachment with a short-lived upload grant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+
+  /attachments/{attachment_id}:
+    get:
+      operationId: getAttachment
+      summary: Get requester-authorized attachment metadata and scan state
+      tags: [Attachments]
+      parameters:
+        - $ref: "#/components/parameters/AttachmentIdParam"
+      responses:
+        "200":
+          description: Attachment metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+
+  /attachments/{attachment_id}/content:
+    put:
+      operationId: uploadAttachmentContent
+      summary: Upload attachment bytes with a short-lived grant
+      tags: [Attachments]
+      parameters:
+        - $ref: "#/components/parameters/AttachmentIdParam"
+        - name: X-Gantry-Upload-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "204":
+          description: Bytes stored in quarantine
+
+  /attachments/{attachment_id}:complete:
+    post:
+      operationId: completeAttachment
+      summary: Validate and complete a quarantined attachment upload
+      tags: [Attachments]
+      parameters:
+        - $ref: "#/components/parameters/AttachmentIdParam"
+      responses:
+        "200":
+          description: Attachment state after validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentResponse"
+
   /tasks:
     post:
       operationId: submitTask
@@ -82,6 +154,20 @@ paths:
           in: query
           schema:
             type: string
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+        - name: requester_action
+          in: query
+          schema:
+            type: string
+            enum: [approval, input]
+        - name: created_after
+          in: query
+          schema:
+            type: string
+            format: date-time
       responses:
         "200":
           description: List of user's tasks
@@ -104,6 +190,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskResponse"
+
+  /tasks/{task_id}/messages:
+    post:
+      operationId: appendTaskMessage
+      summary: Add requester input and start the next task run
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppendTaskMessageRequest"
+      responses:
+        "200":
+          description: Original task returned for an idempotent retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "201":
+          description: Follow-up accepted and next run queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+  /tasks/{task_id}/runs:
+    get:
+      operationId: listTaskRuns
+      summary: List compact run attempts for one task
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/TaskIdParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Requester-authorized run attempt history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunAttemptList"
 
   /tasks/{task_id}/events:ticket:
     post:
@@ -134,6 +268,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Cancellation accepted or already terminal
@@ -149,6 +288,11 @@ paths:
       tags: [Tasks]
       parameters:
         - $ref: "#/components/parameters/TaskIdParam"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -211,6 +355,27 @@ paths:
         "412":
           description: The action digest is stale
 
+  /approvals/{approval_id}:
+    get:
+      operationId: getApproval
+      summary: Get requester-authorized approval detail and decision evidence
+      tags: [Approvals]
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approval detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotApproval"
+        "404":
+          description: Approval request was not found
+
   /artifacts/{artifact_id}:
     get:
       operationId: getArtifact
@@ -229,6 +394,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ArtifactResponse"
+
+  /artifacts:
+    get:
+      operationId: listMyArtifacts
+      summary: List requester-scoped artifacts across tasks
+      tags: [Artifacts]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: task_id
+          in: query
+          schema:
+            type: string
+        - name: classification
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Requester-scoped artifact list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactList"
 
 components:
   securitySchemes:
@@ -257,6 +446,12 @@ components:
         default: 25
     TaskIdParam:
       name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+    AttachmentIdParam:
+      name: attachment_id
       in: path
       required: true
       schema:
@@ -337,15 +532,72 @@ components:
           type: string
         status:
           type: string
-          enum: [queued, provisioning, running, awaiting_approval, suspended, canceling, completed, failed, canceled]
+          enum: [queued, provisioning, running, awaiting_approval, awaiting_requester_input, suspended, canceling, completed, failed, canceled]
         current_run:
           $ref: "#/components/schemas/RunStatus"
         artifacts:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactResponse"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskMessage"
         created_at:
           $ref: "#/components/schemas/Timestamp"
+
+    TaskMessage:
+      type: object
+      required: [id, role, content, created_at]
+      properties:
+        id:
+          type: string
+        run_id:
+          type: string
+        role:
+          type: string
+          enum: [requester, agent]
+        content:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    AppendTaskMessageRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    RunAttempt:
+      type: object
+      required: [id, attempt_number, status, created_at]
+      properties:
+        id:
+          type: string
+        attempt_number:
+          type: integer
+        status:
+          type: string
+        status_reason:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        started_at:
+          $ref: "#/components/schemas/Timestamp"
+        completed_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    RunAttemptList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunAttempt"
+        page_info:
+          $ref: "#/components/schemas/PageInfo"
 
     TaskList:
       type: object
@@ -420,6 +672,14 @@ components:
           $ref: "#/components/schemas/Timestamp"
         created_at:
           $ref: "#/components/schemas/Timestamp"
+        task_id:
+          type: string
+        effect:
+          type: string
+        policy_version:
+          type: string
+        latest_decision:
+          $ref: "#/components/schemas/ApprovalDecisionEvidence"
 
     CopilotApprovalList:
       type: object
@@ -461,6 +721,20 @@ components:
           type: string
           enum: [approve, reject]
 
+    ApprovalDecisionEvidence:
+      type: object
+      required: [decision, decided_by, created_at]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+        decided_by:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
     # --- Artifacts ---
     ArtifactResponse:
       type: object
@@ -493,6 +767,68 @@ components:
           type: string
           description: Short-lived pre-signed download URL
         download_url_expires_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    ArtifactList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactResponse"
+        page_info:
+          $ref: "#/components/schemas/PageInfo"
+
+    # --- Attachments ---
+    CreateAttachmentRequest:
+      type: object
+      required: [filename, media_type, size_bytes, digest]
+      properties:
+        filename:
+          type: string
+        media_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        digest:
+          type: string
+          description: SHA-256 digest in sha256:<hex> form
+        classification:
+          type: string
+
+    AttachmentResponse:
+      type: object
+      required: [id, filename, media_type, size_bytes, digest, classification, state, scan_status]
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        media_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        digest:
+          type: string
+        classification:
+          type: string
+        state:
+          type: string
+          enum: [declared, uploaded, available, rejected]
+        scan_status:
+          type: string
+          enum: [pending, passed, failed]
+        upload_url:
+          type: string
+          description: Short-lived request path for the content upload
+        upload_token:
+          type: string
+          description: Short-lived upload credential, returned only on creation
+        upload_expires_at:
           $ref: "#/components/schemas/Timestamp"
 
     TaskEventsTicket:

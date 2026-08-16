@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Timer, XCircle } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Send, Timer, XCircle } from 'lucide-react';
 import { Button, StatusMark } from '@gantry/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
@@ -15,9 +15,13 @@ export function TaskPage() {
   const api = useCopilotApi();
   const queryClient = useQueryClient();
   const [output, setOutput] = useState('');
+  const [followUp, setFollowUp] = useState('');
   const [streamState, setStreamState] = useState<'connecting' | 'connected' | 'reconnecting' | 'closed'>('connecting');
   const cursorRef = useRef('');
   const seenSequences = useRef(new Set<number>());
+  const followUpKeyRef = useRef<string | null>(null);
+  const cancelKeyRef = useRef<string | null>(null);
+  const retryKeyRef = useRef<string | null>(null);
   const taskQuery = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => api.getTask(taskId),
@@ -28,17 +32,52 @@ export function TaskPage() {
     mutationFn: () => {
       const runId = taskQuery.data?.current_run?.id;
       if (!runId) throw new Error('This task has no active run.');
-      return api.cancelRun(taskId, runId);
+      if (!cancelKeyRef.current) cancelKeyRef.current = crypto.randomUUID();
+      return api.cancelRun(taskId, runId, cancelKeyRef.current);
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['task', taskId] }),
+    onSuccess: () => {
+      cancelKeyRef.current = null;
+      void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+    },
   });
   const retryMutation = useMutation({
-    mutationFn: () => api.retryTask(taskId),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['task', taskId] }),
+    mutationFn: () => {
+      if (!retryKeyRef.current) retryKeyRef.current = crypto.randomUUID();
+      return api.retryTask(taskId, retryKeyRef.current);
+    },
+    onSuccess: () => {
+      retryKeyRef.current = null;
+      void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+    },
+  });
+  const followUpMutation = useMutation({
+    mutationFn: () => {
+      if (!followUpKeyRef.current) followUpKeyRef.current = crypto.randomUUID();
+      return api.appendTaskMessage(taskId, { message: followUp }, followUpKeyRef.current);
+    },
+    onSuccess: (nextTask) => {
+      setFollowUp('');
+      followUpKeyRef.current = null;
+      void queryClient.setQueryData(['task', taskId], nextTask);
+      void queryClient.invalidateQueries({ queryKey: ['task-runs', taskId] });
+    },
   });
   const task = taskQuery.data;
+  const runsQuery = useQuery({
+    queryKey: ['task-runs', taskId],
+    queryFn: () => api.listTaskRuns(taskId),
+    enabled: Boolean(taskId),
+  });
+  const approvalsQuery = useQuery({
+    queryKey: ['task-approvals', taskId],
+    queryFn: () => api.listApprovals(),
+    enabled: task?.status === 'awaiting_approval',
+    refetchInterval: task?.status === 'awaiting_approval' ? 5000 : false,
+  });
   const canCancel = Boolean(task && activeStatuses.has(task.status) && task.current_run?.id && task.status !== 'canceling');
   const canRetry = Boolean(task && (task.status === 'failed' || task.status === 'canceled'));
+  const canContinue = task?.status === 'awaiting_requester_input';
+  const pendingApproval = approvalsQuery.data?.items.find((approval) => approval.run_id === task?.current_run?.id);
   const timeline = useMemo(() => buildTimeline(task?.status), [task?.status]);
 
   useEffect(() => {
@@ -129,7 +168,10 @@ export function TaskPage() {
       <div className="task-workbench">
         <section className="conversation-panel">
           <div className="conversation-heading"><div><span className="eyebrow">Task detail</span><h1>{task.agent_display_name ?? task.agent_id}</h1><p>Task {task.id}</p></div><StatusMark status={task.status} /></div>
-          <div className="request-message"><span className="message-label">Your request</span><p>This task was submitted to {task.agent_display_name ?? task.agent_id}.</p></div>
+          <div className="conversation-messages" aria-label="Task conversation">
+            {task.messages?.map((message) => <div className={`request-message ${message.role === 'agent' ? 'agent-message' : ''}`} key={message.id}><span className="message-label">{message.role === 'agent' ? 'Agent' : 'Your request'}</span><p>{message.content}</p></div>)}
+            {!task.messages?.length ? <div className="request-message"><span className="message-label">Your request</span><p>This task was submitted to {task.agent_display_name ?? task.agent_id}.</p></div> : null}
+          </div>
           <div className="run-output" aria-live="polite">
             <div className="output-heading"><span>Live output</span><span className={`stream-state ${streamState}`}>{streamState}</span></div>
             <pre>{output || 'Waiting for runner output…'}</pre>
@@ -138,16 +180,19 @@ export function TaskPage() {
             {timeline.map(({ label, status, Icon }) => <div className={`timeline-item ${status}`} key={label}><span className="timeline-icon"><Icon size={16} /></span><span>{label}</span></div>)}
           </div>
           {task.current_run?.status_reason ? <div className="reason-box"><strong>Run note</strong><p>{task.current_run.status_reason}</p></div> : null}
-          {cancelMutation.isError || retryMutation.isError ? <p className="inline-error" role="alert">{(cancelMutation.error ?? retryMutation.error) instanceof Error ? (cancelMutation.error ?? retryMutation.error)?.message : 'The command could not be completed.'}</p> : null}
+          {canContinue ? <form className="follow-up-composer" onSubmit={(event) => { event.preventDefault(); if (followUp.trim()) followUpMutation.mutate(); }}><label htmlFor="task-follow-up">Continue this task</label><textarea id="task-follow-up" value={followUp} onChange={(event) => setFollowUp(event.target.value)} placeholder="Describe what should change before the next attempt" maxLength={8000} disabled={followUpMutation.isPending} /><Button type="submit" disabled={!followUp.trim() || followUpMutation.isPending}><Send size={16} /> {followUpMutation.isPending ? 'Starting…' : 'Continue'}</Button></form> : null}
+          {cancelMutation.isError || retryMutation.isError || followUpMutation.isError ? <p className="inline-error" role="alert">{(cancelMutation.error ?? retryMutation.error ?? followUpMutation.error) instanceof Error ? (cancelMutation.error ?? retryMutation.error ?? followUpMutation.error)?.message : 'The command could not be completed.'}</p> : null}
           <div className="task-actions">
             <Button variant="danger" disabled={!canCancel || cancelMutation.isPending} onClick={() => cancelMutation.mutate()}><Ban size={16} /> {cancelMutation.isPending ? 'Canceling…' : 'Cancel run'}</Button>
             {canRetry ? <Button variant="secondary" disabled={retryMutation.isPending} onClick={() => retryMutation.mutate()}><RotateCcw size={16} /> {retryMutation.isPending ? 'Retrying…' : 'Retry task'}</Button> : null}
+            {pendingApproval ? <Button variant="secondary" onClick={() => navigate(`/approvals/${pendingApproval.id}`)}>Open approval</Button> : null}
             <Button variant="quiet" onClick={() => navigate('/tasks')}>Back to history</Button>
           </div>
           {task.artifacts?.length ? <div className="artifact-list"><h2>Artifacts</h2>{task.artifacts.map((artifact) => <ArtifactRow key={artifact.id} artifact={artifact} onDownload={async () => {
             const result = await api.getArtifact(artifact.id);
             if (result.download_url) window.open(result.download_url, '_blank', 'noopener,noreferrer');
           }} />)}</div> : null}
+          {runsQuery.data?.items.length ? <section className="run-attempts"><h2>Run attempts</h2>{runsQuery.data.items.map((run) => <div className="run-attempt-row" key={run.id}><span>Attempt {run.attempt_number}</span><StatusMark status={run.status} /><span>{run.status_reason || formatDate(run.completed_at ?? run.started_at ?? run.created_at)}</span></div>)}</section> : null}
         </section>
         <aside className="run-inspector">
           <span className="context-kicker">Run inspector</span>

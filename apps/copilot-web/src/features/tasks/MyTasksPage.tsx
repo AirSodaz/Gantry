@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, CheckCircle2, Clock, Filter, ListTodo, XCircle } from 'lucide-react';
 import { Select, type SelectOption, StatusMark } from '@gantry/design-system';
 import { useQuery } from '@tanstack/react-query';
@@ -13,15 +13,44 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={13} /> },
   { value: 'failed', label: 'Failed', icon: <XCircle size={13} /> },
   { value: 'canceled', label: 'Canceled', icon: <XCircle size={13} /> },
+  { value: 'awaiting_approval', label: 'Awaiting approval', icon: <Clock size={13} /> },
+  { value: 'awaiting_requester_input', label: 'Needs input', icon: <Clock size={13} /> },
+];
+
+const ACTION_OPTIONS: SelectOption[] = [
+  { value: '', label: 'All requester actions' },
+  { value: 'approval', label: 'Approval needed' },
+  { value: 'input', label: 'Input needed' },
+];
+
+const TIME_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Any time' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
 ];
 
 export function MyTasksPage() {
   const api = useCopilotApi();
-  const [filter, setFilter] = useState('');
+  const [params, setParams] = useSearchParams();
+  const status = params.get('status') ?? '';
+  const agentId = params.get('agent_id') ?? '';
+  const requesterAction = params.get('requester_action') ?? '';
+  const timeRange = params.get('time_range') ?? '';
+  const createdAfter = useMemo(() => rangeStart(timeRange), [timeRange]);
+  const agentsQuery = useQuery({ queryKey: ['agents', 'task-history'], queryFn: () => api.listAgents() });
+  const agentOptions = useMemo<SelectOption[]>(() => [
+    { value: '', label: 'All agents' },
+    ...(agentsQuery.data?.items ?? []).map((agent) => ({ value: agent.id, label: agent.display_name })),
+  ], [agentsQuery.data]);
   const query = useQuery({
-    queryKey: ['tasks', filter],
-    queryFn: () => api.listTasks(filter),
+    queryKey: ['tasks', status, agentId, requesterAction, timeRange],
+    queryFn: () => api.listTasks({ status, agentId, requesterAction, createdAfter }),
   });
+  const setFilter = (key: 'status' | 'agent_id' | 'requester_action' | 'time_range', value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
+  };
 
   return (
     <div className="page-wrap narrow-page">
@@ -34,12 +63,15 @@ export function MyTasksPage() {
 
         <div className="history-filter-wrap">
           <Select
-            label="Status filter"
+            label="Status"
             options={STATUS_OPTIONS}
-            value={filter}
-            onChange={setFilter}
+            value={status}
+            onChange={(value) => setFilter('status', value)}
             placeholder="All statuses"
           />
+          <Select label="Agent" options={agentOptions} value={agentId} onChange={(value) => setFilter('agent_id', value)} placeholder="All agents" />
+          <Select label="Requester action" options={ACTION_OPTIONS} value={requesterAction} onChange={(value) => setFilter('requester_action', value)} placeholder="All requester actions" />
+          <Select label="Time" options={TIME_OPTIONS} value={timeRange} onChange={(value) => setFilter('time_range', value)} placeholder="Any time" />
         </div>
       </div>
 
@@ -55,7 +87,7 @@ export function MyTasksPage() {
       {!query.isLoading && !query.isError && query.data?.items.length === 0 ? (
         <EmptyState
           title="No tasks yet"
-          detail={filter ? 'No tasks match the selected filter.' : 'Start with a new task when you are ready.'}
+          detail={status || agentId || requesterAction || timeRange ? 'No tasks match the selected filters.' : 'Start with a new task when you are ready.'}
         />
       ) : null}
 
@@ -76,6 +108,13 @@ export function MyTasksPage() {
       </div>
     </div>
   );
+}
+
+function rangeStart(range: string) {
+  if (range !== '7d' && range !== '30d') return undefined;
+  const date = new Date();
+  date.setDate(date.getDate() - (range === '7d' ? 7 : 30));
+  return date.toISOString();
 }
 
 function formatDate(value?: string) {

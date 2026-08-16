@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -44,6 +43,29 @@ func (s *Service) ListArtifacts(ctx context.Context, actor identity.Principal, t
 	return items, rows.Err()
 }
 
+// ListMyArtifacts returns only artifacts belonging to tasks initiated by the
+// current requester. A Copilot artifact browser never becomes a workspace file
+// inventory, even when an artifact has broader runtime visibility.
+func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, limit int) ([]Artifact, error) {
+	if s.store == nil {
+		return []Artifact{}, nil
+	}
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE t.requester_principal_id=$1 AND ($2='' OR ar.task_id=$2) AND ($3='' OR ar.classification=$3) ORDER BY ar.created_at DESC, ar.id DESC LIMIT $4`, actor.ID, strings.TrimSpace(taskID), strings.TrimSpace(classification), boundedLimit(limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]Artifact, 0)
+	for rows.Next() {
+		var item Artifact
+		if err := rows.Scan(&item.ID, &item.TaskID, &item.RunID, &item.Filename, &item.MediaType, &item.SizeBytes, &item.Digest, &item.Classification, &item.ScanStatus, &item.State, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func (s *Service) GetArtifact(ctx context.Context, actor identity.Principal, artifactID string) (Artifact, error) {
 	if s.store == nil {
 		return Artifact{}, ErrNotFound
@@ -57,15 +79,14 @@ func (s *Service) GetArtifact(ctx context.Context, actor identity.Principal, art
 	if err != nil {
 		return Artifact{}, err
 	}
-	if item.State != "available" || item.ScanStatus != "passed" {
-		return Artifact{}, fmt.Errorf("artifact is not available")
+	if item.State == "available" && item.ScanStatus == "passed" {
+		url, expiresAt, err := s.store.PresignGet(ctx, objectKey, 2*time.Minute)
+		if err != nil {
+			return Artifact{}, err
+		}
+		item.DownloadURL = url
+		item.DownloadURLExpires = expiresAt
 	}
-	url, expiresAt, err := s.store.PresignGet(ctx, objectKey, 2*time.Minute)
-	if err != nil {
-		return Artifact{}, err
-	}
-	item.DownloadURL = url
-	item.DownloadURLExpires = expiresAt
 	return item, nil
 }
 
