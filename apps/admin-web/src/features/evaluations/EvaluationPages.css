@@ -3,6 +3,10 @@
   gap: 20px;
 }
 
+.evaluation-page > * {
+  min-width: 0;
+}
+
 .evaluation-toolbar,
 .evaluation-create,
 .evaluation-command {
@@ -29,6 +33,10 @@
 .evaluation-layout {
   display: grid;
   gap: 24px;
+}
+
+.evaluation-layout > * {
+  min-width: 0;
 }
 
 .evaluation-section {
@@ -63,6 +71,7 @@
   display: block;
   color: var(--ds-text-muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .evaluation-section-heading h2 {
@@ -88,6 +97,17 @@
 }
 
 @media (max-width: 640px) {
+  .evaluation-page .admin-detail-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .evaluation-page .admin-detail-title h1 {
+    overflow-wrap: anywhere;
+    font-size: 24px;
+  }
+
   .evaluation-toolbar,
   .evaluation-create,
   .evaluation-command {
@@ -103,5 +123,10 @@
 
   .evaluation-row {
     align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .evaluation-row > div {
+    width: 100%;
   }
 }
