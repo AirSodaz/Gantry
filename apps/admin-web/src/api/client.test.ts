@@ -51,4 +51,31 @@ describe('AdminApi', () => {
     await api.listRuns({ workspaceId: 'ws_1', agentId: 'agt_1', revisionHash: 'sha256:abc', status: 'failed', limit: 20 });
     expect(fetchMock).toHaveBeenCalledWith('/api/admin/v1/runs?workspace_id=ws_1&agent_id=agt_1&revision_hash=sha256%3Aabc&status=failed&limit=20', expect.anything());
   });
+
+  it('preserves Policy Draft ETags and idempotency headers', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ policy_id: 'pol_1', etag: '2', document: {}, schema_version: 'gantry.policy/v1', validation: { state: 'valid', findings: [] } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'pver_1' }), { status: 201 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.updatePolicyDraft('pol_1', '2', { document: { kind: 'approval', rules: [] } });
+    await api.publishPolicyVersion('pol_1', '2', 'Publish', 'publish-1');
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/policies/pol_1/draft', expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"2"' }) }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/policies/pol_1/versions', expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"2"', 'Idempotency-Key': 'publish-1' }) }));
+  });
+
+  it('uses the Integration management routes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'int_1' }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listIntegrations({ state: 'active' });
+    await api.createIntegration({ slug: 'hr', display_name: 'HR' });
+    await api.listIntegrationClients('int_1');
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/integrations?state=active', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/integrations', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/admin/v1/integrations/int_1/clients', expect.anything());
+  });
 });

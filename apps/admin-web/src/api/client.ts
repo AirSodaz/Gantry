@@ -1,4 +1,4 @@
-import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminAuditEvent, AdminAuditEventDetail, AdminAuditExport, AdminAuditExportDownload, AdminOverview, AdminRun, AdminRunDetail, Agent, AgentDeployment, AgentLifecycleOverview, AgentRevision, AgentRevisionReview, AssetUsage, CreateAgentInput, CreatePolicyInput, EvaluationCase, EvaluationRun, EvaluationSuite, EvaluationSuiteVersion, NamedAgentDraft, Plugin, PluginDetail, Policy, PolicyBinding, PolicyDraft, PolicySimulation, PolicyVersion, Skill, Tool, Workspace, Integration, IntegrationClient, AgentPublication, WebhookEndpoint, WebhookDelivery } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -13,6 +13,9 @@ type TokenProvider = () => string | null;
 export type AssetListOptions = { workspaceId?: string; search?: string; status?: string };
 export type RunListOptions = { workspaceId?: string; agentId?: string; revisionHash?: string; status?: AdminRun['status']; limit?: number };
 export type AuditListOptions = { workspaceId?: string; resourceType?: string; resourceId?: string; actorId?: string; eventType?: string; outcome?: string; risk?: string; correlationId?: string; runId?: string; revisionHash?: string; policyVersionId?: string; before?: string; after?: string; cursor?: string; limit?: number };
+export type PolicyListOptions = { type?: string; workspaceId?: string; state?: Policy['state']; ownerId?: string; bindingTarget?: string; cursor?: string; limit?: number };
+export type EvaluationSuiteListOptions = { workspaceId?: string; state?: EvaluationSuite['state']; search?: string; limit?: number };
+export type IntegrationListOptions = { state?: Integration['state'] };
 
 export class AdminApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
@@ -55,6 +58,53 @@ export class AdminApi {
   }
   getAuditExport(exportId: string) { return this.request<AdminAuditExport>(`/audit-exports/${encodeURIComponent(exportId)}`); }
   downloadAuditExport(exportId: string) { return this.request<AdminAuditExportDownload>(`/audit-exports/${encodeURIComponent(exportId)}/download`); }
+  listPolicies(options: PolicyListOptions = {}) {
+    const query = new URLSearchParams();
+    const entries: [string, string | undefined][] = [['type', options.type], ['workspace_id', options.workspaceId], ['state', options.state], ['owner_id', options.ownerId], ['binding_target', options.bindingTarget], ['cursor', options.cursor]];
+    for (const [key, value] of entries) if (value) query.set(key, value);
+    if (options.limit) query.set('limit', String(options.limit));
+    const value = query.toString();
+    return this.request<{ items: Policy[]; page_info: { next_cursor: string | null } }>(`/policies${value ? `?${value}` : ''}`);
+  }
+  createPolicy(input: CreatePolicyInput) { return this.request<{ policy: Policy; draft: PolicyDraft }>('/policies', { method: 'POST', body: JSON.stringify(input) }); }
+  getPolicy(policyId: string) { return this.request<Policy>(`/policies/${encodeURIComponent(policyId)}`); }
+  getPolicyDraft(policyId: string) { return this.request<PolicyDraft>(`/policies/${encodeURIComponent(policyId)}/draft`); }
+  updatePolicyDraft(policyId: string, etag: string, input: { document: Record<string, unknown>; schema_version?: string }) { return this.request<PolicyDraft>(`/policies/${encodeURIComponent(policyId)}/draft`, { method: 'PATCH', headers: { 'If-Match': `"${etag.replace(/^"|"$/g, '')}"` }, body: JSON.stringify(input) }); }
+  validatePolicy(policyId: string) { return this.request<PolicyDraft>(`/policies/${encodeURIComponent(policyId)}:validate`, { method: 'POST', body: '{}' }); }
+  listPolicyVersions(policyId: string) { return this.request<{ items: PolicyVersion[] }>(`/policies/${encodeURIComponent(policyId)}/versions`); }
+  publishPolicyVersion(policyId: string, etag: string, message: string, idempotencyKey: string) { return this.request<PolicyVersion>(`/policies/${encodeURIComponent(policyId)}/versions`, { method: 'POST', headers: { 'If-Match': `"${etag.replace(/^"|"$/g, '')}"`, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ message }) }); }
+  listPolicyBindings(policyId: string) { return this.request<{ items: PolicyBinding[] }>(`/policies/${encodeURIComponent(policyId)}/bindings`); }
+  bindPolicy(policyId: string, input: { version_id: string; scope: 'organization' | 'workspace'; workspace_id?: string; target_resource_id?: string; environment: 'development' | 'staging' | 'production'; reason?: string }, idempotencyKey: string) { return this.request<PolicyBinding>(`/policies/${encodeURIComponent(policyId)}/bindings`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }); }
+  revokePolicyBinding(bindingId: string, reason: string, idempotencyKey: string) { return this.request<PolicyBinding>(`/policy-bindings/${encodeURIComponent(bindingId)}:revoke`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ reason }) }); }
+  simulatePolicy(policyId: string, input: { version_id?: string; action?: Record<string, unknown> }) { return this.request<PolicySimulation>(`/policies/${encodeURIComponent(policyId)}:simulate`, { method: 'POST', body: JSON.stringify(input) }); }
+  retirePolicy(policyId: string, reason: string, idempotencyKey: string) { return this.request<Policy>(`/policies/${encodeURIComponent(policyId)}:retire`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ reason }) }); }
+  listEvaluationSuites(options: EvaluationSuiteListOptions = {}) { const query = new URLSearchParams(); if (options.workspaceId) query.set('workspace_id', options.workspaceId); if (options.state) query.set('state', options.state); if (options.search) query.set('search', options.search); if (options.limit) query.set('limit', String(options.limit)); const value = query.toString(); return this.request<{ items: EvaluationSuite[]; page_info: { next_cursor: string | null } }>(`/evaluation-suites${value ? `?${value}` : ''}`); }
+  createEvaluationSuite(input: { workspace_id: string; name: string }) { return this.request<EvaluationSuite>('/evaluation-suites', { method: 'POST', body: JSON.stringify(input) }); }
+  getEvaluationSuite(suiteId: string) { return this.request<EvaluationSuite>(`/evaluation-suites/${encodeURIComponent(suiteId)}`); }
+  patchEvaluationSuite(suiteId: string, etag: string, name: string) { return this.request<EvaluationSuite>(`/evaluation-suites/${encodeURIComponent(suiteId)}`, { method: 'PATCH', headers: { 'If-Match': `"${etag.replace(/^"|"$/g, '')}"` }, body: JSON.stringify({ name }) }); }
+  validateEvaluationSuite(suiteId: string) { return this.request<{ state: string; findings: Record<string, unknown>[] }>(`/evaluation-suites/${encodeURIComponent(suiteId)}:validate`, { method: 'POST', body: '{}' }); }
+  listEvaluationCases(suiteId: string) { return this.request<{ items: EvaluationCase[] }>(`/evaluation-suites/${encodeURIComponent(suiteId)}/cases`); }
+  createEvaluationCase(suiteId: string, input: { input: Record<string, unknown>; fixture_manifest: Record<string, unknown>; assertions: Record<string, unknown>[]; rubric?: Record<string, unknown>; compatibility?: Record<string, unknown> }) { return this.request<EvaluationCase>(`/evaluation-suites/${encodeURIComponent(suiteId)}/cases`, { method: 'POST', body: JSON.stringify(input) }); }
+  listEvaluationVersions(suiteId: string) { return this.request<{ items: EvaluationSuiteVersion[] }>(`/evaluation-suites/${encodeURIComponent(suiteId)}/versions`); }
+  publishEvaluationVersion(suiteId: string, etag: string, input: { runtime_image_digest: string; evaluator_policy_version_id?: string }, idempotencyKey: string) { return this.request<EvaluationSuiteVersion>(`/evaluation-suites/${encodeURIComponent(suiteId)}/versions`, { method: 'POST', headers: { 'If-Match': `"${etag.replace(/^"|"$/g, '')}"`, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }); }
+  listEvaluationRuns(suiteId: string) { return this.request<{ items: EvaluationRun[] }>(`/evaluation-suites/${encodeURIComponent(suiteId)}/runs`); }
+  createEvaluationRun(suiteId: string, input: { suite_version_id: string; candidate_revision_hash: string; baseline_revision_hash?: string; environment_digest: string }, idempotencyKey: string) { return this.request<EvaluationRun>(`/evaluation-suites/${encodeURIComponent(suiteId)}/runs`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }); }
+  getEvaluationRun(runId: string) { return this.request<EvaluationRun>(`/evaluation-runs/${encodeURIComponent(runId)}`); }
+  cancelEvaluationRun(runId: string) { return this.request<EvaluationRun>(`/evaluation-runs/${encodeURIComponent(runId)}:cancel`, { method: 'POST', body: '{}' }); }
+  listIntegrations(options: IntegrationListOptions = {}) { const query = options.state ? `?state=${encodeURIComponent(options.state)}` : ''; return this.request<{ items: Integration[]; page_info: { next_cursor: string | null } }>(`/integrations${query}`); }
+  createIntegration(input: { slug: string; display_name: string }) { return this.request<Integration>('/integrations', { method: 'POST', body: JSON.stringify(input) }); }
+  getIntegration(id: string) { return this.request<Integration>(`/integrations/${encodeURIComponent(id)}`); }
+  patchIntegration(id: string, displayName: string) { return this.request<Integration>(`/integrations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ display_name: displayName }) }); }
+  listIntegrationClients(id: string) { return this.request<{ items: IntegrationClient[] }>(`/integrations/${encodeURIComponent(id)}/clients`); }
+  createIntegrationClient(id: string, input: { environment: IntegrationClient['environment']; auth_modes: string[]; audience?: string; credential_fingerprint: string; expires_at?: string }) { return this.request<IntegrationClient>(`/integrations/${encodeURIComponent(id)}/clients`, { method: 'POST', body: JSON.stringify(input) }); }
+  rotateIntegrationClient(id: string, credentialFingerprint: string) { return this.request<IntegrationClient>(`/integration-clients/${encodeURIComponent(id)}:rotate`, { method: 'POST', body: JSON.stringify({ credential_fingerprint: credentialFingerprint }) }); }
+  disableIntegrationClient(id: string) { return this.request<void>(`/integration-clients/${encodeURIComponent(id)}:disable`, { method: 'POST', body: '{}' }); }
+  listIntegrationPublications(id: string) { return this.request<{ items: AgentPublication[] }>(`/integrations/${encodeURIComponent(id)}/publications`); }
+  createIntegrationPublication(id: string, input: Omit<AgentPublication, 'id' | 'integration_id' | 'state'>) { return this.request<AgentPublication>(`/integrations/${encodeURIComponent(id)}/publications`, { method: 'POST', body: JSON.stringify(input) }); }
+  revokeIntegrationPublication(id: string) { return this.request<void>(`/integration-publications/${encodeURIComponent(id)}:revoke`, { method: 'POST', body: '{}' }); }
+  listIntegrationWebhooks(id: string) { return this.request<{ items: WebhookEndpoint[] }>(`/integrations/${encodeURIComponent(id)}/webhooks`); }
+  createIntegrationWebhook(id: string, input: { environment: WebhookEndpoint['environment']; destination: string; signing_key_fingerprint: string; subscribed_events: string[]; retry_policy?: Record<string, unknown> }) { return this.request<WebhookEndpoint>(`/integrations/${encodeURIComponent(id)}/webhooks`, { method: 'POST', body: JSON.stringify(input) }); }
+  redeliverWebhook(id: string, deliveryId: string) { return this.request<WebhookDelivery>(`/webhook-endpoints/${encodeURIComponent(id)}:redeliver`, { method: 'POST', body: JSON.stringify({ delivery_id: deliveryId }) }); }
   listSkills(options: AssetListOptions = {}) {
     return this.request<{ items: Skill[] }>(`/skills${this.assetListQuery(options)}`);
   }

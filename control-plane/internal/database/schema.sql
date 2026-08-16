@@ -406,3 +406,215 @@ CREATE TABLE IF NOT EXISTS gantry.approval_decisions (
 );
 
 CREATE INDEX IF NOT EXISTS approval_requests_assignee_idx ON gantry.approval_requests (assigned_principal_id, status, created_at);
+
+-- Policies own typed governance documents independently from runtime action
+-- evaluation. Drafts are mutable working copies; versions and bindings are
+-- immutable evidence projections.
+CREATE TABLE IF NOT EXISTS gantry.policies (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text REFERENCES gantry.workspaces(id),
+  type text NOT NULL CHECK (type IN ('approval', 'model', 'tool', 'command', 'network', 'credential', 'data', 'budget', 'retention', 'evaluation', 'publication')),
+  name text NOT NULL,
+  owner_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  state text NOT NULL CHECK (state IN ('draft', 'published', 'retired')),
+  schema_version text NOT NULL,
+  draft_etag integer NOT NULL CHECK (draft_etag > 0),
+  latest_version_id text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, workspace_id, name)
+);
+CREATE INDEX IF NOT EXISTS policies_scope_idx ON gantry.policies (organization_id, workspace_id, state, name);
+
+CREATE TABLE IF NOT EXISTS gantry.policy_drafts (
+  policy_id text PRIMARY KEY REFERENCES gantry.policies(id),
+  document jsonb NOT NULL,
+  schema_version text NOT NULL,
+  etag integer NOT NULL CHECK (etag > 0),
+  validation_state text NOT NULL CHECK (validation_state IN ('valid', 'invalid', 'pending')),
+  validation_findings jsonb NOT NULL DEFAULT '[]'::jsonb,
+  updated_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS gantry.policy_versions (
+  id text PRIMARY KEY,
+  policy_id text NOT NULL REFERENCES gantry.policies(id),
+  content_digest text NOT NULL,
+  schema_version text NOT NULL,
+  message text NOT NULL,
+  document jsonb NOT NULL,
+  compiler_evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (policy_id, content_digest)
+);
+CREATE INDEX IF NOT EXISTS policy_versions_policy_idx ON gantry.policy_versions (policy_id, created_at, id);
+
+CREATE TABLE IF NOT EXISTS gantry.policy_bindings (
+  id text PRIMARY KEY,
+  policy_id text NOT NULL REFERENCES gantry.policies(id),
+  version_id text NOT NULL REFERENCES gantry.policy_versions(id),
+  target_scope text NOT NULL CHECK (target_scope IN ('organization', 'workspace')),
+  target_workspace_id text REFERENCES gantry.workspaces(id),
+  target_resource_id text,
+  environment text NOT NULL CHECK (environment IN ('development', 'staging', 'production')),
+  state text NOT NULL CHECK (state IN ('pending', 'active', 'expired', 'revoked')),
+  effective_from timestamptz NOT NULL DEFAULT now(),
+  effective_until timestamptz,
+  reason text NOT NULL DEFAULT '',
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  revoked_at timestamptz,
+  CHECK ((target_scope = 'organization' AND target_workspace_id IS NULL) OR (target_scope = 'workspace' AND target_workspace_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS policy_bindings_policy_idx ON gantry.policy_bindings (policy_id, state, effective_from DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.policy_command_idempotency (
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  route text NOT NULL,
+  idempotency_key text NOT NULL,
+  request_digest text NOT NULL,
+  response_json jsonb NOT NULL,
+  status_code integer NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (principal_id, route, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_suites (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  name text NOT NULL,
+  state text NOT NULL CHECK (state IN ('draft', 'published', 'retired')),
+  owner_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  latest_version_id text,
+  etag integer NOT NULL CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, name)
+);
+CREATE INDEX IF NOT EXISTS evaluation_suites_workspace_idx ON gantry.evaluation_suites (workspace_id, state, name);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_cases (
+  id text PRIMARY KEY,
+  suite_id text NOT NULL REFERENCES gantry.evaluation_suites(id),
+  input_json jsonb NOT NULL,
+  fixture_manifest_json jsonb NOT NULL,
+  assertions_json jsonb NOT NULL,
+  rubric_json jsonb,
+  compatibility_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  etag integer NOT NULL CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS evaluation_cases_suite_idx ON gantry.evaluation_cases (suite_id, id);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_suite_versions (
+  id text PRIMARY KEY,
+  suite_id text NOT NULL REFERENCES gantry.evaluation_suites(id),
+  content_digest text NOT NULL,
+  case_manifest_digest text NOT NULL,
+  fixture_manifest_digest text NOT NULL,
+  evaluator_policy_version_id text NOT NULL DEFAULT '',
+  runtime_image_digest text NOT NULL,
+  published_at timestamptz NOT NULL DEFAULT now(),
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  UNIQUE (suite_id, content_digest)
+);
+CREATE INDEX IF NOT EXISTS evaluation_suite_versions_suite_idx ON gantry.evaluation_suite_versions (suite_id, published_at, id);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_runs (
+  id text PRIMARY KEY,
+  suite_version_id text NOT NULL REFERENCES gantry.evaluation_suite_versions(id),
+  candidate_revision_hash text NOT NULL,
+  baseline_revision_hash text,
+  environment_digest text NOT NULL,
+  state text NOT NULL CHECK (state IN ('requested', 'queued', 'provisioning', 'running', 'completed', 'failed', 'canceled', 'invalid')),
+  gate_result text NOT NULL CHECK (gate_result IN ('not_applicable', 'passed', 'failed', 'blocked', 'invalid')),
+  deterministic_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  probabilistic_summary jsonb,
+  evidence_manifest_digest text,
+  requested_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS evaluation_runs_suite_idx ON gantry.evaluation_runs (suite_version_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_command_idempotency (
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  route text NOT NULL,
+  idempotency_key text NOT NULL,
+  request_digest text NOT NULL,
+  response_json jsonb NOT NULL,
+  PRIMARY KEY (principal_id, route, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.integrations (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  slug text NOT NULL,
+  display_name text NOT NULL,
+  state text NOT NULL CHECK (state IN ('active', 'disabled', 'retired')),
+  owner_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, slug)
+);
+CREATE INDEX IF NOT EXISTS integrations_org_idx ON gantry.integrations (organization_id, state, display_name);
+
+CREATE TABLE IF NOT EXISTS gantry.integration_clients (
+  id text PRIMARY KEY,
+  integration_id text NOT NULL REFERENCES gantry.integrations(id),
+  environment text NOT NULL CHECK (environment IN ('development', 'staging', 'production')),
+  auth_modes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  audience text NOT NULL DEFAULT '',
+  status text NOT NULL CHECK (status IN ('active', 'disabled', 'expired', 'revoked')),
+  credential_fingerprint text NOT NULL,
+  expires_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (integration_id, environment)
+);
+CREATE INDEX IF NOT EXISTS integration_clients_integration_idx ON gantry.integration_clients (integration_id, environment);
+
+CREATE TABLE IF NOT EXISTS gantry.integration_publications (
+  id text PRIMARY KEY,
+  integration_id text NOT NULL REFERENCES gantry.integrations(id),
+  client_id text NOT NULL REFERENCES gantry.integration_clients(id),
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  environment text NOT NULL CHECK (environment IN ('development', 'staging', 'production')),
+  revision_hash text NOT NULL,
+  input_contract_digest text NOT NULL,
+  output_contract_digest text NOT NULL,
+  authority_modes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  state text NOT NULL CHECK (state IN ('draft', 'active', 'expired', 'revoked')),
+  effective_until timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS integration_publications_integration_idx ON gantry.integration_publications (integration_id, state, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.webhook_endpoints (
+  id text PRIMARY KEY,
+  integration_id text NOT NULL REFERENCES gantry.integrations(id),
+  environment text NOT NULL,
+  destination text NOT NULL,
+  status text NOT NULL CHECK (status IN ('active', 'disabled', 'quarantined', 'retired')),
+  signing_key_fingerprint text NOT NULL,
+  subscribed_events jsonb NOT NULL DEFAULT '[]'::jsonb,
+  retry_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS webhook_endpoints_integration_idx ON gantry.webhook_endpoints (integration_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.webhook_deliveries (
+  id text PRIMARY KEY,
+  endpoint_id text NOT NULL REFERENCES gantry.webhook_endpoints(id),
+  event_id text NOT NULL,
+  delivery_id text NOT NULL,
+  attempt integer NOT NULL CHECK (attempt > 0),
+  state text NOT NULL CHECK (state IN ('queued', 'delivered', 'retrying', 'failed', 'canceled')),
+  response_class text,
+  next_attempt_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (endpoint_id, delivery_id, attempt)
+);

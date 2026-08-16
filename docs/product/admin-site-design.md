@@ -34,9 +34,9 @@ not add empty section landing pages.
 | Build | Plugins | `/plugins` | Organization catalog with workspace enablement | Current |
 | Build | Tools | `/tools` | Organization inventory with workspace availability | Current |
 | Operate | Runs | `/runs` | Workspace or all workspaces | Later |
-| Operate | Evaluations | `/evaluations` | Workspace | Later |
-| Govern | Integrations | `/integrations` | Organization | Later |
-| Govern | Policies | `/policies` | Organization and workspace | Later |
+| Operate | Evaluations | `/evaluations` | Workspace | Current (suite core) |
+| Govern | Integrations | `/integrations` | Organization | Current (management slice) |
+| Govern | Policies | `/policies` | Organization and workspace | Current (core lifecycle) |
 | Govern | Audit | `/audit` | Authorized organization/workspace scope | Later |
 | Platform | Runners | `/platform/runners` | Organization | Later |
 | Platform | Model Providers | `/platform/model-providers` | Organization | Later |
@@ -914,6 +914,9 @@ Production baseline, suite, owner, gate, status, risk, environment, and time are
 stored in the URL. `/agents/:agentId/evaluations` is the same result projection
 with a fixed Agent filter.
 
+The executable resource, schema, state, and authorization target is defined in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
+
 ### Suites
 
 Suites lists purpose, owner, immutable latest version, case count, deterministic
@@ -989,6 +992,9 @@ authority mode, published Agent, webhook health, and recent failures.
 Creating an Integration establishes its identity and ownership only. It does
 not issue a client credential, publish an Agent, or grant invocation authority
 implicitly.
+
+The executable resource, schema, state, and authorization target is defined in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
 
 ### Integration Resource
 
@@ -1077,6 +1083,9 @@ binding target, affected Agent, owner, and recent changes.
 The catalog distinguishes a Policy's authored state from its effective use. A
 valid Draft is not active, publishing a Version does not bind it, and removing
 a Binding does not delete the immutable Version or its evidence.
+
+The executable resource, schema, state, and authorization target is defined in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
 
 ### Policy Resource
 
@@ -1282,6 +1291,10 @@ destruction eligibility.
 ```text
 Organization | Workspace
 ```
+
+The typed resource, OpenAPI command, and authorization target for Platform
+management is defined in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
 
 There is no separate Workspace Settings route. Organization Administrators
 maintain organization defaults and non-negotiable bounds. A Workspace can set

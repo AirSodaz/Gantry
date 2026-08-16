@@ -14,6 +14,9 @@ import { AssetDetailPage, PluginsPage, SkillsPage, ToolsPage } from './features/
 import { OverviewPage } from './features/overview/OverviewPage';
 import { RunDetailPage, RunsPage } from './features/runs/RunPages';
 import { AuditEventDetailPage, AuditPage } from './features/audit/AuditPages';
+import { PoliciesPage, PolicyDetailPage } from './features/policies/PolicyPages';
+import { EvaluationsPage, EvaluationDetailPage } from './features/evaluations/EvaluationPages';
+import { IntegrationsPage, IntegrationDetailPage } from './features/integrations/IntegrationPages';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -66,6 +69,12 @@ export default function App() {
         <Route path="runs/:runId" element={<RunDetailPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="audit/events/:eventId" element={<AuditEventDetailPage />} />
+        <Route path="policies" element={<PoliciesPage />} />
+        <Route path="policies/:policyId" element={<PolicyDetailPage />} />
+        <Route path="evaluations" element={<EvaluationsPage />} />
+        <Route path="evaluations/:suiteId" element={<EvaluationDetailPage />} />
+        <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="integrations/:integrationId" element={<IntegrationDetailPage />} />
         <Route path="*" element={<OverviewPage />} />
       </Route>
     </Routes>

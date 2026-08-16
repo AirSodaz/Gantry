@@ -69,9 +69,10 @@ Current and planned resources:
   metadata, configuration read, Draft edit, Review, deployment, run inspection,
   execution, and ACL management.
 - Planned Run mutations and richer diagnostic projections remain separate from
-  the implemented read-only Run workbench. Planned resources include
-  `/evaluation-suites`, `/integrations`,
-  `/policies`, `/retention-policies`, `/legal-holds`, and
+  the implemented read-only Run workbench. Evaluation Suite/Case/Version and
+  exact Run request routes are implemented as a partial slice. Remaining
+  planned resources include `/integrations`,
+  `/retention-policies`, `/legal-holds`, and
   `/platform/runner-pools`, `/retention-deletion-jobs`, `/platform/settings`,
   `/platform/data-classifications`, `/platform/limit-policies`, and
   `/platform/environment-profiles`. `/audit-events`
@@ -81,7 +82,16 @@ Current and planned resources:
   not create resource-specific Audit stores. `/policies` is the
   unified typed Policy resource, including Approval Policies; it owns one
   mutable Draft, immutable Versions, exact Bindings, side-effect-free
-  simulation, and audit evidence. It does not expose an Admin approval inbox.
+  simulation, and audit evidence. Its core Draft/Version/Binding/Simulation/
+  Retire routes are implemented; it does not expose an Admin approval inbox.
+
+The complete target contract for the four resource families is in
+[Admin Governed Resource Contracts](admin-governed-resource-contracts.md). That
+document remains the authoritative design for their component schemas, state
+machines, command headers, route capabilities, and redaction rules. Policy's
+core routes are checked into the Admin OpenAPI source; Evaluation has its
+Suite/Case/Version/Run core routes, while Integrations and Platform remain
+target-only.
 
 ### Copilot API
 

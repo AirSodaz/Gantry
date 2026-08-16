@@ -12,7 +12,10 @@ import (
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/adminaudit"
+	"github.com/AirSodaz/gantry/internal/adminevaluation"
+	"github.com/AirSodaz/gantry/internal/adminintegration"
 	"github.com/AirSodaz/gantry/internal/adminoverview"
+	"github.com/AirSodaz/gantry/internal/adminpolicy"
 	"github.com/AirSodaz/gantry/internal/adminruns"
 	"github.com/AirSodaz/gantry/internal/agentlifecycle"
 	"github.com/AirSodaz/gantry/internal/authorization"
@@ -97,16 +100,69 @@ type auditService interface {
 	DownloadExport(context.Context, identity.Principal, string) (adminaudit.Download, error)
 }
 
+type policyService interface {
+	List(context.Context, identity.Principal, adminpolicy.ListOptions) (adminpolicy.ListResult, error)
+	Create(context.Context, identity.Principal, adminpolicy.CreateRequest) (adminpolicy.Policy, adminpolicy.Draft, error)
+	Get(context.Context, identity.Principal, string) (adminpolicy.Policy, error)
+	GetDraft(context.Context, identity.Principal, string) (adminpolicy.Draft, error)
+	UpdateDraft(context.Context, identity.Principal, string, string, adminpolicy.UpdateDraftRequest) (adminpolicy.Draft, error)
+	Validate(context.Context, identity.Principal, string) (adminpolicy.Draft, error)
+	ListVersions(context.Context, identity.Principal, string) ([]adminpolicy.Version, error)
+	Publish(context.Context, identity.Principal, string, string, string, adminpolicy.PublishRequest) (adminpolicy.Version, error)
+	ListBindings(context.Context, identity.Principal, string) ([]adminpolicy.Binding, error)
+	Bind(context.Context, identity.Principal, string, string, adminpolicy.BindRequest) (adminpolicy.Binding, error)
+	RevokeBinding(context.Context, identity.Principal, string, string, string) (adminpolicy.Binding, error)
+	Simulate(context.Context, identity.Principal, string, adminpolicy.SimulationRequest) (adminpolicy.Simulation, error)
+	Retire(context.Context, identity.Principal, string, string, string) (adminpolicy.Policy, error)
+}
+
+type evaluationService interface {
+	ListSuites(context.Context, identity.Principal, adminevaluation.ListOptions) (adminevaluation.SuiteList, error)
+	CreateSuite(context.Context, identity.Principal, adminevaluation.CreateSuiteRequest) (adminevaluation.Suite, error)
+	GetSuite(context.Context, identity.Principal, string) (adminevaluation.Suite, error)
+	PatchSuite(context.Context, identity.Principal, string, string, adminevaluation.PatchSuiteRequest) (adminevaluation.Suite, error)
+	ListCases(context.Context, identity.Principal, string) ([]adminevaluation.Case, error)
+	CreateCase(context.Context, identity.Principal, string, adminevaluation.CreateCaseRequest) (adminevaluation.Case, error)
+	PatchCase(context.Context, identity.Principal, string, string, string, adminevaluation.PatchCaseRequest) (adminevaluation.Case, error)
+	ValidateSuite(context.Context, identity.Principal, string) (adminevaluation.Validation, error)
+	ListVersions(context.Context, identity.Principal, string) ([]adminevaluation.Version, error)
+	PublishVersion(context.Context, identity.Principal, string, string, string, adminevaluation.PublishVersionRequest) (adminevaluation.Version, error)
+	ListRuns(context.Context, identity.Principal, string) ([]adminevaluation.Run, error)
+	CreateRun(context.Context, identity.Principal, string, string, adminevaluation.CreateRunRequest) (adminevaluation.Run, error)
+	GetRun(context.Context, identity.Principal, string) (adminevaluation.Run, error)
+	CancelRun(context.Context, identity.Principal, string) (adminevaluation.Run, error)
+}
+
+type integrationService interface {
+	List(context.Context, identity.Principal, string) ([]adminintegration.Integration, error)
+	Get(context.Context, identity.Principal, string) (adminintegration.Integration, error)
+	Create(context.Context, identity.Principal, adminintegration.CreateIntegrationRequest) (adminintegration.Integration, error)
+	Patch(context.Context, identity.Principal, string, adminintegration.PatchIntegrationRequest) (adminintegration.Integration, error)
+	ListClients(context.Context, identity.Principal, string) ([]adminintegration.Client, error)
+	CreateClient(context.Context, identity.Principal, string, adminintegration.CreateClientRequest) (adminintegration.Client, error)
+	RotateClient(context.Context, identity.Principal, string, string) (adminintegration.Client, error)
+	DisableClient(context.Context, identity.Principal, string) error
+	ListPublications(context.Context, identity.Principal, string) ([]adminintegration.Publication, error)
+	CreatePublication(context.Context, identity.Principal, string, adminintegration.CreatePublicationRequest) (adminintegration.Publication, error)
+	RevokePublication(context.Context, identity.Principal, string) error
+	ListWebhooks(context.Context, identity.Principal, string) ([]adminintegration.Webhook, error)
+	CreateWebhook(context.Context, identity.Principal, string, adminintegration.CreateWebhookRequest) (adminintegration.Webhook, error)
+	Redeliver(context.Context, identity.Principal, string, string) (adminintegration.Delivery, error)
+}
+
 type Handler struct {
-	auth      authenticator
-	authorize authorizer
-	service   lifecycleService
-	target    targetLifecycleService
-	assets    assetService
-	overview  overviewService
-	runs      runService
-	audit     auditService
-	logger    *slog.Logger
+	auth         authenticator
+	authorize    authorizer
+	service      lifecycleService
+	target       targetLifecycleService
+	assets       assetService
+	overview     overviewService
+	runs         runService
+	audit        auditService
+	policies     policyService
+	evaluations  evaluationService
+	integrations integrationService
+	logger       *slog.Logger
 }
 
 func New(auth authenticator, authorize authorizer, service lifecycleService, logger *slog.Logger) http.Handler {
@@ -126,7 +182,19 @@ func NewWithTarget(auth authenticator, authorize authorizer, service lifecycleSe
 }
 
 func NewWithTargetAndAudit(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, logger *slog.Logger) http.Handler {
-	return newHandlerWithAudit(auth, authorize, service, target, assets, overview, runs, audit, logger)
+	return newHandlerWithPolicy(auth, authorize, service, target, assets, overview, runs, audit, nil, logger)
+}
+
+func NewWithTargetAuditAndPolicy(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, logger *slog.Logger) http.Handler {
+	return newHandlerWithPolicy(auth, authorize, service, target, assets, overview, runs, audit, policies, logger)
+}
+
+func NewWithTargetAuditPolicyEvaluation(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, logger *slog.Logger) http.Handler {
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, nil, logger)
+}
+
+func NewWithTargetAuditPolicyEvaluationIntegrations(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, logger *slog.Logger) http.Handler {
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, evaluations, integrations, logger)
 }
 
 func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, logger *slog.Logger) http.Handler {
@@ -134,10 +202,18 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 }
 
 func newHandlerWithAudit(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, logger *slog.Logger) http.Handler {
+	return newHandlerWithPolicy(auth, authorize, service, target, assets, overview, runs, audit, nil, logger)
+}
+
+func newHandlerWithPolicy(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, logger *slog.Logger) http.Handler {
+	return newHandlerWithEvaluation(auth, authorize, service, target, assets, overview, runs, audit, policies, nil, nil, logger)
+}
+
+func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, runs runService, audit auditService, policies policyService, evaluations evaluationService, integrations integrationService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, audit: audit, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, runs: runs, audit: audit, policies: policies, evaluations: evaluations, integrations: integrations, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
@@ -154,6 +230,50 @@ func newHandlerWithAudit(auth authenticator, authorize authorizer, service lifec
 		mux.Handle("POST /audit-events:export", h.withActor(h.createAuditExport))
 		mux.Handle("GET /audit-exports/{exportID}", h.withActor(h.getAuditExport))
 		mux.Handle("GET /audit-exports/{exportID}/download", h.withActor(h.downloadAuditExport))
+	}
+	if policies != nil {
+		mux.Handle("GET /policies", h.withActor(h.listPolicies))
+		mux.Handle("POST /policies", h.withActor(h.createPolicy))
+		mux.Handle("GET /policies/{policyID}", h.withActor(h.getPolicy))
+		mux.Handle("GET /policies/{policyID}/draft", h.withActor(h.getPolicyDraft))
+		mux.Handle("PATCH /policies/{policyID}/draft", h.withActor(h.updatePolicyDraft))
+		mux.Handle("POST /policies/{policyID}", h.withActor(h.policyCommand))
+		mux.Handle("GET /policies/{policyID}/versions", h.withActor(h.listPolicyVersions))
+		mux.Handle("POST /policies/{policyID}/versions", h.withActor(h.publishPolicyVersion))
+		mux.Handle("GET /policies/{policyID}/bindings", h.withActor(h.listPolicyBindings))
+		mux.Handle("POST /policies/{policyID}/bindings", h.withActor(h.bindPolicy))
+		mux.Handle("POST /policy-bindings/{bindingID}", h.withActor(h.policyBindingCommand))
+	}
+	if evaluations != nil {
+		mux.Handle("GET /evaluation-suites", h.withActor(h.listEvaluationSuites))
+		mux.Handle("POST /evaluation-suites", h.withActor(h.createEvaluationSuite))
+		mux.Handle("GET /evaluation-suites/{suiteID}", h.withActor(h.getEvaluationSuite))
+		mux.Handle("PATCH /evaluation-suites/{suiteID}", h.withActor(h.patchEvaluationSuite))
+		mux.Handle("GET /evaluation-suites/{suiteID}/cases", h.withActor(h.listEvaluationCases))
+		mux.Handle("POST /evaluation-suites/{suiteID}/cases", h.withActor(h.createEvaluationCase))
+		mux.Handle("PATCH /evaluation-suites/{suiteID}/cases/{caseID}", h.withActor(h.patchEvaluationCase))
+		mux.Handle("POST /evaluation-suites/{suiteID}", h.withActor(h.evaluationSuiteCommand))
+		mux.Handle("GET /evaluation-suites/{suiteID}/versions", h.withActor(h.listEvaluationVersions))
+		mux.Handle("POST /evaluation-suites/{suiteID}/versions", h.withActor(h.publishEvaluationVersion))
+		mux.Handle("GET /evaluation-suites/{suiteID}/runs", h.withActor(h.listEvaluationRuns))
+		mux.Handle("POST /evaluation-suites/{suiteID}/runs", h.withActor(h.createEvaluationRun))
+		mux.Handle("GET /evaluation-runs/{runID}", h.withActor(h.getEvaluationRun))
+		mux.Handle("POST /evaluation-runs/{runID}", h.withActor(h.evaluationRunCommand))
+	}
+	if integrations != nil {
+		mux.Handle("GET /integrations", h.withActor(h.listIntegrations))
+		mux.Handle("POST /integrations", h.withActor(h.createIntegration))
+		mux.Handle("GET /integrations/{integrationID}", h.withActor(h.getIntegration))
+		mux.Handle("PATCH /integrations/{integrationID}", h.withActor(h.patchIntegration))
+		mux.Handle("GET /integrations/{integrationID}/clients", h.withActor(h.listIntegrationClients))
+		mux.Handle("POST /integrations/{integrationID}/clients", h.withActor(h.createIntegrationClient))
+		mux.Handle("POST /integration-clients/{clientID}", h.withActor(h.integrationClientCommand))
+		mux.Handle("GET /integrations/{integrationID}/publications", h.withActor(h.listIntegrationPublications))
+		mux.Handle("POST /integrations/{integrationID}/publications", h.withActor(h.createIntegrationPublication))
+		mux.Handle("POST /integration-publications/{publicationID}", h.withActor(h.integrationPublicationCommand))
+		mux.Handle("GET /integrations/{integrationID}/webhooks", h.withActor(h.listIntegrationWebhooks))
+		mux.Handle("POST /integrations/{integrationID}/webhooks", h.withActor(h.createIntegrationWebhook))
+		mux.Handle("POST /webhook-endpoints/{endpointID}", h.withActor(h.webhookCommand))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)
@@ -636,6 +756,36 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The run query is not valid.")
 	case errors.Is(err, adminaudit.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "invalid_request", "The audit query is not valid.")
+	case errors.Is(err, adminpolicy.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
+	case errors.Is(err, adminpolicy.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The policy request is not valid.")
+	case errors.Is(err, adminpolicy.ErrSchemaInvalid):
+		writeError(w, http.StatusUnprocessableEntity, "schema_invalid", "The typed policy document is not valid.")
+	case errors.Is(err, adminpolicy.ErrETagConflict):
+		writeError(w, http.StatusConflict, "etag_conflict", "The policy draft changed; reload it before editing.")
+	case errors.Is(err, adminpolicy.ErrIdempotencyConflict):
+		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was already used with a different request.")
+	case errors.Is(err, adminpolicy.ErrInvalidState):
+		writeError(w, http.StatusConflict, "invalid_state", "The policy is not in a state that permits this operation.")
+	case errors.Is(err, adminevaluation.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Evaluation resource was not found.")
+	case errors.Is(err, adminevaluation.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The evaluation request is not valid.")
+	case errors.Is(err, adminevaluation.ErrFixtureInvalid):
+		writeError(w, http.StatusConflict, "fixture_miss", "The evaluation suite has invalid or incomplete fixtures.")
+	case errors.Is(err, adminevaluation.ErrETagConflict):
+		writeError(w, http.StatusConflict, "etag_conflict", "The evaluation working copy changed; reload it before editing.")
+	case errors.Is(err, adminevaluation.ErrIdempotencyConflict):
+		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was already used with a different request.")
+	case errors.Is(err, adminevaluation.ErrInvalidState):
+		writeError(w, http.StatusConflict, "invalid_state", "The evaluation resource is not in a state that permits this operation.")
+	case errors.Is(err, adminintegration.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Resource was not found.")
+	case errors.Is(err, adminintegration.ErrInvalidInput):
+		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The integration request is not valid.")
+	case errors.Is(err, adminintegration.ErrInvalidState):
+		writeError(w, http.StatusConflict, "invalid_state", "The integration is not in a state that permits this operation.")
 	case errors.Is(err, adminaudit.ErrExportNotReady):
 		writeError(w, http.StatusConflict, "export_not_ready", "The audit export is not ready for download.")
 	case errors.Is(err, adminaudit.ErrExportUnavailable):

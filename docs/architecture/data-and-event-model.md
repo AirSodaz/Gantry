@@ -354,6 +354,53 @@ constraints. A lower-scope Binding may only narrow outer authority. The Run
 Manifest records every contributing Policy Version ID and content digest so a
 later Binding change does not rewrite historical execution evidence.
 
+The typed Admin resource contract for Policy Drafts, Versions, Bindings, and
+Simulation is defined in
+[Admin Governed Resource Contracts](admin-governed-resource-contracts.md).
+
+### Evaluation Suite and Run
+
+An Evaluation Suite is a Workspace-scoped identity with mutable authoring state
+and immutable Suite Versions. A Suite Version freezes case IDs, fixture and
+evaluator manifests, runtime image, compatibility constraints, and content
+digests. An Evaluation Run references exactly one Suite Version, candidate Agent
+Revision, optional baseline Revision, evaluation environment digest, and signed
+evidence manifest. A Run is invalid when evidence is incomparable or fixture
+integrity is violated; invalid is not a pass or an ordinary failure.
+
+### Evaluation Gate and Override
+
+A Publication Gate binds a Suite Version and requirement to an exact Agent
+Revision. A Gate Override records reviewer, reason, expiry, scope, and the gate
+state it supersedes. It never mutates the Evaluation Run or turns an invalid
+run into a valid result.
+
+### Integration Client and Publication
+
+An Integration is an organization-owned external-system identity. An
+Integration Client is environment-bound and stores authentication modes,
+audience, credential fingerprint, status, and expiry metadata. An Agent
+Publication binds one exact Agent Revision and input/output contract pair to a
+Client or Integration environment. Disabling or revoking a Client or
+Publication blocks new invocations while retaining Tasks, Runs, deliveries,
+and evidence.
+
+### Webhook Endpoint and Delivery
+
+A Webhook Endpoint stores validated destination metadata, subscribed event
+projection, signing-key fingerprint, and retry policy. A Webhook Delivery is an
+immutable attempt identified by event ID and delivery ID. Redelivery creates a
+new attempt and never changes the Task result.
+
+### Platform Resource Records
+
+Model Providers, Provider Routes, Runner Pools, Runners, Credential References,
+Data Classifications, Limit Policies, and Environment Profiles are separate
+organization or Workspace-scoped records with independent lifecycle and
+authorization. Platform Settings is only their effective projection and
+section command facade. The typed fields and route ownership are defined in
+[Admin Governed Resource Contracts](admin-governed-resource-contracts.md).
+
 ## 5. Task and Run Entities
 
 ### Task

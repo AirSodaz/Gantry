@@ -27,6 +27,21 @@ export type AdminAuditEvent = Components['schemas']['AdminAuditEvent'];
 export type AdminAuditEventDetail = Components['schemas']['AdminAuditEventDetail'];
 export type AdminAuditExport = Components['schemas']['AdminAuditExport'];
 export type AdminAuditExportDownload = Components['schemas']['AdminAuditExportDownload'];
+export type Policy = Components['schemas']['Policy'];
+export type PolicyDraft = Components['schemas']['PolicyDraft'];
+export type PolicyVersion = Components['schemas']['PolicyVersion'];
+export type PolicyBinding = Components['schemas']['PolicyBinding'];
+export type PolicySimulation = Components['schemas']['PolicySimulation'];
+export type CreatePolicyInput = Components['schemas']['CreatePolicyRequest'];
+export type EvaluationSuite = Components['schemas']['EvaluationSuite'];
+export type EvaluationCase = Components['schemas']['EvaluationCase'];
+export type EvaluationSuiteVersion = Components['schemas']['EvaluationSuiteVersion'];
+export type EvaluationRun = Components['schemas']['EvaluationRun'];
+export type Integration = Components['schemas']['Integration'];
+export type IntegrationClient = Components['schemas']['IntegrationClient'];
+export type AgentPublication = Components['schemas']['AgentPublication'];
+export type WebhookEndpoint = Components['schemas']['WebhookEndpoint'];
+export type WebhookDelivery = Components['schemas']['WebhookDelivery'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';

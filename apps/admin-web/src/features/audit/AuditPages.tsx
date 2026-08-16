@@ -9,7 +9,7 @@ import { ErrorState, LoadingState } from '../../components/AsyncState';
 
 const resourceTypes: SelectOption[] = [
   { value: '', label: 'All resources' },
-  ...['agent', 'agent_revision', 'agent_revision_review', 'skill', 'plugin', 'tool', 'run'].map((value) => ({ value, label: value.replace(/_/g, ' ') })),
+  ...['agent', 'agent_revision', 'agent_revision_review', 'skill', 'plugin', 'tool', 'run', 'policy'].map((value) => ({ value, label: value.replace(/_/g, ' ') })),
 ];
 
 export function AuditPage() {
@@ -80,7 +80,7 @@ function Detail({ label, value }: { label: string; value: ReactNode }) { return 
 function FilterInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) { return <label className="admin-filter-input"><span className="admin-field-label">{label}</span><input className="ds-input" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>; }
 function formatTime(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
 function shortHash(value: string) { return value.replace(/^sha256:/, '').slice(0, 12); }
-function resourceHref(event: AdminAuditEvent) { if (event.resource_type === 'agent') return `/agents/${event.resource_id}`; if (event.resource_type === 'run') return `/runs/${event.resource_id}`; return undefined; }
+function resourceHref(event: AdminAuditEvent) { if (event.resource_type === 'agent') return `/agents/${event.resource_id}`; if (event.resource_type === 'run') return `/runs/${event.resource_id}`; if (event.resource_type === 'policy') return `/policies/${event.resource_id}`; return undefined; }
 
 function AuditExportPanel({ options }: { options: { workspaceId?: string; resourceType?: string; resourceId?: string; actorId?: string; eventType?: string; outcome?: string; risk?: string; correlationId?: string; runId?: string; revisionHash?: string } }) {
   const api = useAdminApi();

@@ -60,6 +60,13 @@ Baseline roles:
 - Auditor
 - Employee
 
+The complete resource-capability matrix for Policies, Evaluations,
+Integrations, and Platform management is defined in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
+The matrix is additive to these baseline roles: a role preset never bypasses
+organization/Workspace scope, resource state, ETag checks, or action-time
+Policy.
+
 ### Action-Time Context
 
 Tool execution considers:

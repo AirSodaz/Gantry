@@ -1,5 +1,9 @@
 # Evaluation Design
 
+The page-level Admin workflow is in [Admin Site Design](admin-site-design.md).
+The typed resource, OpenAPI, and authorization contract is in
+[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
+
 ## 1. Purpose
 
 Gantry evaluation determines whether an Agent Revision completes representative

@@ -738,6 +738,418 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/InvalidState"}
+  /policies:
+    get:
+      operationId: listPolicies
+      summary: List typed policies in the authorized scope
+      tags: [Policies]
+      parameters:
+        - {name: type, in: query, schema: {type: string}}
+        - {name: workspace_id, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string, enum: [draft, published, retired]}}
+        - {name: owner_id, in: query, schema: {type: string}}
+        - {name: binding_target, in: query, schema: {type: string}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        "200": {description: Policies, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyList"}}}}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: createPolicy
+      summary: Create a typed policy and Draft
+      tags: [Policies]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreatePolicyRequest"}}}
+      responses:
+        "201": {description: Policy and Draft, content: {application/json: {schema: {$ref: "#/components/schemas/CreatedPolicy"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /policies/{policy_id}:
+    get:
+      operationId: getPolicy
+      summary: Get a typed policy projection
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Policy, content: {application/json: {schema: {$ref: "#/components/schemas/Policy"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /policies/{policy_id}/draft:
+    get:
+      operationId: getPolicyDraft
+      summary: Get the typed Policy Draft
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Policy Draft, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyDraft"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: updatePolicyDraft
+      summary: Update a Policy Draft with optimistic concurrency
+      tags: [Policies]
+      parameters:
+        - {name: policy_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdatePolicyDraftRequest"}}}
+      responses:
+        "200": {description: Updated Policy Draft, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyDraft"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /policies/{policy_id}:validate:
+    post:
+      operationId: validatePolicy
+      summary: Validate a Policy Draft without runtime effect
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Validation result, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyDraft"}}}}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /policies/{policy_id}/versions:
+    get:
+      operationId: listPolicyVersions
+      summary: List immutable Policy Versions
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Policy Versions, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyVersionList"}}}}
+    post:
+      operationId: publishPolicyVersion
+      summary: Publish the exact valid Policy Draft as an immutable Version
+      tags: [Policies]
+      parameters:
+        - {name: policy_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/PublishPolicyRequest"}}}
+      responses:
+        "201": {description: Policy Version, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyVersion"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /policies/{policy_id}/bindings:
+    get:
+      operationId: listPolicyBindings
+      summary: List Policy Bindings
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Policy Bindings, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyBindingList"}}}}
+    post:
+      operationId: bindPolicy
+      summary: Bind one exact Policy Version
+      tags: [Policies]
+      parameters:
+        - {name: policy_id, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/BindPolicyRequest"}}}
+      responses:
+        "201": {description: Policy Binding, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyBinding"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /policy-bindings/{binding_id}:revoke:
+    post:
+      operationId: revokePolicyBinding
+      summary: Revoke one Policy Binding
+      tags: [Policies]
+      parameters:
+        - {name: binding_id, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/ReasonRequest"}}}
+      responses:
+        "200": {description: Revoked Policy Binding, content: {application/json: {schema: {$ref: "#/components/schemas/PolicyBinding"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /policies/{policy_id}:simulate:
+    post:
+      operationId: simulatePolicy
+      summary: Simulate a typed Policy decision without side effects
+      tags: [Policies]
+      parameters: [{name: policy_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/SimulatePolicyRequest"}}}
+      responses:
+        "200": {description: Simulation, content: {application/json: {schema: {$ref: "#/components/schemas/PolicySimulation"}}}}
+  /policies/{policy_id}:retire:
+    post:
+      operationId: retirePolicy
+      summary: Retire a Policy without active Bindings
+      tags: [Policies]
+      parameters:
+        - {name: policy_id, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: "#/components/schemas/ReasonRequest"}}}
+      responses:
+        "200": {description: Retired Policy, content: {application/json: {schema: {$ref: "#/components/schemas/Policy"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /evaluation-suites:
+    get:
+      operationId: listEvaluationSuites
+      summary: List workspace-scoped Evaluation Suites
+      tags: [Evaluations]
+      parameters:
+        - {name: workspace_id, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string, enum: [draft, published, retired]}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        "200": {description: Evaluation Suites, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuiteList"}}}}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: createEvaluationSuite
+      summary: Create an Evaluation Suite Draft
+      tags: [Evaluations]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateEvaluationSuiteRequest"}}}
+      responses:
+        "201": {description: Evaluation Suite, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuite"}}}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /evaluation-suites/{suite_id}:
+    get:
+      operationId: getEvaluationSuite
+      summary: Get an Evaluation Suite projection
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Evaluation Suite, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuite"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: patchEvaluationSuite
+      summary: Update Evaluation Suite metadata with ETag
+      tags: [Evaluations]
+      parameters:
+        - {name: suite_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/PatchEvaluationSuiteRequest"}}}
+      responses:
+        "200": {description: Evaluation Suite, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuite"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /evaluation-suites/{suite_id}:validate:
+    post:
+      operationId: validateEvaluationSuite
+      summary: Validate cases and fixture manifests
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Validation result, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationValidation"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /evaluation-suites/{suite_id}/cases:
+    get:
+      operationId: listEvaluationCases
+      summary: List typed Evaluation Cases
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Cases, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationCaseList"}}}}
+    post:
+      operationId: createEvaluationCase
+      summary: Add one case to a Suite Draft
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateEvaluationCaseRequest"}}}
+      responses:
+        "201": {description: Evaluation Case, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationCase"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /evaluation-suites/{suite_id}/cases/{case_id}:
+    patch:
+      operationId: patchEvaluationCase
+      summary: Update one Evaluation Case with ETag
+      tags: [Evaluations]
+      parameters:
+        - {name: suite_id, in: path, required: true, schema: {type: string}}
+        - {name: case_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateEvaluationCaseRequest"}}}
+      responses:
+        "200": {description: Evaluation Case, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationCase"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /evaluation-suites/{suite_id}/versions:
+    get:
+      operationId: listEvaluationVersions
+      summary: List immutable Evaluation Suite Versions
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Suite Versions, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuiteVersionList"}}}}
+    post:
+      operationId: publishEvaluationVersion
+      summary: Freeze and publish a Suite Version
+      tags: [Evaluations]
+      parameters:
+        - {name: suite_id, in: path, required: true, schema: {type: string}}
+        - {name: If-Match, in: header, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/PublishEvaluationVersionRequest"}}}
+      responses:
+        "201": {description: Suite Version, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationSuiteVersion"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /evaluation-suites/{suite_id}/runs:
+    get:
+      operationId: listEvaluationRuns
+      summary: List Evaluation Runs
+      tags: [Evaluations]
+      parameters: [{name: suite_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Evaluation Runs, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRunList"}}}}
+    post:
+      operationId: createEvaluationRun
+      summary: Request a Run from exact Suite Version and Agent Revision
+      tags: [Evaluations]
+      parameters:
+        - {name: suite_id, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateEvaluationRunRequest"}}}
+      responses:
+        "202": {description: Evaluation Run requested, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRun"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /evaluation-runs/{run_id}:
+    get:
+      operationId: getEvaluationRun
+      summary: Get Evaluation Run status and evidence projection
+      tags: [Evaluations]
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Evaluation Run, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRun"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /evaluation-runs/{run_id}:cancel:
+    post:
+      operationId: cancelEvaluationRun
+      summary: Cancel a queued or active Evaluation Run
+      tags: [Evaluations]
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Canceled Evaluation Run, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRun"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /integrations:
+    get:
+      operationId: listIntegrations
+      summary: List organization integrations
+      tags: [Integrations]
+      parameters:
+        - {name: state, in: query, schema: {type: string, enum: [active, disabled, retired]}}
+      responses:
+        "200": {description: Integrations, content: {application/json: {schema: {$ref: "#/components/schemas/IntegrationList"}}}}
+    post:
+      operationId: createIntegration
+      summary: Register an integration identity
+      tags: [Integrations]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateIntegrationRequest"}}}}
+      responses:
+        "201": {description: Integration, content: {application/json: {schema: {$ref: "#/components/schemas/Integration"}}}}
+  /integrations/{integration_id}:
+    parameters: [{name: integration_id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: getIntegration
+      summary: Get integration metadata
+      tags: [Integrations]
+      responses: {"200": {description: Integration, content: {application/json: {schema: {$ref: "#/components/schemas/Integration"}}}}}
+    patch:
+      operationId: patchIntegration
+      summary: Update integration metadata
+      tags: [Integrations]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PatchIntegrationRequest"}}}}
+      responses: {"200": {description: Integration, content: {application/json: {schema: {$ref: "#/components/schemas/Integration"}}}}}
+  /integrations/{integration_id}/clients:
+    parameters: [{name: integration_id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: listIntegrationClients
+      summary: List client metadata without secrets
+      tags: [Integrations]
+      responses: {"200": {description: Clients, content: {application/json: {schema: {$ref: "#/components/schemas/IntegrationClientList"}}}}}
+    post:
+      operationId: createIntegrationClient
+      summary: Register an integration client
+      tags: [Integrations]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateIntegrationClientRequest"}}}}
+      responses: {"201": {description: Client, content: {application/json: {schema: {$ref: "#/components/schemas/IntegrationClient"}}}}}
+  /integration-clients/{client_id}:rotate:
+    post:
+      operationId: rotateIntegrationClient
+      summary: Rotate client credential reference
+      tags: [Integrations]
+      parameters: [{name: client_id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RotateIntegrationClientRequest"}}}}
+      responses: {"200": {description: Client, content: {application/json: {schema: {$ref: "#/components/schemas/IntegrationClient"}}}}}
+  /integration-clients/{client_id}:disable:
+    post:
+      operationId: disableIntegrationClient
+      summary: Disable an integration client
+      tags: [Integrations]
+      parameters: [{name: client_id, in: path, required: true, schema: {type: string}}]
+      responses: {"204": {description: Disabled}}
+  /integrations/{integration_id}/publications:
+    parameters: [{name: integration_id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: listIntegrationPublications
+      summary: List agent publications
+      tags: [Integrations]
+      responses: {"200": {description: Publications, content: {application/json: {schema: {$ref: "#/components/schemas/AgentPublicationList"}}}}}
+    post:
+      operationId: createIntegrationPublication
+      summary: Publish an exact Agent Revision to a client
+      tags: [Integrations]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateAgentPublicationRequest"}}}}
+      responses: {"201": {description: Publication, content: {application/json: {schema: {$ref: "#/components/schemas/AgentPublication"}}}}}
+  /integration-publications/{publication_id}:revoke:
+    post:
+      operationId: revokeIntegrationPublication
+      summary: Revoke a publication
+      tags: [Integrations]
+      parameters: [{name: publication_id, in: path, required: true, schema: {type: string}}]
+      responses: {"204": {description: Revoked}}
+  /integrations/{integration_id}/webhooks:
+    parameters: [{name: integration_id, in: path, required: true, schema: {type: string}}]
+    get:
+      operationId: listIntegrationWebhooks
+      summary: List webhook endpoint metadata
+      tags: [Integrations]
+      responses: {"200": {description: Webhooks, content: {application/json: {schema: {$ref: "#/components/schemas/WebhookEndpointList"}}}}}
+    post:
+      operationId: createIntegrationWebhook
+      summary: Register an HTTPS webhook endpoint
+      tags: [Integrations]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateWebhookEndpointRequest"}}}}
+      responses: {"201": {description: Webhook, content: {application/json: {schema: {$ref: "#/components/schemas/WebhookEndpoint"}}}}}
+  /webhook-endpoints/{endpoint_id}:redeliver:
+    post:
+      operationId: redeliverWebhook
+      summary: Queue a new delivery attempt for an existing event
+      tags: [Integrations]
+      parameters: [{name: endpoint_id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RedeliverWebhookRequest"}}}}
+      responses: {"202": {description: Delivery, content: {application/json: {schema: {$ref: "#/components/schemas/WebhookDelivery"}}}}}
+
 components:
   securitySchemes:
     oauth2:
@@ -784,7 +1196,265 @@ components:
     RevisionConflict:
       description: Draft revision is stale.
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    Conflict:
+      description: Command precondition or idempotency conflict.
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
   schemas:
+    EvaluationSuite:
+      type: object
+      required: [id, organization_id, workspace_id, name, state, owner_principal_id, gate_usage_count, etag]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        workspace_id: {type: string}
+        name: {type: string}
+        state: {type: string, enum: [draft, published, retired]}
+        owner_principal_id: {type: string}
+        latest_version_id: {type: string, nullable: true}
+        gate_usage_count: {type: integer, minimum: 0}
+        etag: {type: string}
+    EvaluationSuiteList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationSuite"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    CreateEvaluationSuiteRequest:
+      type: object
+      required: [workspace_id, name]
+      properties:
+        workspace_id: {type: string}
+        name: {type: string}
+    PatchEvaluationSuiteRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+    EvaluationCase:
+      type: object
+      required: [id, suite_id, input, fixture_manifest, assertions, compatibility, etag]
+      properties:
+        id: {type: string}
+        suite_id: {type: string}
+        input: {type: object, additionalProperties: true}
+        fixture_manifest: {type: object, additionalProperties: true}
+        assertions: {type: array, items: {type: object, additionalProperties: true}}
+        rubric: {type: object, nullable: true, additionalProperties: true}
+        compatibility: {type: object, additionalProperties: true}
+        etag: {type: string}
+    EvaluationCaseList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationCase"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    CreateEvaluationCaseRequest:
+      type: object
+      required: [input, fixture_manifest, assertions]
+      properties:
+        input: {type: object, additionalProperties: true}
+        fixture_manifest: {type: object, additionalProperties: true}
+        assertions: {type: array, items: {type: object, additionalProperties: true}}
+        rubric: {type: object, nullable: true, additionalProperties: true}
+        compatibility: {type: object, additionalProperties: true}
+    EvaluationValidation:
+      type: object
+      required: [state, findings]
+      properties:
+        state: {type: string, enum: [valid, invalid, pending]}
+        findings: {type: array, items: {type: object, additionalProperties: true}}
+    EvaluationSuiteVersion:
+      type: object
+      required: [id, suite_id, content_digest, case_manifest_digest, fixture_manifest_digest, runtime_image_digest, published_at]
+      properties:
+        id: {type: string}
+        suite_id: {type: string}
+        content_digest: {type: string}
+        case_manifest_digest: {type: string}
+        fixture_manifest_digest: {type: string}
+        evaluator_policy_version_id: {type: string}
+        runtime_image_digest: {type: string}
+        published_at: {type: string, format: date-time}
+    EvaluationSuiteVersionList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationSuiteVersion"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    PublishEvaluationVersionRequest:
+      type: object
+      required: [runtime_image_digest]
+      properties:
+        evaluator_policy_version_id: {type: string}
+        runtime_image_digest: {type: string}
+    EvaluationRun:
+      type: object
+      required: [id, suite_version_id, candidate_revision_hash, environment_digest, state, gate_result, deterministic_summary, created_at]
+      properties:
+        id: {type: string}
+        suite_version_id: {type: string}
+        candidate_revision_hash: {type: string}
+        baseline_revision_hash: {type: string, nullable: true}
+        environment_digest: {type: string}
+        state: {type: string, enum: [requested, queued, provisioning, running, completed, failed, canceled, invalid]}
+        gate_result: {type: string, enum: [not_applicable, passed, failed, blocked, invalid]}
+        deterministic_summary: {type: object, additionalProperties: true}
+        probabilistic_summary: {type: object, nullable: true, additionalProperties: true}
+        evidence_manifest_digest: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+    EvaluationRunList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationRun"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    CreateEvaluationRunRequest:
+      type: object
+      required: [suite_version_id, candidate_revision_hash, environment_digest]
+      properties:
+        suite_version_id: {type: string}
+        candidate_revision_hash: {type: string}
+        baseline_revision_hash: {type: string, nullable: true}
+        environment_digest: {type: string}
+    Policy:
+      type: object
+      required: [id, organization_id, type, name, state, schema_version, draft_etag, active_binding_count]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        workspace_id: {type: string, nullable: true}
+        type: {type: string, enum: [approval, model, tool, command, network, credential, data, budget, retention, evaluation, publication]}
+        name: {type: string}
+        owner_principal_id: {type: string}
+        state: {type: string, enum: [draft, published, retired]}
+        schema_version: {type: string}
+        draft_etag: {type: string}
+        latest_version_id: {type: string, nullable: true}
+        active_binding_count: {type: integer, minimum: 0}
+    PolicyList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Policy"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    PolicyPageInfo:
+      type: object
+      required: [next_cursor]
+      properties:
+        next_cursor: {type: string, nullable: true}
+    ValidationResult:
+      type: object
+      required: [state, findings]
+      properties:
+        state: {type: string, enum: [valid, invalid, pending]}
+        findings: {type: array, items: {type: object, additionalProperties: true}}
+    PolicyDraft:
+      type: object
+      required: [policy_id, document, schema_version, etag, validation]
+      properties:
+        policy_id: {type: string}
+        document: {type: object, additionalProperties: true}
+        schema_version: {type: string}
+        etag: {type: string}
+        validation: {$ref: "#/components/schemas/ValidationResult"}
+    CreatePolicyRequest:
+      type: object
+      required: [type, name, document]
+      properties:
+        workspace_id: {type: string}
+        type: {type: string, enum: [approval, model, tool, command, network, credential, data, budget, retention, evaluation, publication]}
+        name: {type: string}
+        schema_version: {type: string}
+        document: {type: object, additionalProperties: true}
+    CreatedPolicy:
+      type: object
+      required: [policy, draft]
+      properties:
+        policy: {$ref: "#/components/schemas/Policy"}
+        draft: {$ref: "#/components/schemas/PolicyDraft"}
+    UpdatePolicyDraftRequest:
+      type: object
+      required: [document]
+      properties:
+        schema_version: {type: string}
+        document: {type: object, additionalProperties: true}
+    PublishPolicyRequest:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string, minLength: 1}
+    PolicyVersion:
+      type: object
+      required: [id, policy_id, content_digest, schema_version, message, document, compiler_evidence, created_by, created_at]
+      properties:
+        id: {type: string}
+        policy_id: {type: string}
+        content_digest: {type: string}
+        schema_version: {type: string}
+        message: {type: string}
+        document: {type: object, additionalProperties: true}
+        compiler_evidence: {type: object, additionalProperties: true}
+        created_by: {type: string}
+        created_at: {type: string, format: date-time}
+    PolicyVersionList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/PolicyVersion"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    PolicyScopeRef:
+      type: object
+      required: [organization_id, scope]
+      properties:
+        organization_id: {type: string}
+        workspace_id: {type: string, nullable: true}
+        scope: {type: string, enum: [organization, workspace]}
+    PolicyBinding:
+      type: object
+      required: [id, version_id, target, environment, state, effective_from, reason]
+      properties:
+        id: {type: string}
+        version_id: {type: string}
+        target: {$ref: "#/components/schemas/PolicyScopeRef"}
+        target_resource_id: {type: string, nullable: true}
+        environment: {type: string, enum: [development, staging, production]}
+        state: {type: string, enum: [pending, active, expired, revoked]}
+        effective_from: {type: string, format: date-time}
+        effective_until: {type: string, format: date-time, nullable: true}
+        reason: {type: string}
+    PolicyBindingList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/PolicyBinding"}}
+        page_info: {$ref: "#/components/schemas/PolicyPageInfo"}
+    BindPolicyRequest:
+      type: object
+      required: [version_id, scope, environment]
+      properties:
+        version_id: {type: string}
+        scope: {type: string, enum: [organization, workspace]}
+        workspace_id: {type: string}
+        target_resource_id: {type: string}
+        environment: {type: string, enum: [development, staging, production]}
+        reason: {type: string}
+    ReasonRequest:
+      type: object
+      properties:
+        reason: {type: string}
+    SimulatePolicyRequest:
+      type: object
+      properties:
+        version_id: {type: string}
+        action: {type: object, additionalProperties: true}
+    PolicySimulation:
+      type: object
+      required: [decision, contributing_versions, ineffective_rules, explanation]
+      properties:
+        decision: {type: string, enum: [allow, deny, require_requester_approval]}
+        contributing_versions: {type: array, items: {type: object, additionalProperties: true}}
+        ineffective_rules: {type: array, items: {type: object, additionalProperties: true}}
+        explanation: {type: string}
     ErrorResponse:
       type: object
       required: [error]
@@ -1391,3 +2061,137 @@ components:
         high: {type: integer}
         medium: {type: integer}
         low: {type: integer}
+    Integration:
+      type: object
+      required: [id, organization_id, slug, display_name, state, owner_principal_id, environments]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        slug: {type: string}
+        display_name: {type: string}
+        state: {type: string, enum: [active, disabled, retired]}
+        owner_principal_id: {type: string}
+        environments: {type: array, items: {type: string}}
+    IntegrationList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Integration"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    CreateIntegrationRequest:
+      type: object
+      required: [slug, display_name]
+      properties:
+        slug: {type: string}
+        display_name: {type: string}
+    PatchIntegrationRequest:
+      type: object
+      required: [display_name]
+      properties:
+        display_name: {type: string}
+    IntegrationClient:
+      type: object
+      required: [id, integration_id, environment, auth_modes, audience, status, credential_fingerprint]
+      properties:
+        id: {type: string}
+        integration_id: {type: string}
+        environment: {type: string, enum: [development, staging, production]}
+        auth_modes: {type: array, items: {type: string, enum: [application, delegated_user]}}
+        audience: {type: string}
+        status: {type: string, enum: [active, disabled, expired, revoked]}
+        credential_fingerprint: {type: string}
+        expires_at: {type: string, format: date-time, nullable: true}
+    IntegrationClientList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/IntegrationClient"}}
+    CreateIntegrationClientRequest:
+      type: object
+      required: [environment, auth_modes, credential_fingerprint]
+      properties:
+        environment: {type: string, enum: [development, staging, production]}
+        auth_modes: {type: array, items: {type: string, enum: [application, delegated_user]}}
+        audience: {type: string}
+        credential_fingerprint: {type: string}
+        expires_at: {type: string, format: date-time, nullable: true}
+    RotateIntegrationClientRequest:
+      type: object
+      required: [credential_fingerprint]
+      properties:
+        credential_fingerprint: {type: string}
+    AgentPublication:
+      type: object
+      required: [id, integration_id, client_id, workspace_id, environment, revision_hash, input_contract_digest, output_contract_digest, authority_modes, state]
+      properties:
+        id: {type: string}
+        integration_id: {type: string}
+        client_id: {type: string}
+        workspace_id: {type: string}
+        environment: {type: string}
+        revision_hash: {type: string}
+        input_contract_digest: {type: string}
+        output_contract_digest: {type: string}
+        authority_modes: {type: array, items: {type: string}}
+        state: {type: string, enum: [draft, active, expired, revoked]}
+        effective_until: {type: string, format: date-time, nullable: true}
+    AgentPublicationList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AgentPublication"}}
+    CreateAgentPublicationRequest:
+      type: object
+      required: [client_id, workspace_id, environment, revision_hash, input_contract_digest, output_contract_digest, authority_modes]
+      properties:
+        client_id: {type: string}
+        workspace_id: {type: string}
+        environment: {type: string, enum: [development, staging, production]}
+        revision_hash: {type: string}
+        input_contract_digest: {type: string}
+        output_contract_digest: {type: string}
+        authority_modes: {type: array, items: {type: string, enum: [application, delegated_user]}}
+        effective_until: {type: string, format: date-time, nullable: true}
+    WebhookEndpoint:
+      type: object
+      required: [id, integration_id, environment, destination, status, signing_key_fingerprint, subscribed_events, retry_policy]
+      properties:
+        id: {type: string}
+        integration_id: {type: string}
+        environment: {type: string}
+        destination: {type: string, format: uri}
+        status: {type: string, enum: [active, disabled, quarantined, retired]}
+        signing_key_fingerprint: {type: string}
+        subscribed_events: {type: array, items: {type: string}}
+        retry_policy: {type: object, additionalProperties: true}
+    WebhookEndpointList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/WebhookEndpoint"}}
+    CreateWebhookEndpointRequest:
+      type: object
+      required: [environment, destination, signing_key_fingerprint, subscribed_events]
+      properties:
+        environment: {type: string, enum: [development, staging, production]}
+        destination: {type: string, format: uri}
+        signing_key_fingerprint: {type: string}
+        subscribed_events: {type: array, items: {type: string}}
+        retry_policy: {type: object, additionalProperties: true}
+    WebhookDelivery:
+      type: object
+      required: [id, endpoint_id, event_id, delivery_id, attempt, state]
+      properties:
+        id: {type: string}
+        endpoint_id: {type: string}
+        event_id: {type: string}
+        delivery_id: {type: string}
+        attempt: {type: integer, minimum: 1}
+        state: {type: string, enum: [queued, delivered, retrying, failed, canceled]}
+        response_class: {type: string, nullable: true}
+        next_attempt_at: {type: string, format: date-time, nullable: true}
+    RedeliverWebhookRequest:
+      type: object
+      required: [delivery_id]
+      properties:
+        delivery_id: {type: string}

@@ -743,10 +743,747 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List typed policies in the authorized scope */
+        get: operations["listPolicies"];
+        put?: never;
+        /** Create a typed policy and Draft */
+        post: operations["createPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a typed policy projection */
+        get: operations["getPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the typed Policy Draft */
+        get: operations["getPolicyDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a Policy Draft with optimistic concurrency */
+        patch: operations["updatePolicyDraft"];
+        trace?: never;
+    };
+    "/policies/{policy_id}:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a Policy Draft without runtime effect */
+        post: operations["validatePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Policy Versions */
+        get: operations["listPolicyVersions"];
+        put?: never;
+        /** Publish the exact valid Policy Draft as an immutable Version */
+        post: operations["publishPolicyVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Policy Bindings */
+        get: operations["listPolicyBindings"];
+        put?: never;
+        /** Bind one exact Policy Version */
+        post: operations["bindPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policy-bindings/{binding_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke one Policy Binding */
+        post: operations["revokePolicyBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}:simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate a typed Policy decision without side effects */
+        post: operations["simulatePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a Policy without active Bindings */
+        post: operations["retirePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List workspace-scoped Evaluation Suites */
+        get: operations["listEvaluationSuites"];
+        put?: never;
+        /** Create an Evaluation Suite Draft */
+        post: operations["createEvaluationSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an Evaluation Suite projection */
+        get: operations["getEvaluationSuite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Evaluation Suite metadata with ETag */
+        patch: operations["patchEvaluationSuite"];
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate cases and fixture manifests */
+        post: operations["validateEvaluationSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List typed Evaluation Cases */
+        get: operations["listEvaluationCases"];
+        put?: never;
+        /** Add one case to a Suite Draft */
+        post: operations["createEvaluationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update one Evaluation Case with ETag */
+        patch: operations["patchEvaluationCase"];
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Evaluation Suite Versions */
+        get: operations["listEvaluationVersions"];
+        put?: never;
+        /** Freeze and publish a Suite Version */
+        post: operations["publishEvaluationVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Evaluation Runs */
+        get: operations["listEvaluationRuns"];
+        put?: never;
+        /** Request a Run from exact Suite Version and Agent Revision */
+        post: operations["createEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Evaluation Run status and evidence projection */
+        get: operations["getEvaluationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a queued or active Evaluation Run */
+        post: operations["cancelEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization integrations */
+        get: operations["listIntegrations"];
+        put?: never;
+        /** Register an integration identity */
+        post: operations["createIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** Get integration metadata */
+        get: operations["getIntegration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update integration metadata */
+        patch: operations["patchIntegration"];
+        trace?: never;
+    };
+    "/integrations/{integration_id}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List client metadata without secrets */
+        get: operations["listIntegrationClients"];
+        put?: never;
+        /** Register an integration client */
+        post: operations["createIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-clients/{client_id}:rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate client credential reference */
+        post: operations["rotateIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-clients/{client_id}:disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable an integration client */
+        post: operations["disableIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List agent publications */
+        get: operations["listIntegrationPublications"];
+        put?: never;
+        /** Publish an exact Agent Revision to a client */
+        post: operations["createIntegrationPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-publications/{publication_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a publication */
+        post: operations["revokeIntegrationPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List webhook endpoint metadata */
+        get: operations["listIntegrationWebhooks"];
+        put?: never;
+        /** Register an HTTPS webhook endpoint */
+        post: operations["createIntegrationWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhook-endpoints/{endpoint_id}:redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a new delivery attempt for an existing event */
+        post: operations["redeliverWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        EvaluationSuite: {
+            id: string;
+            organization_id: string;
+            workspace_id: string;
+            name: string;
+            /** @enum {string} */
+            state: "draft" | "published" | "retired";
+            owner_principal_id: string;
+            latest_version_id?: string | null;
+            gate_usage_count: number;
+            etag: string;
+        };
+        EvaluationSuiteList: {
+            items: components["schemas"]["EvaluationSuite"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationSuiteRequest: {
+            workspace_id: string;
+            name: string;
+        };
+        PatchEvaluationSuiteRequest: {
+            name: string;
+        };
+        EvaluationCase: {
+            id: string;
+            suite_id: string;
+            input: {
+                [key: string]: unknown;
+            };
+            fixture_manifest: {
+                [key: string]: unknown;
+            };
+            assertions: {
+                [key: string]: unknown;
+            }[];
+            rubric?: {
+                [key: string]: unknown;
+            } | null;
+            compatibility: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        EvaluationCaseList: {
+            items: components["schemas"]["EvaluationCase"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationCaseRequest: {
+            input: {
+                [key: string]: unknown;
+            };
+            fixture_manifest: {
+                [key: string]: unknown;
+            };
+            assertions: {
+                [key: string]: unknown;
+            }[];
+            rubric?: {
+                [key: string]: unknown;
+            } | null;
+            compatibility?: {
+                [key: string]: unknown;
+            };
+        };
+        EvaluationValidation: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+        };
+        EvaluationSuiteVersion: {
+            id: string;
+            suite_id: string;
+            content_digest: string;
+            case_manifest_digest: string;
+            fixture_manifest_digest: string;
+            evaluator_policy_version_id?: string;
+            runtime_image_digest: string;
+            /** Format: date-time */
+            published_at: string;
+        };
+        EvaluationSuiteVersionList: {
+            items: components["schemas"]["EvaluationSuiteVersion"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PublishEvaluationVersionRequest: {
+            evaluator_policy_version_id?: string;
+            runtime_image_digest: string;
+        };
+        EvaluationRun: {
+            id: string;
+            suite_version_id: string;
+            candidate_revision_hash: string;
+            baseline_revision_hash?: string | null;
+            environment_digest: string;
+            /** @enum {string} */
+            state: "requested" | "queued" | "provisioning" | "running" | "completed" | "failed" | "canceled" | "invalid";
+            /** @enum {string} */
+            gate_result: "not_applicable" | "passed" | "failed" | "blocked" | "invalid";
+            deterministic_summary: {
+                [key: string]: unknown;
+            };
+            probabilistic_summary?: {
+                [key: string]: unknown;
+            } | null;
+            evidence_manifest_digest?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        EvaluationRunList: {
+            items: components["schemas"]["EvaluationRun"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationRunRequest: {
+            suite_version_id: string;
+            candidate_revision_hash: string;
+            baseline_revision_hash?: string | null;
+            environment_digest: string;
+        };
+        Policy: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            type: "approval" | "model" | "tool" | "command" | "network" | "credential" | "data" | "budget" | "retention" | "evaluation" | "publication";
+            name: string;
+            owner_principal_id?: string;
+            /** @enum {string} */
+            state: "draft" | "published" | "retired";
+            schema_version: string;
+            draft_etag: string;
+            latest_version_id?: string | null;
+            active_binding_count: number;
+        };
+        PolicyList: {
+            items: components["schemas"]["Policy"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PolicyPageInfo: {
+            next_cursor: string | null;
+        };
+        ValidationResult: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+        };
+        PolicyDraft: {
+            policy_id: string;
+            document: {
+                [key: string]: unknown;
+            };
+            schema_version: string;
+            etag: string;
+            validation: components["schemas"]["ValidationResult"];
+        };
+        CreatePolicyRequest: {
+            workspace_id?: string;
+            /** @enum {string} */
+            type: "approval" | "model" | "tool" | "command" | "network" | "credential" | "data" | "budget" | "retention" | "evaluation" | "publication";
+            name: string;
+            schema_version?: string;
+            document: {
+                [key: string]: unknown;
+            };
+        };
+        CreatedPolicy: {
+            policy: components["schemas"]["Policy"];
+            draft: components["schemas"]["PolicyDraft"];
+        };
+        UpdatePolicyDraftRequest: {
+            schema_version?: string;
+            document: {
+                [key: string]: unknown;
+            };
+        };
+        PublishPolicyRequest: {
+            message: string;
+        };
+        PolicyVersion: {
+            id: string;
+            policy_id: string;
+            content_digest: string;
+            schema_version: string;
+            message: string;
+            document: {
+                [key: string]: unknown;
+            };
+            compiler_evidence: {
+                [key: string]: unknown;
+            };
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        PolicyVersionList: {
+            items: components["schemas"]["PolicyVersion"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PolicyScopeRef: {
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            scope: "organization" | "workspace";
+        };
+        PolicyBinding: {
+            id: string;
+            version_id: string;
+            target: components["schemas"]["PolicyScopeRef"];
+            target_resource_id?: string | null;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            /** @enum {string} */
+            state: "pending" | "active" | "expired" | "revoked";
+            /** Format: date-time */
+            effective_from: string;
+            /** Format: date-time */
+            effective_until?: string | null;
+            reason: string;
+        };
+        PolicyBindingList: {
+            items: components["schemas"]["PolicyBinding"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        BindPolicyRequest: {
+            version_id: string;
+            /** @enum {string} */
+            scope: "organization" | "workspace";
+            workspace_id?: string;
+            target_resource_id?: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            reason?: string;
+        };
+        ReasonRequest: {
+            reason?: string;
+        };
+        SimulatePolicyRequest: {
+            version_id?: string;
+            action?: {
+                [key: string]: unknown;
+            };
+        };
+        PolicySimulation: {
+            /** @enum {string} */
+            decision: "allow" | "deny" | "require_requester_approval";
+            contributing_versions: {
+                [key: string]: unknown;
+            }[];
+            ineffective_rules: {
+                [key: string]: unknown;
+            }[];
+            explanation: string;
+        };
         ErrorResponse: {
             error: {
                 code: string;
@@ -1308,6 +2045,128 @@ export interface components {
             medium: number;
             low: number;
         };
+        Integration: {
+            id: string;
+            organization_id: string;
+            slug: string;
+            display_name: string;
+            /** @enum {string} */
+            state: "active" | "disabled" | "retired";
+            owner_principal_id: string;
+            environments: string[];
+        };
+        IntegrationList: {
+            items: components["schemas"]["Integration"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateIntegrationRequest: {
+            slug: string;
+            display_name: string;
+        };
+        PatchIntegrationRequest: {
+            display_name: string;
+        };
+        IntegrationClient: {
+            id: string;
+            integration_id: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            auth_modes: ("application" | "delegated_user")[];
+            audience: string;
+            /** @enum {string} */
+            status: "active" | "disabled" | "expired" | "revoked";
+            credential_fingerprint: string;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        IntegrationClientList: {
+            items: components["schemas"]["IntegrationClient"][];
+        };
+        CreateIntegrationClientRequest: {
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            auth_modes: ("application" | "delegated_user")[];
+            audience?: string;
+            credential_fingerprint: string;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        RotateIntegrationClientRequest: {
+            credential_fingerprint: string;
+        };
+        AgentPublication: {
+            id: string;
+            integration_id: string;
+            client_id: string;
+            workspace_id: string;
+            environment: string;
+            revision_hash: string;
+            input_contract_digest: string;
+            output_contract_digest: string;
+            authority_modes: string[];
+            /** @enum {string} */
+            state: "draft" | "active" | "expired" | "revoked";
+            /** Format: date-time */
+            effective_until?: string | null;
+        };
+        AgentPublicationList: {
+            items: components["schemas"]["AgentPublication"][];
+        };
+        CreateAgentPublicationRequest: {
+            client_id: string;
+            workspace_id: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            revision_hash: string;
+            input_contract_digest: string;
+            output_contract_digest: string;
+            authority_modes: ("application" | "delegated_user")[];
+            /** Format: date-time */
+            effective_until?: string | null;
+        };
+        WebhookEndpoint: {
+            id: string;
+            integration_id: string;
+            environment: string;
+            /** Format: uri */
+            destination: string;
+            /** @enum {string} */
+            status: "active" | "disabled" | "quarantined" | "retired";
+            signing_key_fingerprint: string;
+            subscribed_events: string[];
+            retry_policy: {
+                [key: string]: unknown;
+            };
+        };
+        WebhookEndpointList: {
+            items: components["schemas"]["WebhookEndpoint"][];
+        };
+        CreateWebhookEndpointRequest: {
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            /** Format: uri */
+            destination: string;
+            signing_key_fingerprint: string;
+            subscribed_events: string[];
+            retry_policy?: {
+                [key: string]: unknown;
+            };
+        };
+        WebhookDelivery: {
+            id: string;
+            endpoint_id: string;
+            event_id: string;
+            delivery_id: string;
+            attempt: number;
+            /** @enum {string} */
+            state: "queued" | "delivered" | "retrying" | "failed" | "canceled";
+            response_class?: string | null;
+            /** Format: date-time */
+            next_attempt_at?: string | null;
+        };
+        RedeliverWebhookRequest: {
+            delivery_id: string;
+        };
     };
     responses: {
         /** @description Authentication is required. */
@@ -1375,6 +2234,15 @@ export interface components {
         };
         /** @description Draft revision is stale. */
         RevisionConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Command precondition or idempotency conflict. */
+        Conflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2782,6 +3650,1044 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["InvalidState"];
+        };
+    };
+    listPolicies: {
+        parameters: {
+            query?: {
+                type?: string;
+                workspace_id?: string;
+                state?: "draft" | "published" | "retired";
+                owner_id?: string;
+                binding_target?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy and Draft */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPolicyDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePolicyDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePolicyDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated Policy Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    validatePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listPolicyVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersionList"];
+                };
+            };
+        };
+    };
+    publishPolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy Version */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersion"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listPolicyBindings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Bindings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBindingList"];
+                };
+            };
+        };
+    };
+    bindPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy Binding */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBinding"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    revokePolicyBinding: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                binding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description Revoked Policy Binding */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBinding"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    simulatePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulatePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Simulation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySimulation"];
+                };
+            };
+        };
+    };
+    retirePolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description Retired Policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationSuites: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                state?: "draft" | "published" | "retired";
+                search?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Suites */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Suite */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Suite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    patchEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchEvaluationSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Suite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    validateEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationValidation"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listEvaluationCases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cases */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCaseList"];
+                };
+            };
+        };
+    };
+    createEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Case */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCase"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    patchEvaluationCase: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                suite_id: string;
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Case */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCase"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suite Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteVersionList"];
+                };
+            };
+        };
+    };
+    publishEvaluationVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishEvaluationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Suite Version */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteVersion"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRunList"];
+                };
+            };
+        };
+    };
+    createEvaluationRun: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Run requested */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canceled Evaluation Run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listIntegrations: {
+        parameters: {
+            query?: {
+                state?: "active" | "disabled" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Integrations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationList"];
+                };
+            };
+        };
+    };
+    createIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Integration */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    getIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Integration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    patchIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Integration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    listIntegrationClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clients */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClientList"];
+                };
+            };
+        };
+    };
+    createIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIntegrationClientRequest"];
+            };
+        };
+        responses: {
+            /** @description Client */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClient"];
+                };
+            };
+        };
+    };
+    rotateIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RotateIntegrationClientRequest"];
+            };
+        };
+        responses: {
+            /** @description Client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClient"];
+                };
+            };
+        };
+    };
+    disableIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disabled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIntegrationPublications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Publications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPublicationList"];
+                };
+            };
+        };
+    };
+    createIntegrationPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentPublicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Publication */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPublication"];
+                };
+            };
+        };
+    };
+    revokeIntegrationPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIntegrationWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Webhooks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointList"];
+                };
+            };
+        };
+    };
+    createIntegrationWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebhookEndpointRequest"];
+            };
+        };
+        responses: {
+            /** @description Webhook */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpoint"];
+                };
+            };
+        };
+    };
+    redeliverWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeliverWebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description Delivery */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
         };
     };
 }

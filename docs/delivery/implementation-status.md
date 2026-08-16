@@ -106,8 +106,17 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - **Admin lifecycle UX:** The Draft/Revision/Deployment core lifecycle is usable.
   The read-only Run evidence workbench and scope-authorized Audit Explorer
   list/detail and signed object-storage Audit export lifecycle are implemented.
-  Run mutations, Policies, Evaluations, Integrations, and platform
-  administration are not complete product areas.
+  Typed Policy catalog, Draft ETag editing/validation, immutable Versions,
+  exact Bindings, side-effect-free Simulation, and Retire are implemented as
+  the first governed-resource slice. Evaluation Suite Draft/Case authoring,
+  fixture validation, immutable Suite Versions, and exact Run requests are
+  implemented as a second slice; the evaluator worker and gate projections are
+  still partial. Integrations now have an organization directory, client
+  metadata lifecycle, exact Revision publication, and webhook endpoint
+  metadata/redelivery routes with an Admin list/detail view; invocation
+  execution, signed delivery workers, usage projections, and full capability
+  authorization remain incomplete. Platform administration is not a complete
+  product area.
 
 ### Designed, Not Yet Implemented
 
@@ -115,9 +124,9 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
-- Detailed deployment history, Run mutations, policy projections, evaluations,
-  integrations, and platform administration remain designed but are not
-  complete product areas. Audit list/detail/export currently projects the
+- Detailed deployment history, Run mutations, richer Policy projections,
+  evaluations, and platform administration remain designed but are not complete
+  product areas. Audit list/detail/export currently projects the
   existing append-only event envelope; outcome, risk, correlation, policy
   links, and full authentication context are empty until their durable event
   fields are defined and populated. The current role model does not yet map
@@ -132,12 +141,22 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - Credential Reference/Lease, Model Provider/Route, Runner Pool/Runner,
   attachment input lifecycle, and their production authorization/health
   projections.
-- Enterprise Agent Invocation API, registered integration clients, signed
-  webhooks, and delegated-user authority.
-- Evaluation suites, VCR replay, filesystem/database assertions, publication
-  gates, and trajectory export.
-- Audit search, runner-pool operations, emergency controls, integration
-  management, and policy administration.
+- Enterprise Agent Invocation API execution, signed webhook delivery workers,
+  usage projections, and delegated-user authority. Integration registration,
+  client metadata, publication, and endpoint metadata are implemented as a
+  partial Admin management slice.
+- VCR replay, filesystem/database assertions, publication gates, trajectory
+  export, and the durable evaluator worker. Evaluation Suite authoring and
+  exact Run request persistence are implemented as a partial slice.
+- Audit search, runner-pool operations, emergency controls, and the remaining
+  integration management/usage capabilities.
+- The target schemas, routes, state machines, and authorization matrix for
+  Evaluations, Integrations, and Platform management are documented in
+  [Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md),
+  Integration management routes are now checked in for the partial slice;
+  remaining target routes are not yet capabilities. Policy
+  routes are implemented only for the core Draft/Version/Binding slice above;
+  capability-specific authorization and outer-policy composition remain.
 - Production deployment, gVisor isolation, Helm, scaling, SLOs, retention
   deletion jobs, Legal Hold matching, Audit Event/Export Package integrity,
   backup/restore, SBOM, signing, and release gates.
