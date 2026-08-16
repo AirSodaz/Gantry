@@ -173,3 +173,40 @@ func (h Handler) evaluationRunCommand(w http.ResponseWriter, r *http.Request, ac
 	}
 	writeJSON(w, http.StatusOK, item)
 }
+
+func (h Handler) listEvaluationRunRegressions(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.evaluations.ListRunRegressions(r.Context(), actor, r.PathValue("runID"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) listEvaluationGates(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	item, err := h.evaluations.ListGates(r.Context(), actor, r.URL.Query().Get("workspace_id"), r.URL.Query().Get("agent_revision_hash"))
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (h Handler) evaluationGateCommand(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
+	gateID, operation, ok := strings.Cut(r.PathValue("gateID"), ":")
+	if !ok || operation != "override" {
+		http.NotFound(w, r)
+		return
+	}
+	var request adminevaluation.OverrideGateRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
+		return
+	}
+	item, err := h.evaluations.OverrideGate(r.Context(), actor, gateID, request)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}

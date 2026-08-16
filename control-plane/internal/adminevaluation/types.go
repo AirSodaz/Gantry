@@ -119,3 +119,26 @@ type GateOverride struct {
 	ReviewerPrincipalID string `json:"reviewer_principal_id"`
 	ExpiresAt           string `json:"expires_at"`
 }
+
+type GateList struct {
+	Items []Gate `json:"items"`
+}
+
+type OverrideGateRequest struct {
+	Reason    string `json:"reason"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+type Regression struct {
+	Kind              string          `json:"kind"`
+	Severity          string          `json:"severity"`
+	CaseID            string          `json:"case_id,omitempty"`
+	Message           string          `json:"message"`
+	CandidateEvidence json.RawMessage `json:"candidate_evidence"`
+	BaselineEvidence  json.RawMessage `json:"baseline_evidence"`
+}
+
+type RegressionList struct {
+	ComparisonState string       `json:"comparison_state"`
+	Items           []Regression `json:"items"`
+}

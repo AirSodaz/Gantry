@@ -1,0 +1,107 @@
+.evaluation-page {
+  display: grid;
+  gap: 20px;
+}
+
+.evaluation-toolbar,
+.evaluation-create,
+.evaluation-command {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.evaluation-toolbar {
+  align-items: center;
+}
+
+.evaluation-create {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.evaluation-create .admin-field,
+.evaluation-command .admin-field {
+  flex: 1 1 240px;
+}
+
+.evaluation-layout {
+  display: grid;
+  gap: 24px;
+}
+
+.evaluation-section {
+  padding-top: 20px;
+  border-top: 1px solid var(--ds-border);
+}
+
+.evaluation-section-heading,
+.evaluation-row,
+.evaluation-row > div {
+  display: flex;
+  align-items: center;
+}
+
+.evaluation-section-heading,
+.evaluation-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.evaluation-section-heading {
+  margin-bottom: 12px;
+}
+
+.evaluation-section-heading > div,
+.evaluation-row > div {
+  min-width: 0;
+}
+
+.evaluation-section-heading span,
+.evaluation-row span {
+  display: block;
+  color: var(--ds-text-muted);
+  font-size: 13px;
+}
+
+.evaluation-section-heading h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.evaluation-row {
+  min-height: 54px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ds-border-subtle, var(--ds-border));
+}
+
+.evaluation-row > div {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evaluation-command {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .evaluation-toolbar,
+  .evaluation-create,
+  .evaluation-command {
+    align-items: stretch;
+  }
+
+  .evaluation-create > .admin-field,
+  .evaluation-command > .admin-field,
+  .evaluation-create > button,
+  .evaluation-command > button {
+    width: 100%;
+  }
+
+  .evaluation-row {
+    align-items: flex-start;
+  }
+}

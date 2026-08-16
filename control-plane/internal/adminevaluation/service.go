@@ -43,7 +43,7 @@ func (s *Service) ListSuites(ctx context.Context, actor identity.Principal, opti
 		}
 	}
 	args := []any{actor.OrganizationID, actor.ID, options.WorkspaceID, options.State, options.Search, options.Limit + 1}
-	rows, err := s.pool.Query(ctx, `SELECT id, organization_id, workspace_id, name, state, owner_principal_id, latest_version_id, etag::text, (SELECT count(*) FROM gantry.evaluation_suite_versions v WHERE v.suite_id=s.id), created_at FROM gantry.evaluation_suites s WHERE organization_id=$1 AND ($3='' OR workspace_id=$3) AND ($4='' OR state=$4) AND ($5='' OR name ILIKE '%' || $5 || '%') AND (EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$2 AND rb.role='organization_admin' AND rb.workspace_id IS NULL) OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$2 AND rb.role='workspace_agent_editor' AND rb.workspace_id=workspace_id)) ORDER BY name, id LIMIT $6`, args...)
+	rows, err := s.pool.Query(ctx, `SELECT id, organization_id, workspace_id, name, state, owner_principal_id, latest_version_id, etag::text, (SELECT count(*) FROM gantry.evaluation_suite_versions v WHERE v.suite_id=s.id) FROM gantry.evaluation_suites s WHERE organization_id=$1 AND ($3='' OR workspace_id=$3) AND ($4='' OR state=$4) AND ($5='' OR name ILIKE '%' || $5 || '%') AND (EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$2 AND rb.role='organization_admin' AND rb.workspace_id IS NULL) OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$2 AND rb.role='workspace_agent_editor' AND rb.workspace_id=workspace_id)) ORDER BY name, id LIMIT $6`, args...)
 	if err != nil {
 		return SuiteList{}, err
 	}
@@ -366,6 +366,10 @@ func (s *Service) CreateRun(ctx context.Context, actor identity.Principal, suite
 	if err != nil {
 		return Run{}, err
 	}
+	requirement := canonical(map[string]any{"kind": "evaluation_run_required", "evaluation_run_id": item.ID})
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.evaluation_gates(id,evaluation_run_id,agent_revision_hash,suite_version_id,requirement,state) VALUES($1,$2,$3,$4,$5::jsonb,'required')`, newID("egate"), item.ID, item.CandidateRevisionHash, item.SuiteVersionID, string(requirement)); err != nil {
+		return Run{}, err
+	}
 	item.CreatedAt = created.UTC().Format(time.RFC3339)
 	if err := appendAudit(ctx, tx, actor, suiteID, suite.WorkspaceID, "evaluation_run.requested", map[string]any{"workspace_id": suite.WorkspaceID, "evaluation_run_id": item.ID, "outcome": "accepted", "risk": "medium"}); err != nil {
 		return Run{}, err
@@ -406,6 +410,127 @@ func (s *Service) CancelRun(ctx context.Context, actor identity.Principal, id st
 	}
 	item.State = "canceled"
 	return item, nil
+}
+
+func (s *Service) ListGates(ctx context.Context, actor identity.Principal, workspaceID, agentRevisionHash string) (GateList, error) {
+	workspaceID, agentRevisionHash = strings.TrimSpace(workspaceID), strings.TrimSpace(agentRevisionHash)
+	if workspaceID != "" {
+		if err := s.authz.RequireWorkspace(ctx, actor, workspaceID); err != nil {
+			return GateList{}, err
+		}
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT g.id,g.agent_revision_hash,g.suite_version_id,g.requirement,
+			CASE WHEN o.id IS NOT NULL AND o.expires_at <= now() THEN 'expired' ELSE g.state END,
+			g.override_id
+		FROM gantry.evaluation_gates g
+		JOIN gantry.evaluation_suite_versions v ON v.id=g.suite_version_id
+		JOIN gantry.evaluation_suites s ON s.id=v.suite_id
+		LEFT JOIN LATERAL (SELECT id,expires_at FROM gantry.evaluation_gate_overrides WHERE gate_id=g.id ORDER BY created_at DESC,id DESC LIMIT 1) o ON true
+		WHERE s.organization_id=$1 AND ($2='' OR s.workspace_id=$2) AND ($3='' OR g.agent_revision_hash=$3)
+		AND (EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
+			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='workspace_agent_editor' AND rb.workspace_id=s.workspace_id))
+		ORDER BY g.created_at DESC,g.id`, actor.OrganizationID, workspaceID, agentRevisionHash, actor.ID)
+	if err != nil {
+		return GateList{}, err
+	}
+	defer rows.Close()
+	items := make([]Gate, 0)
+	for rows.Next() {
+		var item Gate
+		if err := rows.Scan(&item.ID, &item.AgentRevisionHash, &item.SuiteVersionID, &item.Requirement, &item.State, &item.OverrideID); err != nil {
+			return GateList{}, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return GateList{}, err
+	}
+	return GateList{Items: items}, nil
+}
+
+func (s *Service) OverrideGate(ctx context.Context, actor identity.Principal, gateID string, request OverrideGateRequest) (Gate, error) {
+	request.Reason, request.ExpiresAt = strings.TrimSpace(request.Reason), strings.TrimSpace(request.ExpiresAt)
+	if request.Reason == "" || request.ExpiresAt == "" {
+		return Gate{}, ErrInvalidInput
+	}
+	expiresAt, err := time.Parse(time.RFC3339, request.ExpiresAt)
+	if err != nil || !expiresAt.After(time.Now()) {
+		return Gate{}, ErrInvalidInput
+	}
+	var gate Gate
+	var workspaceID string
+	err = s.pool.QueryRow(ctx, `
+		SELECT g.id,g.agent_revision_hash,g.suite_version_id,g.requirement,g.state,g.override_id,s.workspace_id
+		FROM gantry.evaluation_gates g
+		JOIN gantry.evaluation_suite_versions v ON v.id=g.suite_version_id
+		JOIN gantry.evaluation_suites s ON s.id=v.suite_id
+		WHERE g.id=$1 AND s.organization_id=$2`, gateID, actor.OrganizationID).Scan(&gate.ID, &gate.AgentRevisionHash, &gate.SuiteVersionID, &gate.Requirement, &gate.State, &gate.OverrideID, &workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Gate{}, ErrNotFound
+	}
+	if err != nil {
+		return Gate{}, err
+	}
+	if err := s.authz.RequireWorkspace(ctx, actor, workspaceID); err != nil {
+		return Gate{}, err
+	}
+	if gate.State == "passed" || gate.State == "expired" {
+		return Gate{}, ErrInvalidState
+	}
+	override := GateOverride{ID: newID("egateovr"), GateID: gate.ID, Reason: request.Reason, ReviewerPrincipalID: actor.ID, ExpiresAt: expiresAt.UTC().Format(time.RFC3339)}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Gate{}, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.evaluation_gate_overrides(id,gate_id,reason,reviewer_principal_id,expires_at) VALUES($1,$2,$3,$4,$5)`, override.ID, override.GateID, override.Reason, override.ReviewerPrincipalID, expiresAt); err != nil {
+		return Gate{}, err
+	}
+	if err := tx.QueryRow(ctx, `UPDATE gantry.evaluation_gates SET state='overridden',override_id=$2,updated_at=now() WHERE id=$1 RETURNING id,agent_revision_hash,suite_version_id,requirement,state,override_id`, gate.ID, override.ID).Scan(&gate.ID, &gate.AgentRevisionHash, &gate.SuiteVersionID, &gate.Requirement, &gate.State, &gate.OverrideID); err != nil {
+		return Gate{}, err
+	}
+	if err := appendAudit(ctx, tx, actor, gate.ID, workspaceID, "evaluation_gate.overridden", map[string]any{"gate_id": gate.ID, "override_id": override.ID, "expires_at": override.ExpiresAt, "outcome": "success", "risk": "high"}); err != nil {
+		return Gate{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Gate{}, err
+	}
+	return gate, nil
+}
+
+func (s *Service) ListRunRegressions(ctx context.Context, actor identity.Principal, runID string) (RegressionList, error) {
+	run, err := s.GetRun(ctx, actor, runID)
+	if err != nil {
+		return RegressionList{}, err
+	}
+	if run.BaselineRevisionHash == nil || run.State != "completed" {
+		state := "pending"
+		if run.State == "invalid" {
+			state = "invalid"
+		}
+		return RegressionList{ComparisonState: state, Items: []Regression{}}, nil
+	}
+	var summary map[string]any
+	if err := json.Unmarshal(run.DeterministicSummary, &summary); err != nil {
+		return RegressionList{ComparisonState: "invalid", Items: []Regression{}}, nil
+	}
+	candidate, candidateOK := summary["candidate"].(map[string]any)
+	baseline, baselineOK := summary["baseline"].(map[string]any)
+	if !candidateOK || !baselineOK {
+		return RegressionList{ComparisonState: "invalid", Items: []Regression{}}, nil
+	}
+	items := make([]Regression, 0)
+	for key, candidateValue := range candidate {
+		baselineValue, exists := baseline[key]
+		if !exists || string(canonical(candidateValue)) == string(canonical(baselineValue)) {
+			continue
+		}
+		if becameFailure(candidateValue, baselineValue) {
+			items = append(items, Regression{Kind: "deterministic", Severity: "high", CaseID: key, Message: "Candidate result regressed from the baseline.", CandidateEvidence: canonical(candidateValue), BaselineEvidence: canonical(baselineValue)})
+		}
+	}
+	return RegressionList{ComparisonState: "comparable", Items: items}, nil
 }
 
 func (s *Service) getSuite(ctx context.Context, actor identity.Principal, id string) (Suite, error) {
@@ -506,6 +631,11 @@ func normalizeListOptions(options ListOptions) ListOptions {
 	return options
 }
 func canonical(value any) json.RawMessage { raw, _ := json.Marshal(value); return raw }
+func becameFailure(candidate, baseline any) bool {
+	candidateState, candidateOK := candidate.(string)
+	baselineState, baselineOK := baseline.(string)
+	return candidateOK && baselineOK && candidateState == "failed" && baselineState != "failed"
+}
 func nullableJSON(value json.RawMessage) any {
 	if len(value) == 0 {
 		return nil

@@ -396,6 +396,70 @@ a {
   min-width: 0;
 }
 
+/* Keep navigation available without forcing a horizontal page scroll. */
+@media (max-width: 720px) {
+  .admin-sidebar,
+  .admin-sidebar-collapsed {
+    width: 64px;
+    padding: 14px 6px 12px;
+  }
+
+  .admin-sidebar-header,
+  .admin-sidebar-collapsed .admin-sidebar-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .admin-sidebar .admin-brand-title,
+  .admin-sidebar .admin-new-agent-btn span,
+  .admin-sidebar .admin-nav-label,
+  .admin-sidebar .admin-nav-link > span,
+  .admin-sidebar .admin-profile-info,
+  .admin-sidebar .admin-theme-section {
+    display: none;
+  }
+
+  .admin-sidebar-action-wrap {
+    padding: 0;
+  }
+
+  .admin-sidebar .admin-new-agent-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .admin-sidebar .admin-nav-link {
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .admin-sidebar-footer,
+  .admin-profile {
+    align-items: center;
+  }
+
+  .admin-profile {
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .admin-nav-divider {
+    width: 40px;
+    margin-inline: auto;
+  }
+}
+
 .admin-page {
   width: min(1180px, calc(100% - 64px));
   margin: 0 auto;
@@ -1454,5 +1518,59 @@ a.admin-overview-metric:hover { border-color: var(--ds-border-strong); backgroun
 @media (max-width: 900px) {
   .admin-detail-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.admin-form-panel {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-form-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-code-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.admin-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-form-spaced {
+  margin-top: 20px;
+}
+
+@media (max-width: 640px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-wide {
+    grid-column: auto;
   }
 }

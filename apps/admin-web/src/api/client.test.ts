@@ -107,4 +107,24 @@ describe('AdminApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/platform/settings?scope=workspace&workspace_id=ws_1', expect.anything());
     expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/admin/v1/platform/settings:apply', expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"', 'Idempotency-Key': 'settings-1' }) }));
   });
+
+  it('uses the Evaluation Gate and Regression routes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ comparison_state: 'pending', items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'egate_1', state: 'overridden' }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+
+    await api.listEvaluationGates({ workspaceId: 'ws_1', agentRevisionHash: 'sha256:revision' });
+    await api.listEvaluationRunRegressions('erun_1');
+    await api.overrideEvaluationGate('egate_1', { reason: 'Incident mitigation', expires_at: '2026-08-17T00:00:00Z' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/evaluation-gates?workspace_id=ws_1&agent_revision_hash=sha256%3Arevision', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/evaluation-runs/erun_1/regressions', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/admin/v1/evaluation-gates/egate_1:override', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Incident mitigation', expires_at: '2026-08-17T00:00:00Z' }),
+    }));
+  });
 });

@@ -110,7 +110,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   exact Bindings, side-effect-free Simulation, and Retire are implemented as
   the first governed-resource slice. Evaluation Suite Draft/Case authoring,
   fixture validation, immutable Suite Versions, and exact Run requests are
-  implemented as a second slice; the evaluator worker and gate projections are
+  implemented as a second slice. Required Gate projections bind the exact Run,
+  Revision, and Suite Version; authorized, expiring overrides are audited, and
+  comparable deterministic regressions have a read-only projection. The
+  evaluator worker, evidence collection, and complete gate derivation are
   still partial. Integrations now have an organization directory, client
   metadata lifecycle, exact Revision publication, and webhook endpoint
   metadata/redelivery routes with an Admin list/detail view; invocation

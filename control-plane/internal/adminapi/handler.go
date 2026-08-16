@@ -132,6 +132,9 @@ type evaluationService interface {
 	CreateRun(context.Context, identity.Principal, string, string, adminevaluation.CreateRunRequest) (adminevaluation.Run, error)
 	GetRun(context.Context, identity.Principal, string) (adminevaluation.Run, error)
 	CancelRun(context.Context, identity.Principal, string) (adminevaluation.Run, error)
+	ListRunRegressions(context.Context, identity.Principal, string) (adminevaluation.RegressionList, error)
+	ListGates(context.Context, identity.Principal, string, string) (adminevaluation.GateList, error)
+	OverrideGate(context.Context, identity.Principal, string, adminevaluation.OverrideGateRequest) (adminevaluation.Gate, error)
 }
 
 type integrationService interface {
@@ -289,6 +292,9 @@ func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service 
 		mux.Handle("POST /evaluation-suites/{suiteID}/runs", h.withActor(h.createEvaluationRun))
 		mux.Handle("GET /evaluation-runs/{runID}", h.withActor(h.getEvaluationRun))
 		mux.Handle("POST /evaluation-runs/{runID}", h.withActor(h.evaluationRunCommand))
+		mux.Handle("GET /evaluation-runs/{runID}/regressions", h.withActor(h.listEvaluationRunRegressions))
+		mux.Handle("GET /evaluation-gates", h.withActor(h.listEvaluationGates))
+		mux.Handle("POST /evaluation-gates/{gateID}", h.withActor(h.evaluationGateCommand))
 	}
 	if integrations != nil {
 		mux.Handle("GET /integrations", h.withActor(h.listIntegrations))

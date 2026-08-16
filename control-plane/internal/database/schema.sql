@@ -541,6 +541,29 @@ CREATE TABLE IF NOT EXISTS gantry.evaluation_runs (
 );
 CREATE INDEX IF NOT EXISTS evaluation_runs_suite_idx ON gantry.evaluation_runs (suite_version_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS gantry.evaluation_gates (
+  id text PRIMARY KEY,
+  evaluation_run_id text NOT NULL UNIQUE REFERENCES gantry.evaluation_runs(id),
+  agent_revision_hash text NOT NULL,
+  suite_version_id text NOT NULL REFERENCES gantry.evaluation_suite_versions(id),
+  requirement jsonb NOT NULL DEFAULT '{}'::jsonb,
+  state text NOT NULL CHECK (state IN ('required', 'passed', 'failed', 'overridden', 'expired')),
+  override_id text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS evaluation_gates_revision_idx ON gantry.evaluation_gates (agent_revision_hash, state, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.evaluation_gate_overrides (
+  id text PRIMARY KEY,
+  gate_id text NOT NULL REFERENCES gantry.evaluation_gates(id),
+  reason text NOT NULL,
+  reviewer_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS evaluation_gate_overrides_gate_idx ON gantry.evaluation_gate_overrides (gate_id, expires_at DESC);
+
 CREATE TABLE IF NOT EXISTS gantry.evaluation_command_idempotency (
   principal_id text NOT NULL REFERENCES gantry.principals(id),
   route text NOT NULL,

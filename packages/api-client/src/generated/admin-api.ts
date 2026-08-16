@@ -1058,6 +1058,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluation-runs/{run_id}/regressions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List comparable candidate and baseline regressions */
+        get: operations["listEvaluationRunRegressions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List authorized publication Gate projections */
+        get: operations["listEvaluationGates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-gates/{gate_id}:override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an expiring, attributed Gate override */
+        post: operations["overrideEvaluationGate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/integrations": {
         parameters: {
             query?: never;
@@ -1673,6 +1724,44 @@ export interface components {
             candidate_revision_hash: string;
             baseline_revision_hash?: string | null;
             environment_digest: string;
+        };
+        EvaluationGate: {
+            id: string;
+            agent_revision_hash: string;
+            suite_version_id: string;
+            requirement: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            state: "required" | "passed" | "failed" | "overridden" | "expired";
+            override_id?: string | null;
+        };
+        EvaluationGateList: {
+            items: components["schemas"]["EvaluationGate"][];
+        };
+        OverrideEvaluationGateRequest: {
+            reason: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        EvaluationRegression: {
+            /** @enum {string} */
+            kind: "deterministic" | "policy" | "side_effect" | "quality" | "latency" | "cost" | "fixture" | "environment";
+            /** @enum {string} */
+            severity: "low" | "medium" | "high" | "critical";
+            case_id?: string;
+            message: string;
+            candidate_evidence: {
+                [key: string]: unknown;
+            };
+            baseline_evidence: {
+                [key: string]: unknown;
+            };
+        };
+        EvaluationRegressionList: {
+            /** @enum {string} */
+            comparison_state: "pending" | "comparable" | "invalid";
+            items: components["schemas"]["EvaluationRegression"][];
         };
         Policy: {
             id: string;
@@ -4891,6 +4980,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationRunRegressions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Regression projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRegressionList"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listEvaluationGates: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                agent_revision_hash?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Publication Gates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationGateList"];
+                };
+            };
+        };
+    };
+    overrideEvaluationGate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                gate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideEvaluationGateRequest"];
+            };
+        };
+        responses: {
+            /** @description Overridden Gate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationGate"];
                 };
             };
             409: components["responses"]["Conflict"];

@@ -1051,6 +1051,35 @@ paths:
       responses:
         "200": {description: Canceled Evaluation Run, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRun"}}}}
         "409": {$ref: "#/components/responses/Conflict"}
+  /evaluation-runs/{run_id}/regressions:
+    get:
+      operationId: listEvaluationRunRegressions
+      summary: List comparable candidate and baseline regressions
+      tags: [Evaluations]
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Regression projection, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationRegressionList"}}}}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /evaluation-gates:
+    get:
+      operationId: listEvaluationGates
+      summary: List authorized publication Gate projections
+      tags: [Evaluations]
+      parameters:
+        - {name: workspace_id, in: query, schema: {type: string}}
+        - {name: agent_revision_hash, in: query, schema: {type: string}}
+      responses:
+        "200": {description: Publication Gates, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationGateList"}}}}
+  /evaluation-gates/{gate_id}:override:
+    post:
+      operationId: overrideEvaluationGate
+      summary: Create an expiring, attributed Gate override
+      tags: [Evaluations]
+      parameters: [{name: gate_id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/OverrideEvaluationGateRequest"}}}}
+      responses:
+        "200": {description: Overridden Gate, content: {application/json: {schema: {$ref: "#/components/schemas/EvaluationGate"}}}}
+        "409": {$ref: "#/components/responses/Conflict"}
   /integrations:
     get:
       operationId: listIntegrations
@@ -1480,6 +1509,43 @@ components:
         candidate_revision_hash: {type: string}
         baseline_revision_hash: {type: string, nullable: true}
         environment_digest: {type: string}
+    EvaluationGate:
+      type: object
+      required: [id, agent_revision_hash, suite_version_id, requirement, state]
+      properties:
+        id: {type: string}
+        agent_revision_hash: {type: string}
+        suite_version_id: {type: string}
+        requirement: {type: object, additionalProperties: true}
+        state: {type: string, enum: [required, passed, failed, overridden, expired]}
+        override_id: {type: string, nullable: true}
+    EvaluationGateList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationGate"}}
+    OverrideEvaluationGateRequest:
+      type: object
+      required: [reason, expires_at]
+      properties:
+        reason: {type: string, minLength: 1}
+        expires_at: {type: string, format: date-time}
+    EvaluationRegression:
+      type: object
+      required: [kind, severity, message, candidate_evidence, baseline_evidence]
+      properties:
+        kind: {type: string, enum: [deterministic, policy, side_effect, quality, latency, cost, fixture, environment]}
+        severity: {type: string, enum: [low, medium, high, critical]}
+        case_id: {type: string}
+        message: {type: string}
+        candidate_evidence: {type: object, additionalProperties: true}
+        baseline_evidence: {type: object, additionalProperties: true}
+    EvaluationRegressionList:
+      type: object
+      required: [comparison_state, items]
+      properties:
+        comparison_state: {type: string, enum: [pending, comparable, invalid]}
+        items: {type: array, items: {$ref: "#/components/schemas/EvaluationRegression"}}
     Policy:
       type: object
       required: [id, organization_id, type, name, state, schema_version, draft_etag, active_binding_count]
