@@ -1,7 +1,7 @@
 import { useSearchParams, Link } from 'react-router-dom';
 import { FileArchive, Filter, ArrowUpRight } from 'lucide-react';
-import { Select, StatusMark, type SelectOption } from '@gantry/design-system';
-import { useQuery } from '@tanstack/react-query';
+import { Button, Select, StatusMark, type SelectOption } from '@gantry/design-system';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
@@ -17,10 +17,13 @@ export function ArtifactsPage() {
   const [params, setParams] = useSearchParams();
   const taskId = params.get('task_id') ?? '';
   const classification = params.get('classification') ?? '';
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['artifacts', taskId, classification],
-    queryFn: () => api.listArtifacts(taskId, classification),
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => api.listArtifacts(taskId, classification, pageParam),
+		getNextPageParam: (page) => page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
+	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const setFilter = (name: 'task_id' | 'classification', value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(name, value); else next.delete(name);
@@ -35,15 +38,16 @@ export function ArtifactsPage() {
     </div>
     {query.isLoading ? <LoadingState label="Loading artifacts" /> : null}
     {query.isError ? <ErrorState message={query.error instanceof Error ? query.error.message : 'Artifacts could not be loaded.'} onRetry={() => void query.refetch()} /> : null}
-    {!query.isLoading && !query.isError && query.data?.items.length === 0 ? <EmptyState title="No artifacts found" detail="Files produced by your tasks will appear here." /> : null}
+    {!query.isLoading && !query.isError && items.length === 0 ? <EmptyState title="No artifacts found" detail="Files produced by your tasks will appear here." /> : null}
     <div className="artifact-browser-list" aria-label="Artifacts">
-      {query.data?.items.map((artifact) => <Link className="artifact-browser-row" key={artifact.id} to={`/artifacts/${encodeURIComponent(artifact.id)}`}>
+      {items.map((artifact) => <Link className="artifact-browser-row" key={artifact.id} to={`/artifacts/${encodeURIComponent(artifact.id)}`}>
         <span className="artifact-browser-icon" aria-hidden="true"><FileArchive size={18} /></span>
         <span className="artifact-browser-copy"><strong>{artifact.filename}</strong><span>{artifact.media_type} · {formatBytes(artifact.size_bytes)}</span><small>{artifact.task_id}</small></span>
         <span className="artifact-browser-states"><StatusMark status={artifact.classification ?? 'internal'} /><StatusMark status={artifact.state} /></span>
         <ArrowUpRight size={17} aria-hidden="true" />
       </Link>)}
     </div>
+		{query.hasNextPage ? <div className="list-more"><Button variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading...' : 'Load more'}</Button></div> : null}
   </div>;
 }
 

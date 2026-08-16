@@ -55,6 +55,14 @@ type Agent struct {
 	Category    string `json:"category"`
 	OwnerName   string `json:"owner_name,omitempty"`
 }
+type AgentCursor struct {
+	DisplayName string
+	ID          string
+}
+type AgentPage struct {
+	Items   []Agent
+	HasMore bool
+}
 type Run struct {
 	ID                        string `json:"id"`
 	Status                    string `json:"status"`
@@ -84,6 +92,16 @@ type ListFilter struct {
 	AgentID         string
 	RequesterAction string
 	CreatedAfter    *time.Time
+}
+
+type TaskCursor struct {
+	CreatedAt time.Time
+	ID        string
+}
+
+type TaskPage struct {
+	Items   []Task
+	HasMore bool
 }
 
 type Message struct {
@@ -160,6 +178,15 @@ type Artifact struct {
 	ScanStatus     string    `json:"scan_status"`
 	State          string    `json:"state"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+type ArtifactCursor struct {
+	CreatedAt time.Time
+	ID        string
+}
+type ArtifactPage struct {
+	Items   []Artifact
+	HasMore bool
 }
 
 // ArtifactDownloadGrant is a short-lived, capability-scoped object reference.

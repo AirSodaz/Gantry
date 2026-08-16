@@ -4,6 +4,8 @@ import { ArrowLeft, Check, FileCheck2, X } from 'lucide-react';
 import { Button, StatusMark } from '@gantry/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
+import { CopilotApiError } from '../../api/client';
+import type { Approval } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 
 export function ApprovalDetailPage() {
@@ -24,13 +26,23 @@ export function ApprovalDetailPage() {
       }
       return api.decideApproval(approvalId, decision, detail.data?.action_digest ?? '', detail.data?.approval_revision ?? 0, reason, idempotencyKey);
     },
-    onSuccess: async () => {
+    onSuccess: async (approval) => {
+		queryClient.setQueryData(['approval', approvalId], approval);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['approval', approvalId] }),
         queryClient.invalidateQueries({ queryKey: ['approvals'] }),
         queryClient.invalidateQueries({ queryKey: ['tasks'] }),
       ]);
     },
+    onError: async (error) => {
+      const currentResource = error instanceof CopilotApiError ? error.currentResource : undefined;
+      if (!isApproval(currentResource, approvalId)) return;
+      queryClient.setQueryData(['approval', approvalId], currentResource);
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ['approvals'] }),
+				queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+			]);
+		},
   });
 
   if (detail.isLoading) return <div className="page-wrap"><LoadingState label="Loading approval" /></div>;
@@ -61,4 +73,8 @@ export function ApprovalDetailPage() {
 function formatDate(value?: string) {
   if (!value) return 'Not available';
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+function isApproval(value: unknown, approvalId: string): value is Approval {
+	return typeof value === 'object' && value !== null && 'id' in value && (value as { id?: unknown }).id === approvalId;
 }

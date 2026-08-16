@@ -25,11 +25,11 @@ func (a fakeAuthenticator) Authenticate(context.Context, string) (identity.Princ
 
 type fakeTaskService struct {
 	submit             func(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
-	list               func(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
+	list               func(context.Context, identity.Principal, tasks.ListFilter, *tasks.TaskCursor, int) (tasks.TaskPage, error)
 	get                func(context.Context, identity.Principal, string) (tasks.Task, error)
 	append             func(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
 	runs               func(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
-	artifacts          func(context.Context, identity.Principal, string, string, int) ([]tasks.Artifact, error)
+	artifacts          func(context.Context, identity.Principal, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
 	downloadArtifact   func(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error)
 	createAttachment   func(context.Context, identity.Principal, tasks.CreateAttachmentRequest) (tasks.Attachment, error)
 	getAttachment      func(context.Context, identity.Principal, string) (tasks.Attachment, error)
@@ -40,7 +40,7 @@ type fakeTaskService struct {
 }
 
 type fakeApprovalService struct {
-	list   func(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	list   func(context.Context, identity.Principal, *approvals.Cursor, int) (approvals.Page, error)
 	get    func(context.Context, identity.Principal, string) (approvals.Request, error)
 	expire func(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	decide func(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
@@ -59,11 +59,11 @@ func (s fakeApprovalService) Expire(ctx context.Context, actor identity.Principa
 	return nil, nil
 }
 
-func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, limit int) ([]approvals.Request, error) {
+func (s fakeApprovalService) List(ctx context.Context, actor identity.Principal, after *approvals.Cursor, limit int) (approvals.Page, error) {
 	if s.list != nil {
-		return s.list(ctx, actor, limit)
+		return s.list(ctx, actor, after, limit)
 	}
-	return nil, nil
+	return approvals.Page{}, nil
 }
 func (s fakeApprovalService) Decide(ctx context.Context, actor identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
 	if s.decide != nil {
@@ -72,8 +72,8 @@ func (s fakeApprovalService) Decide(ctx context.Context, actor identity.Principa
 	return approvals.Resolution{}, approvals.ErrNotFound
 }
 
-func (s fakeTaskService) ListAgents(context.Context, identity.Principal, string, string, int) ([]tasks.Agent, error) {
-	return nil, nil
+func (s fakeTaskService) ListAgents(context.Context, identity.Principal, string, string, *tasks.AgentCursor, int) (tasks.AgentPage, error) {
+	return tasks.AgentPage{}, nil
 }
 
 func (s fakeTaskService) Submit(ctx context.Context, actor identity.Principal, key string, request tasks.SubmitRequest) (tasks.Task, bool, error) {
@@ -83,11 +83,11 @@ func (s fakeTaskService) Submit(ctx context.Context, actor identity.Principal, k
 	return s.submit(ctx, actor, key, request)
 }
 
-func (s fakeTaskService) List(ctx context.Context, actor identity.Principal, filter tasks.ListFilter, limit int) ([]tasks.Task, error) {
+func (s fakeTaskService) List(ctx context.Context, actor identity.Principal, filter tasks.ListFilter, after *tasks.TaskCursor, limit int) (tasks.TaskPage, error) {
 	if s.list != nil {
-		return s.list(ctx, actor, filter, limit)
+		return s.list(ctx, actor, filter, after, limit)
 	}
-	return nil, nil
+	return tasks.TaskPage{}, nil
 }
 
 func (s fakeTaskService) Get(ctx context.Context, actor identity.Principal, taskID string) (tasks.Task, error) {
@@ -111,11 +111,11 @@ func (s fakeTaskService) ListRuns(ctx context.Context, actor identity.Principal,
 	return nil, tasks.ErrNotFound
 }
 
-func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, limit int) ([]tasks.Artifact, error) {
+func (s fakeTaskService) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, after *tasks.ArtifactCursor, limit int) (tasks.ArtifactPage, error) {
 	if s.artifacts != nil {
-		return s.artifacts(ctx, actor, taskID, classification, limit)
+		return s.artifacts(ctx, actor, taskID, classification, after, limit)
 	}
-	return nil, nil
+	return tasks.ArtifactPage{}, nil
 }
 
 func (s fakeTaskService) DownloadArtifact(ctx context.Context, actor identity.Principal, artifactID string) (tasks.ArtifactDownloadGrant, error) {
@@ -405,9 +405,9 @@ func TestListTasksParsesRequesterFilters(t *testing.T) {
 	var received tasks.ListFilter
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{list: func(_ context.Context, _ identity.Principal, filter tasks.ListFilter, _ int) ([]tasks.Task, error) {
+		fakeTaskService{list: func(_ context.Context, _ identity.Principal, filter tasks.ListFilter, _ *tasks.TaskCursor, _ int) (tasks.TaskPage, error) {
 			received = filter
-			return nil, nil
+			return tasks.TaskPage{}, nil
 		}},
 		nil,
 		&fakeDispatcher{},
@@ -544,9 +544,9 @@ func TestListArtifactsPassesOnlyRequesterFilters(t *testing.T) {
 	var taskID, classification string
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
-		fakeTaskService{artifacts: func(_ context.Context, _ identity.Principal, task, class string, _ int) ([]tasks.Artifact, error) {
+		fakeTaskService{artifacts: func(_ context.Context, _ identity.Principal, task, class string, _ *tasks.ArtifactCursor, _ int) (tasks.ArtifactPage, error) {
 			taskID, classification = task, class
-			return []tasks.Artifact{{ID: "art_1", TaskID: task, Classification: class}}, nil
+			return tasks.ArtifactPage{Items: []tasks.Artifact{{ID: "art_1", TaskID: task, Classification: class}}}, nil
 		}},
 		nil,
 		&fakeDispatcher{},
@@ -639,10 +639,15 @@ func TestDecideApprovalRequiresExactActionDigest(t *testing.T) {
 	handler := New(
 		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
 		fakeTaskService{},
-		fakeApprovalService{decide: func(_ context.Context, _ identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
-			received = input
-			return approvals.Resolution{ApprovalID: input.ID, RunID: "run-1", Decision: "approve"}, nil
-		}},
+		fakeApprovalService{
+			decide: func(_ context.Context, _ identity.Principal, input approvals.DecisionInput) (approvals.Resolution, error) {
+				received = input
+				return approvals.Resolution{ApprovalID: input.ID, RunID: "run-1", Decision: "approve"}, nil
+			},
+			get: func(_ context.Context, _ identity.Principal, approvalID string) (approvals.Request, error) {
+				return approvals.Request{ID: approvalID, Status: "satisfied", ActionDigest: "sha256:one"}, nil
+			},
+		},
 		dispatcher,
 		nil,
 	)
@@ -656,6 +661,34 @@ func TestDecideApprovalRequiresExactActionDigest(t *testing.T) {
 	}
 	if received.ID != "apr_1" || received.ActionDigest != "sha256:one" || received.Idempotency != "decision-1" {
 		t.Fatalf("input = %#v", received)
+	}
+	if !strings.Contains(response.Body.String(), `"status":"satisfied"`) {
+		t.Fatalf("response = %s", response.Body.String())
+	}
+}
+
+func TestDecideApprovalReturnsServerWinningApprovalOnConflict(t *testing.T) {
+	handler := New(
+		fakeAuthenticator{principal: identity.Principal{ID: "principal-1"}},
+		fakeTaskService{},
+		fakeApprovalService{
+			decide: func(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error) {
+				return approvals.Resolution{}, approvals.ErrChanged
+			},
+			get: func(_ context.Context, _ identity.Principal, approvalID string) (approvals.Request, error) {
+				return approvals.Request{ID: approvalID, Status: "rejected", ActionDigest: "sha256:one"}, nil
+			},
+		},
+		&fakeDispatcher{},
+		nil,
+	)
+	request := httptest.NewRequest(http.MethodPost, "/approvals/apr_1:decide", strings.NewReader(`{"decision":"approve","action_digest":"sha256:one","approval_revision":1}`))
+	request.Header.Set("Authorization", "Bearer access-token")
+	request.Header.Set("Idempotency-Key", "decision-1")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), `"approval_changed"`) || !strings.Contains(response.Body.String(), `"current_resource"`) || !strings.Contains(response.Body.String(), `"status":"rejected"`) {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }
 

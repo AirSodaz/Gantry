@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, CheckCircle2, Clock, Filter, ListTodo, XCircle } from 'lucide-react';
-import { Select, type SelectOption, StatusMark } from '@gantry/design-system';
-import { useQuery } from '@tanstack/react-query';
+import { Button, Select, type SelectOption, StatusMark } from '@gantry/design-system';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
@@ -42,10 +42,13 @@ export function MyTasksPage() {
     { value: '', label: 'All agents' },
     ...(agentsQuery.data?.items ?? []).map((agent) => ({ value: agent.id, label: agent.display_name })),
   ], [agentsQuery.data]);
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['tasks', status, agentId, requesterAction, timeRange],
-    queryFn: () => api.listTasks({ status, agentId, requesterAction, createdAfter }),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => api.listTasks({ status, agentId, requesterAction, createdAfter, cursor: pageParam }),
+		getNextPageParam: (page) => page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
+	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const setFilter = (key: 'status' | 'agent_id' | 'requester_action' | 'time_range', value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value); else next.delete(key);
@@ -84,7 +87,7 @@ export function MyTasksPage() {
           onRetry={() => void query.refetch()}
         />
       ) : null}
-      {!query.isLoading && !query.isError && query.data?.items.length === 0 ? (
+      {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
           title="No tasks yet"
           detail={status || agentId || requesterAction || timeRange ? 'No tasks match the selected filters.' : 'Start with a new task when you are ready.'}
@@ -92,7 +95,7 @@ export function MyTasksPage() {
       ) : null}
 
       <div className="task-list" aria-label="My tasks">
-        {query.data?.items.map((task) => (
+        {items.map((task) => (
           <Link to={`/tasks/${task.id}`} className="task-row" key={task.id}>
             <span className="task-row-icon" aria-hidden="true">
               <ListTodo size={17} />
@@ -106,6 +109,7 @@ export function MyTasksPage() {
           </Link>
         ))}
       </div>
+		{query.hasNextPage ? <div className="list-more"><Button variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading...' : 'Load more'}</Button></div> : null}
     </div>
   );
 }

@@ -52,6 +52,6 @@ describe('AgentPicker', () => {
     mocked.api.listAgents.mockResolvedValue({ items: agents });
     renderPicker('/agents?search=lifecycle&category=Development');
 
-    await waitFor(() => expect(mocked.api.listAgents).toHaveBeenCalledWith('lifecycle', 'Development'));
+    await waitFor(() => expect(mocked.api.listAgents).toHaveBeenCalledWith('lifecycle', 'Development', ''));
   });
 });

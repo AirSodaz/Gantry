@@ -48,24 +48,37 @@ func (s *Service) ListArtifacts(ctx context.Context, actor identity.Principal, t
 // ListMyArtifacts returns only artifacts belonging to tasks initiated by the
 // current requester. A Copilot artifact browser never becomes a workspace file
 // inventory, even when an artifact has broader runtime visibility.
-func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, limit int) ([]Artifact, error) {
+func (s *Service) ListMyArtifacts(ctx context.Context, actor identity.Principal, taskID, classification string, after *ArtifactCursor, limit int) (ArtifactPage, error) {
 	if s.store == nil {
-		return []Artifact{}, nil
+		return ArtifactPage{Items: []Artifact{}}, nil
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE t.requester_principal_id=$1 AND ($2='' OR ar.task_id=$2) AND ($3='' OR ar.classification=$3) ORDER BY ar.created_at DESC, ar.id DESC LIMIT $4`, actor.ID, strings.TrimSpace(taskID), strings.TrimSpace(classification), boundedLimit(limit))
+	var afterCreatedAt *time.Time
+	var afterID string
+	if after != nil {
+		afterCreatedAt, afterID = &after.CreatedAt, after.ID
+	}
+	pageLimit := boundedLimit(limit)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.task_id, ar.run_id, ar.filename, ar.media_type, ar.size_bytes, ar.digest, ar.classification, ar.scan_status, ar.state, ar.created_at FROM gantry.artifacts ar JOIN gantry.tasks t ON t.id=ar.task_id WHERE t.requester_principal_id=$1 AND ($2='' OR ar.task_id=$2) AND ($3='' OR ar.classification=$3) AND ($4::timestamptz IS NULL OR ar.created_at < $4 OR (ar.created_at = $4 AND ar.id < $5)) ORDER BY ar.created_at DESC, ar.id DESC LIMIT $6`, actor.ID, strings.TrimSpace(taskID), strings.TrimSpace(classification), afterCreatedAt, afterID, pageLimit+1)
 	if err != nil {
-		return nil, err
+		return ArtifactPage{}, err
 	}
 	defer rows.Close()
 	items := make([]Artifact, 0)
 	for rows.Next() {
 		var item Artifact
 		if err := rows.Scan(&item.ID, &item.TaskID, &item.RunID, &item.Filename, &item.MediaType, &item.SizeBytes, &item.Digest, &item.Classification, &item.ScanStatus, &item.State, &item.CreatedAt); err != nil {
-			return nil, err
+			return ArtifactPage{}, err
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return ArtifactPage{}, err
+	}
+	page := ArtifactPage{Items: items, HasMore: len(items) > pageLimit}
+	if page.HasMore {
+		page.Items = page.Items[:pageLimit]
+	}
+	return page, nil
 }
 
 func (s *Service) GetArtifact(ctx context.Context, actor identity.Principal, artifactID string) (Artifact, error) {

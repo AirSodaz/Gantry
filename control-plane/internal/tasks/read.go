@@ -5,42 +5,62 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, category, search string, limit int) ([]Agent, error) {
-	rows, err := s.pool.Query(ctx, `SELECT a.id, a.display_name, a.description, a.category, COALESCE(owner.display_name, '') FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 LEFT JOIN gantry.principals owner ON owner.id=a.owner_principal_id WHERE a.organization_id=$2 AND ($3='' OR a.category=$3) AND ($4='' OR a.display_name ILIKE '%' || $4 || '%' OR a.description ILIKE '%' || $4 || '%') ORDER BY a.display_name, a.id LIMIT $5`, actor.ID, actor.OrganizationID, category, search, boundedLimit(limit))
+func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, category, search string, after *AgentCursor, limit int) (AgentPage, error) {
+	var name *string
+	var id string
+	if after != nil {
+		name, id = &after.DisplayName, after.ID
+	}
+	pageLimit := boundedLimit(limit)
+	rows, err := s.pool.Query(ctx, `SELECT a.id, a.display_name, a.description, a.category, COALESCE(owner.display_name, '') FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 LEFT JOIN gantry.principals owner ON owner.id=a.owner_principal_id WHERE a.organization_id=$2 AND ($3='' OR a.category=$3) AND ($4='' OR a.display_name ILIKE '%' || $4 || '%' OR a.description ILIKE '%' || $4 || '%') AND ($5::text IS NULL OR a.display_name > $5 OR (a.display_name=$5 AND a.id>$6)) ORDER BY a.display_name, a.id LIMIT $7`, actor.ID, actor.OrganizationID, category, search, name, id, pageLimit+1)
 	if err != nil {
-		return nil, err
+		return AgentPage{}, err
 	}
 	defer rows.Close()
 	items := make([]Agent, 0)
 	for rows.Next() {
 		var item Agent
 		if err := rows.Scan(&item.ID, &item.DisplayName, &item.Description, &item.Category, &item.OwnerName); err != nil {
-			return nil, err
+			return AgentPage{}, err
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return AgentPage{}, err
+	}
+	page := AgentPage{Items: items, HasMore: len(items) > pageLimit}
+	if page.HasMore {
+		page.Items = page.Items[:pageLimit]
+	}
+	return page, nil
 }
 
-func (s *Service) List(ctx context.Context, actor identity.Principal, filter ListFilter, limit int) ([]Task, error) {
+func (s *Service) List(ctx context.Context, actor identity.Principal, filter ListFilter, after *TaskCursor, limit int) (TaskPage, error) {
 	if filter.RequesterAction != "" && filter.RequesterAction != "approval" && filter.RequesterAction != "input" {
-		return nil, ErrInvalidInput
+		return TaskPage{}, ErrInvalidInput
 	}
-	rows, err := s.pool.Query(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) ORDER BY t.created_at DESC, t.id DESC LIMIT $6`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, boundedLimit(limit))
+	var afterCreatedAt *time.Time
+	var afterID string
+	if after != nil {
+		afterCreatedAt, afterID = &after.CreatedAt, after.ID
+	}
+	pageLimit := boundedLimit(limit)
+	rows, err := s.pool.Query(ctx, `SELECT t.id, t.agent_id, a.display_name, t.status, r.id, r.status, r.status_reason, t.conversation_revision, t.created_at FROM gantry.tasks t JOIN gantry.agents a ON a.id=t.agent_id JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.requester_principal_id=$1 AND ($2='' OR t.status=$2) AND ($3='' OR t.agent_id=$3) AND ($4='' OR ($4='approval' AND t.status='awaiting_approval') OR ($4='input' AND t.status='awaiting_requester_input')) AND ($5::timestamptz IS NULL OR t.created_at >= $5) AND ($6::timestamptz IS NULL OR t.created_at < $6 OR (t.created_at = $6 AND t.id < $7)) ORDER BY t.created_at DESC, t.id DESC LIMIT $8`, actor.ID, filter.Status, filter.AgentID, filter.RequesterAction, filter.CreatedAfter, afterCreatedAt, afterID, pageLimit+1)
 	if err != nil {
-		return nil, err
+		return TaskPage{}, err
 	}
 	defer rows.Close()
 	items := make([]Task, 0)
 	for rows.Next() {
 		var task Task
 		if err := rows.Scan(&task.ID, &task.AgentID, &task.AgentDisplayName, &task.Status, &task.CurrentRun.ID, &task.CurrentRun.Status, &task.CurrentRun.Reason, &task.ConversationRevision, &task.CreatedAt); err != nil {
-			return nil, err
+			return TaskPage{}, err
 		}
 		task.Status = publicStatus(task.Status)
 		task.CurrentRun.Status = publicStatus(task.CurrentRun.Status)
@@ -52,7 +72,14 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 			}
 		}
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return TaskPage{}, err
+	}
+	page := TaskPage{Items: items, HasMore: len(items) > pageLimit}
+	if page.HasMore {
+		page.Items = page.Items[:pageLimit]
+	}
+	return page, nil
 }
 
 func (s *Service) Get(ctx context.Context, actor identity.Principal, taskID string) (Task, error) {

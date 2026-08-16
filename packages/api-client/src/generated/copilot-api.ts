@@ -428,7 +428,7 @@ export interface components {
             tool_name: string;
             operation: string;
             target?: string;
-            agent_display_name?: string;
+            agent_display_name: string;
             /** @description Human-readable action summary */
             action_preview: {
                 tool_name?: string;
@@ -459,13 +459,13 @@ export interface components {
             /** Format: int64 */
             approval_revision: number;
         };
-        ApprovalDecisionResponse: {
-            /** @enum {string} */
-            status: "satisfied" | "rejected";
-            approval_id: string;
-            run_id: string;
-            /** @enum {string} */
-            decision: "approve" | "reject";
+        ApprovalDecisionConflict: {
+            error: {
+                /** @enum {string} */
+                code: "action_changed" | "already_decided" | "approval_changed" | "approval_expired" | "idempotency_key_reused";
+                message: string;
+                current_resource: components["schemas"]["CopilotApproval"];
+            };
         };
         ApprovalDecisionEvidence: {
             /** @enum {string} */
@@ -1009,13 +1009,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Decision recorded */
+            /** @description Requester-authorized approval projection after the decision */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalDecisionResponse"];
+                    "application/json": components["schemas"]["CopilotApproval"];
                 };
             };
             /** @description The current principal cannot decide this action */
@@ -1037,14 +1037,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecisionConflict"];
+                };
             };
             /** @description The action digest is stale */
             412: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecisionConflict"];
+                };
             };
         };
     };

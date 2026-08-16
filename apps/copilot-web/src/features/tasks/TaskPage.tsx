@@ -4,7 +4,7 @@ import { ArrowLeft, Ban, CheckCircle2, RotateCcw, Send, Timer, XCircle } from 'l
 import { Button, StatusMark } from '@gantry/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
-import type { Artifact, TaskEventFrame as ApiTaskEventFrame, TaskEventSnapshot } from '../../api/types';
+import type { Approval, Artifact, TaskEventFrame as ApiTaskEventFrame, TaskEventSnapshot } from '../../api/types';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 import { AttachmentUploadControl, type AttachmentUploadState } from './AttachmentUploadControl';
 
@@ -21,8 +21,10 @@ export function TaskPage() {
 	const [followUpComposerVersion, setFollowUpComposerVersion] = useState(0);
 	const [retryRevisionSelection, setRetryRevisionSelection] = useState<'original_revision' | 'current_production_revision'>('original_revision');
   const [streamState, setStreamState] = useState<'connecting' | 'connected' | 'reconnecting' | 'closed'>('connecting');
+	const [streamNotice, setStreamNotice] = useState('');
   const cursorRef = useRef('');
   const seenSequences = useRef(new Set<number>());
+	const outputMessageIDRef = useRef<string | null>(null);
   const followUpKeyRef = useRef<string | null>(null);
   const cancelKeyRef = useRef<string | null>(null);
 	const retryKeyRef = useRef<string | null>(null);
@@ -88,7 +90,9 @@ export function TaskPage() {
   const canCancel = Boolean(task && activeStatuses.has(task.status) && task.current_run?.id && task.status !== 'canceling');
   const canRetry = Boolean(task && (task.status === 'failed' || task.status === 'canceled'));
   const canContinue = task?.status === 'awaiting_requester_input';
-  const pendingApproval = approvalsQuery.data?.items.find((approval) => approval.run_id === task?.current_run?.id);
+  const pendingApproval = task?.status === 'awaiting_approval'
+    ? approvalsQuery.data?.items.find((approval) => approval.status === 'pending' && approval.run_id === task.current_run?.id)
+    : undefined;
   const timeline = useMemo(() => buildTimeline(task?.status), [task?.status]);
 
   useEffect(() => {
@@ -124,8 +128,9 @@ export function TaskPage() {
           try {
             const frame = JSON.parse(message.data as string) as EventFrame;
             if (frame.type === 'cursor_expired') {
+				setStreamNotice('Earlier live history expired, so the current task state was refreshed.');
               if (isSnapshotFrame(frame.snapshot)) {
-                applySnapshot(frame.snapshot, taskId, queryClient, setOutput, cursorRef, seenSequences);
+                applySnapshot(frame.snapshot, taskId, queryClient, setOutput, cursorRef, seenSequences, outputMessageIDRef);
               } else {
                 cursorRef.current = '';
                 seenSequences.current.clear();
@@ -136,13 +141,19 @@ export function TaskPage() {
               return;
             }
             if (frame.type === 'error' && frame.code === 'cursor_invalid') {
+				setStreamNotice('The saved live position was no longer valid. Refreshing the current task state.');
               cursorRef.current = '';
               seenSequences.current.clear();
               socket?.close();
               return;
             }
+			if (frame.type === 'error' && frame.code === 'event_ticket_expired') {
+				setStreamNotice('The live event ticket expired. Reconnecting to the task.');
+				socket?.close();
+				return;
+			}
             if (isSnapshotFrame(frame)) {
-              applySnapshot(frame, taskId, queryClient, setOutput, cursorRef, seenSequences);
+              applySnapshot(frame, taskId, queryClient, setOutput, cursorRef, seenSequences, outputMessageIDRef);
               return;
             }
             if (isTaskEventFrame(frame)) {
@@ -151,8 +162,19 @@ export function TaskPage() {
               seenSequences.current.add(frame.task_sequence);
               const event = frame.event;
               if (event.type === 'content_segment') {
+				if (outputMessageIDRef.current !== event.message_id) {
+					outputMessageIDRef.current = event.message_id;
+					setOutput('');
+				}
                 setOutput((current) => current + event.text);
               } else {
+				if (event.type === 'message_committed' && outputMessageIDRef.current === event.message.id) {
+					outputMessageIDRef.current = null;
+					setOutput('');
+				}
+                if (event.type === 'approval_changed') {
+                  applyApprovalChange(queryClient, taskId, event.approval);
+                }
                 void queryClient.invalidateQueries({ queryKey: ['task', taskId] });
                 if (event.type === 'run_state_changed') {
                   void queryClient.invalidateQueries({ queryKey: ['task-runs', taskId] });
@@ -205,6 +227,8 @@ export function TaskPage() {
           </div>
           <div className="run-output" aria-live="polite">
             <div className="output-heading"><span>Live output</span><span className={`stream-state ${streamState}`}>{streamState}</span></div>
+			{streamNotice ? <p className="stream-notice" role="status">{streamNotice}</p> : null}
+			{streamState === 'reconnecting' ? <p className="stream-notice" role="status">Live updates are reconnecting. The task continues on the server.</p> : null}
             <pre>{output || 'Waiting for runner output…'}</pre>
           </div>
           <div className="timeline" aria-label="Task timeline">
@@ -275,12 +299,20 @@ function isTaskEvent(value: unknown): value is TaskEvent {
   return event.type === 'message_committed' || event.type === 'run_state_changed' || event.type === 'approval_changed' || event.type === 'artifact_changed';
 }
 
-function applySnapshot(snapshot: SnapshotFrame, taskId: string, queryClient: ReturnType<typeof useQueryClient>, setOutput: (value: string) => void, cursorRef: { current: string }, seenSequences: { current: Set<number> }) {
+function applySnapshot(snapshot: SnapshotFrame, taskId: string, queryClient: ReturnType<typeof useQueryClient>, setOutput: (value: string) => void, cursorRef: { current: string }, seenSequences: { current: Set<number> }, outputMessageIDRef: { current: string | null }) {
   cursorRef.current = snapshot.cursor;
   seenSequences.current.clear();
+	outputMessageIDRef.current = null;
   setOutput('');
   queryClient.setQueryData(['task', taskId], snapshot.task);
   queryClient.setQueryData(['task-runs', taskId], { items: snapshot.runs });
+  queryClient.setQueryData(['task-approvals', taskId], { items: snapshot.approvals });
+}
+
+function applyApprovalChange(queryClient: ReturnType<typeof useQueryClient>, taskId: string, approval: Approval) {
+  queryClient.setQueryData<{ items: Approval[] }>(['task-approvals', taskId], (current) => ({
+    items: [...(current?.items ?? []).filter((item) => item.id !== approval.id), approval],
+  }));
 }
 
 function ArtifactRow({ artifact, onDownload }: { artifact: Artifact; onDownload: () => Promise<void> }) {

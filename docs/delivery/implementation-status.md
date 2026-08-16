@@ -68,6 +68,14 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   frames expose only typed committed-message, content-segment, Run-state,
   approval, and Artifact projections; internal Runner event payloads remain
   private to the control plane.
+- Approval decisions now return the requester-authorized winning approval
+  projection. Concurrent, stale, expired, and idempotency-conflicting decisions
+  include that same projection in their error envelope, so the Copilot page
+  replaces local controls with durable server evidence. Approval queue and Task
+  stream projections include the Agent display name and Task context.
+- Copilot Task, approval, Artifact, and Agent lists use requester- and
+  filter-bound signed keyset cursors, with stable ordering and incremental
+  loading in the Web client.
 - Persistent tasks, runs, ordered semantic events, bounded content segments,
   artifacts, durable action records, approval requests, and approval decisions.
 - Runner V1 agent loop with deterministic and development provider adapters,

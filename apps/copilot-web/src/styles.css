@@ -1117,6 +1117,13 @@ a {
 .stream-state.connected { color: var(--ds-success); }
 .stream-state.reconnecting, .stream-state.connecting { color: var(--ds-warning); }
 
+.stream-notice {
+  margin: 10px 0 0;
+  color: var(--ds-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .run-output pre {
   min-height: 120px;
   max-height: 340px;
@@ -1582,17 +1589,37 @@ a {
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-surface);
-  padding: 22px 24px;
+  overflow: hidden;
   box-shadow: var(--ds-shadow-sm);
   transition: all var(--ds-duration) var(--ds-ease);
-  color: inherit;
-  text-decoration: none;
 }
 
 .approval-row:hover {
   border-color: var(--ds-border-strong);
   background: var(--ds-surface-elevated);
 }
+
+.approval-row-main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 24px;
+  padding: 22px 24px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.approval-task-link {
+  flex: 0 0 auto;
+  margin-right: 16px;
+  color: var(--ds-primary);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.approval-task-link:hover { text-decoration: underline; }
 
 .approval-copy {
   display: grid;

@@ -33,7 +33,7 @@ describe('Artifact pages', () => {
     renderRoute('/artifacts?task_id=tsk_1&classification=internal', <ArtifactsPage />);
 
     expect(await screen.findByText('report.pdf')).toBeInTheDocument();
-    expect(mocked.api.listArtifacts).toHaveBeenCalledWith('tsk_1', 'internal');
+    expect(mocked.api.listArtifacts).toHaveBeenCalledWith('tsk_1', 'internal', '');
     expect(screen.getByRole('link', { name: /report.pdf/i })).toHaveAttribute('href', '/artifacts/art_1');
   });
 

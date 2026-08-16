@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,4 +28,14 @@ describe('MyTasksPage', () => {
     await waitFor(() => expect(mocked.api.listTasks).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed', agentId: 'agt_1', requesterAction: 'input', createdAfter: expect.any(String) })));
     expect(await screen.findByText('No tasks yet')).toBeInTheDocument();
   });
+
+  it('loads another task page with the server-issued cursor', async () => {
+		mocked.api.listTasks.mockResolvedValueOnce({ items: [{ id: 'tsk_1', agent_id: 'agt_1', status: 'completed' }], page_info: { has_more: true, next_cursor: 'task-page-2' } }).mockResolvedValueOnce({ items: [{ id: 'tsk_2', agent_id: 'agt_1', status: 'completed' }], page_info: { has_more: false } });
+		const user = userEvent.setup();
+		renderPage();
+
+		await user.click(await screen.findByRole('button', { name: 'Load more' }));
+		await waitFor(() => expect(mocked.api.listTasks).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'task-page-2' })));
+		await waitFor(() => expect(screen.getAllByText('agt_1')).toHaveLength(2));
+	});
 });

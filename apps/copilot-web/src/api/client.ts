@@ -1,9 +1,14 @@
-import type { Agent, AppendTaskMessageInput, Approval, ApprovalDecisionResponse, Artifact, ArtifactDownloadGrant, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task } from './types';
+import type { AgentList, AppendTaskMessageInput, Approval, ApprovalList, Artifact, ArtifactDownloadGrant, ArtifactList, Attachment, CreateAttachmentInput, EventsTicket, RunAttempt, RunStatus, SubmitTaskInput, Task, TaskList } from './types';
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? '/api/copilot/v1';
 
 export class CopilotApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly code?: string,
+    public readonly currentResource?: unknown,
+  ) {
     super(message);
     this.name = 'CopilotApiError';
   }
@@ -14,28 +19,32 @@ type TokenProvider = () => string | null;
 export class CopilotApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
 
-  listAgents(search = '', category = '') {
+  listAgents(search = '', category = '', cursor = '') {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (category) params.set('category', category);
-    return this.request<{ items: Agent[] }>(`/agents?${params.toString()}`);
+    if (cursor) params.set('cursor', cursor);
+    return this.request<AgentList>(`/agents?${params.toString()}`);
   }
 
-  listTasks(filters: { status?: string; agentId?: string; requesterAction?: string; createdAfter?: string } = {}) {
+  listTasks(filters: { status?: string; agentId?: string; requesterAction?: string; createdAfter?: string; cursor?: string } = {}) {
     const params = new URLSearchParams();
     if (filters.status) params.set('status', filters.status);
     if (filters.agentId) params.set('agent_id', filters.agentId);
     if (filters.requesterAction) params.set('requester_action', filters.requesterAction);
     if (filters.createdAfter) params.set('created_after', filters.createdAfter);
-    return this.request<{ items: Task[] }>(`/tasks?${params.toString()}`);
+	if (filters.cursor) params.set('cursor', filters.cursor);
+    return this.request<TaskList>(`/tasks?${params.toString()}`);
   }
 
-  listApprovals() {
-    return this.request<{ items: Approval[] }>(`/approvals`);
+  listApprovals(cursor = '') {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.request<ApprovalList>(`/approvals?${params.toString()}`);
   }
 
   decideApproval(approvalId: string, decision: 'approve' | 'reject', actionDigest: string, approvalRevision: number, reason = '', idempotencyKey: string = crypto.randomUUID()) {
-    return this.request<ApprovalDecisionResponse>(`/approvals/${encodeURIComponent(approvalId)}:decide`, {
+    return this.request<Approval>(`/approvals/${encodeURIComponent(approvalId)}:decide`, {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify({ decision, action_digest: actionDigest, approval_revision: approvalRevision, reason }),
@@ -73,11 +82,12 @@ export class CopilotApi {
     return this.request<ArtifactDownloadGrant>(`/artifacts/${encodeURIComponent(artifactId)}:download`, { method: 'POST' });
   }
 
-  listArtifacts(taskId = '', classification = '') {
+  listArtifacts(taskId = '', classification = '', cursor = '') {
     const params = new URLSearchParams();
     if (taskId) params.set('task_id', taskId);
     if (classification) params.set('classification', classification);
-    return this.request<{ items: Artifact[] }>(`/artifacts?${params.toString()}`);
+    if (cursor) params.set('cursor', cursor);
+    return this.request<ArtifactList>(`/artifacts?${params.toString()}`);
   }
 
   createAttachment(input: CreateAttachmentInput) {
@@ -176,13 +186,14 @@ export class CopilotApi {
     });
     if (!response.ok) {
       let message = `Request failed with status ${response.status}.`;
+      let payload: { error?: { code?: string; message?: string; current_resource?: unknown } } | undefined;
       try {
-        const payload = await response.json() as { error?: { message?: string } };
-        message = payload.error?.message ?? message;
+        payload = await response.json() as { error?: { code?: string; message?: string; current_resource?: unknown } };
       } catch {
         // Preserve the status-based message when the server did not return JSON.
       }
-      throw new CopilotApiError(response.status, message);
+      message = payload?.error?.message ?? message;
+      throw new CopilotApiError(response.status, message, payload?.error?.code, payload?.error?.current_resource);
     }
     return response;
   }

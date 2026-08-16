@@ -23,9 +23,9 @@ type authenticator interface {
 // taskService is the Copilot application's transport-facing use-case boundary.
 // The concrete PostgreSQL service remains in the tasks package.
 type taskService interface {
-	ListAgents(context.Context, identity.Principal, string, string, int) ([]tasks.Agent, error)
+	ListAgents(context.Context, identity.Principal, string, string, *tasks.AgentCursor, int) (tasks.AgentPage, error)
 	Submit(context.Context, identity.Principal, string, tasks.SubmitRequest) (tasks.Task, bool, error)
-	List(context.Context, identity.Principal, tasks.ListFilter, int) ([]tasks.Task, error)
+	List(context.Context, identity.Principal, tasks.ListFilter, *tasks.TaskCursor, int) (tasks.TaskPage, error)
 	Get(context.Context, identity.Principal, string) (tasks.Task, error)
 	AppendMessage(context.Context, identity.Principal, string, string, int64, tasks.AppendMessageRequest) (tasks.Task, bool, error)
 	ListRuns(context.Context, identity.Principal, string, int) ([]tasks.RunAttempt, error)
@@ -48,7 +48,7 @@ type dispatcher interface {
 }
 
 type approvalService interface {
-	List(context.Context, identity.Principal, int) ([]approvals.Request, error)
+	List(context.Context, identity.Principal, *approvals.Cursor, int) (approvals.Page, error)
 	Get(context.Context, identity.Principal, string) (approvals.Request, error)
 	Expire(context.Context, identity.Principal) ([]approvals.Resolution, error)
 	Decide(context.Context, identity.Principal, approvals.DecisionInput) (approvals.Resolution, error)
@@ -106,12 +106,23 @@ func (h Handler) withActor(next actorHandler) http.Handler {
 }
 
 func (h Handler) listAgents(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	agents, err := h.tasks.ListAgents(r.Context(), actor, r.URL.Query().Get("category"), r.URL.Query().Get("search"), limit(r))
+	category, search := r.URL.Query().Get("category"), r.URL.Query().Get("search")
+	after, ok := h.parseAgentListCursor(r.URL.Query().Get("cursor"), actor, category, search)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "cursor_invalid", "The agent cursor is not valid for this requester or filter.")
+		return
+	}
+	page, err := h.tasks.ListAgents(r.Context(), actor, category, search, after, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": agents, "page_info": map[string]any{"has_more": false}})
+	info := map[string]any{"has_more": page.HasMore}
+	if page.HasMore {
+		last := page.Items[len(page.Items)-1]
+		info["next_cursor"] = h.encodeAgentListCursor(actor, category, search, tasks.AgentCursor{DisplayName: last.DisplayName, ID: last.ID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": info})
 }
 func (h Handler) submitTask(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	var request tasks.SubmitRequest
@@ -144,12 +155,22 @@ func (h Handler) listTasks(w http.ResponseWriter, r *http.Request, actor identit
 		}
 		filter.CreatedAfter = &createdAfter
 	}
-	items, err := h.tasks.List(r.Context(), actor, filter, limit(r))
+	after, ok := h.parseTaskListCursor(r.URL.Query().Get("cursor"), actor, filter)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "cursor_invalid", "The task cursor is not valid for this requester or filter.")
+		return
+	}
+	page, err := h.tasks.List(r.Context(), actor, filter, after, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+	pageInfo := map[string]any{"has_more": page.HasMore}
+	if page.HasMore {
+		last := page.Items[len(page.Items)-1]
+		pageInfo["next_cursor"] = h.encodeTaskListCursor(actor, filter, tasks.TaskCursor{CreatedAt: last.CreatedAt, ID: last.ID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }
 func (h Handler) getTask(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	task, err := h.tasks.Get(r.Context(), actor, r.PathValue("taskID"))
@@ -207,12 +228,22 @@ func (h Handler) listApprovals(w http.ResponseWriter, r *http.Request, actor ide
 		writeInternal(w, errors.New("approval expiry processing failed"))
 		return
 	}
-	items, err := h.approvals.List(r.Context(), actor, limit(r))
+	after, ok := h.parseApprovalListCursor(r.URL.Query().Get("cursor"), actor)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "cursor_invalid", "The approval cursor is not valid for this requester.")
+		return
+	}
+	page, err := h.approvals.List(r.Context(), actor, after, limit(r))
 	if err != nil {
 		writeInternal(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page_info": map[string]any{"has_more": false}})
+	pageInfo := map[string]any{"has_more": page.HasMore}
+	if page.HasMore {
+		last := page.Items[len(page.Items)-1]
+		pageInfo["next_cursor"] = h.encodeApprovalListCursor(actor, approvals.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }
 func (h Handler) getApproval(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
 	if h.approvals == nil {
@@ -256,17 +287,49 @@ func (h Handler) decideApproval(w http.ResponseWriter, r *http.Request, actor id
 	}
 	resolution, err := h.approvals.Decide(r.Context(), actor, approvals.DecisionInput{ID: approvalID, Decision: request.Decision, Reason: request.Reason, ActionDigest: request.ActionDigest, Idempotency: r.Header.Get("Idempotency-Key"), Revision: request.Revision})
 	if err != nil {
+		if h.writeApprovalCurrentState(w, r, actor, approvalID, err) {
+			return
+		}
 		writeApprovalError(w, err)
 		return
 	}
 	if !h.dispatcher.ResolveApproval(resolution.RunID, resolution.ApprovalID, resolution.Decision, resolution.Reason, resolution.ActionID, resolution.CallID, resolution.PermitID, resolution.PermitLeaseEpoch, resolution.PermitExpiresAt) {
 		h.logger.Warn("approval persisted without an active runner session", "approval_id", resolution.ApprovalID, "run_id", resolution.RunID)
 	}
-	status := "rejected"
-	if resolution.Decision == "approve" {
-		status = "satisfied"
+	item, err := h.approvals.Get(r.Context(), actor, approvalID)
+	if err != nil {
+		writeInternal(w, err)
+		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": status, "approval_id": resolution.ApprovalID, "run_id": resolution.RunID, "decision": resolution.Decision})
+	writeJSON(w, http.StatusOK, item)
+}
+
+// writeApprovalCurrentState returns the requester-visible winning projection
+// for command races. It keeps the UI from inferring approval execution from a
+// stale local decision attempt.
+func (h Handler) writeApprovalCurrentState(w http.ResponseWriter, r *http.Request, actor identity.Principal, approvalID string, err error) bool {
+	var status int
+	var code, message string
+	switch {
+	case errors.Is(err, approvals.ErrInvalidDigest):
+		status, code, message = http.StatusPreconditionFailed, "action_changed", "The action changed and requires a new approval."
+	case errors.Is(err, approvals.ErrAlreadyDecided):
+		status, code, message = http.StatusConflict, "already_decided", "The approval has already been decided."
+	case errors.Is(err, approvals.ErrChanged):
+		status, code, message = http.StatusConflict, "approval_changed", "The approval changed and must be reviewed again."
+	case errors.Is(err, approvals.ErrExpired):
+		status, code, message = http.StatusConflict, "approval_expired", "The approval request has expired."
+	case errors.Is(err, approvals.ErrIdempotency):
+		status, code, message = http.StatusConflict, "idempotency_key_reused", "The idempotency key was used for another decision."
+	default:
+		return false
+	}
+	item, getErr := h.approvals.Get(r.Context(), actor, approvalID)
+	if getErr != nil {
+		return false
+	}
+	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": message, "current_resource": item}})
+	return true
 }
 
 func (h Handler) expireApprovals(ctx context.Context, actor identity.Principal) bool {
@@ -400,7 +463,7 @@ func writeApprovalError(w http.ResponseWriter, err error) {
 	case errors.Is(err, approvals.ErrInvalidInput):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_input", "The approval decision is not valid.")
 	case errors.Is(err, approvals.ErrInvalidDigest):
-		writeError(w, http.StatusPreconditionFailed, "stale_action", "The action changed and requires a new approval.")
+		writeError(w, http.StatusPreconditionFailed, "action_changed", "The action changed and requires a new approval.")
 	case errors.Is(err, approvals.ErrNotEligible):
 		writeError(w, http.StatusForbidden, "forbidden", "You are not eligible to decide this approval.")
 	case errors.Is(err, approvals.ErrAlreadyDecided):

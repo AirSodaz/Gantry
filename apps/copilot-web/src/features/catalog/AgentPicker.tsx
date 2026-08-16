@@ -1,8 +1,8 @@
 import { useDeferredValue, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Check, Search, Tag } from 'lucide-react';
-import { Select, type SelectOption, TextInput } from '@gantry/design-system';
-import { useQuery } from '@tanstack/react-query';
+import { Button, Select, type SelectOption, TextInput } from '@gantry/design-system';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useCopilotApi } from '../../api/ApiProvider';
 import type { Agent } from '../../api/types';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
@@ -25,10 +25,13 @@ export function AgentPicker({
     setParams(next, { replace: true });
   };
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['agents', deferredSearch, category],
-    queryFn: () => api.listAgents(deferredSearch, category),
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => api.listAgents(deferredSearch, category, pageParam),
+		getNextPageParam: (page) => page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
+	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
 
   const categoriesQuery = useQuery({
     queryKey: ['agent-categories'],
@@ -37,9 +40,9 @@ export function AgentPicker({
   });
 
   useEffect(() => {
-    const initial = query.data?.items.find((agent) => agent.id === selectedId);
+    const initial = items.find((agent) => agent.id === selectedId);
     if (initial) onSelect(initial);
-  }, [query.data?.items, selectedId]);
+  }, [items, selectedId]);
 
   const categoryOptions = useMemo<SelectOption[]>(() => {
     const rawCategories = Array.from(
@@ -67,7 +70,7 @@ export function AgentPicker({
           <span className="eyebrow">Capability</span>
           <h2 id="agent-picker-title">Choose an agent</h2>
         </div>
-        <span className="result-count">{query.data?.items.length ?? 0} available</span>
+        <span className="result-count">{items.length} available</span>
       </div>
 
       <div className="picker-filters">
@@ -99,12 +102,12 @@ export function AgentPicker({
           onRetry={() => void query.refetch()}
         />
       ) : null}
-      {!query.isLoading && !query.isError && query.data?.items.length === 0 ? (
+      {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState title="No matching agents" detail="Try another search term or clear category filter." />
       ) : null}
 
       <div className="agent-list">
-        {query.data?.items.map((agent) => {
+        {items.map((agent) => {
           const isSelected = selectedId === agent.id;
           return (
             <button
@@ -128,6 +131,7 @@ export function AgentPicker({
           );
         })}
       </div>
+		{query.hasNextPage ? <div className="list-more"><Button variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading...' : 'Load more'}</Button></div> : null}
     </section>
   );
 }

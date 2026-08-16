@@ -22,6 +22,17 @@ describe('CopilotApi', () => {
     await expect(api.getTask('tsk_missing')).rejects.toEqual(expect.objectContaining({ status: 404, message: 'Resource was not found.' } satisfies Partial<CopilotApiError>));
   });
 
+  it('preserves a server-winning resource from a command conflict', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 'approval_changed', message: 'Approval changed.', current_resource: { id: 'apr_1', status: 'rejected' } } }), { status: 409 })));
+    const api = new CopilotApi(() => 'token-1');
+
+    await expect(api.decideApproval('apr_1', 'approve', 'sha256:action-1', 1)).rejects.toEqual(expect.objectContaining({
+      status: 409,
+      code: 'approval_changed',
+      currentResource: { id: 'apr_1', status: 'rejected' },
+    } satisfies Partial<CopilotApiError>));
+  });
+
   it('retains the task conversation ETag for conditional commands', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'tsk_1', agent_id: 'agt_1', status: 'failed', conversation_revision: 3 }), { status: 200, headers: { ETag: '"3"' } })));
     const api = new CopilotApi(() => 'token-1');

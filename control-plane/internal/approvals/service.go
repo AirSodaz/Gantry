@@ -35,25 +35,26 @@ type Service struct{ pool *pgxpool.Pool }
 func NewService(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
 type Request struct {
-	ID            string    `json:"id"`
-	RunID         string    `json:"run_id"`
-	ActionID      string    `json:"action_id"`
-	ActionDigest  string    `json:"action_digest"`
-	Revision      int64     `json:"approval_revision"`
-	ToolName      string    `json:"tool_name"`
-	Operation     string    `json:"operation"`
-	Target        string    `json:"target,omitempty"`
-	Effect        string    `json:"effect"`
-	ActionPreview any       `json:"action_preview"`
-	RiskClass     string    `json:"risk_class"`
-	Status        string    `json:"status"`
-	RequestedBy   string    `json:"requested_by"`
-	AssignedTo    string    `json:"assigned_to"`
-	ExpiresAt     time.Time `json:"expires_at"`
-	CreatedAt     time.Time `json:"created_at"`
-	TaskID        string    `json:"task_id,omitempty"`
-	PolicyVersion string    `json:"policy_version,omitempty"`
-	Decision      *Decision `json:"latest_decision,omitempty"`
+	ID               string    `json:"id"`
+	RunID            string    `json:"run_id"`
+	ActionID         string    `json:"action_id"`
+	ActionDigest     string    `json:"action_digest"`
+	Revision         int64     `json:"approval_revision"`
+	ToolName         string    `json:"tool_name"`
+	Operation        string    `json:"operation"`
+	Target           string    `json:"target,omitempty"`
+	Effect           string    `json:"effect"`
+	ActionPreview    any       `json:"action_preview"`
+	RiskClass        string    `json:"risk_class"`
+	Status           string    `json:"status"`
+	RequestedBy      string    `json:"requested_by"`
+	AssignedTo       string    `json:"assigned_to"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	CreatedAt        time.Time `json:"created_at"`
+	TaskID           string    `json:"task_id,omitempty"`
+	AgentDisplayName string    `json:"agent_display_name"`
+	PolicyVersion    string    `json:"policy_version,omitempty"`
+	Decision         *Decision `json:"latest_decision,omitempty"`
 }
 
 type Decision struct {
@@ -83,6 +84,16 @@ type DecisionInput struct {
 	Reason       string
 	Idempotency  string
 	Revision     int64
+}
+
+type Cursor struct {
+	CreatedAt time.Time
+	ID        string
+}
+
+type Page struct {
+	Items   []Request
+	HasMore bool
 }
 
 // Expire advances the current requester's elapsed approval requests into a
@@ -193,28 +204,40 @@ func (s *Service) Propose(ctx context.Context, tx pgx.Tx, action policy.Action, 
 	return Request{ID: approvalID, RunID: canonical.RunID, ActionID: actionID, ActionDigest: digest, Revision: 1, ToolName: canonical.ToolName, Operation: canonical.Operation, Target: canonical.Target, Effect: canonical.Effect, ActionPreview: previewMap(canonical), RiskClass: riskClass(canonical.Effect), Status: "pending", RequestedBy: canonical.RequestedBy, AssignedTo: canonical.RequestedBy, ExpiresAt: expiresAt}, evaluation, nil
 }
 
-func (s *Service) List(ctx context.Context, actor identity.Principal, limit int) ([]Request, error) {
+func (s *Service) List(ctx context.Context, actor identity.Principal, after *Cursor, limit int) (Page, error) {
 	if limit < 1 || limit > 100 {
 		limit = 25
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) ORDER BY ar.created_at, ar.id LIMIT $2`, actor.ID, limit)
+	var afterCreatedAt *time.Time
+	var afterID string
+	if after != nil {
+		afterCreatedAt, afterID = &after.CreatedAt, after.ID
+	}
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.status='pending' AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) AND ($2::timestamptz IS NULL OR ar.created_at > $2 OR (ar.created_at = $2 AND ar.id > $3)) ORDER BY ar.created_at, ar.id LIMIT $4`, actor.ID, afterCreatedAt, afterID, limit+1)
 	if err != nil {
-		return nil, err
+		return Page{}, err
 	}
 	defer rows.Close()
 	items := make([]Request, 0)
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
-			return nil, err
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
+			return Page{}, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
-			return nil, err
+			return Page{}, err
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return Page{}, err
+	}
+	page := Page{Items: items, HasMore: len(items) > limit}
+	if page.HasMore {
+		page.Items = page.Items[:limit]
+	}
+	return page, nil
 }
 
 // ListTask returns the full requester-authorized approval history for one
@@ -224,7 +247,7 @@ func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID
 	if limit < 1 || limit > 100 {
 		limit = 25
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE t.id=$1 AND t.requester_principal_id=$2 ORDER BY ar.created_at, ar.id LIMIT $3`, taskID, actor.ID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE t.id=$1 AND t.requester_principal_id=$2 ORDER BY ar.created_at, ar.id LIMIT $3`, taskID, actor.ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +256,7 @@ func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
@@ -256,7 +279,7 @@ func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID
 func (s *Service) Get(ctx context.Context, actor identity.Principal, approvalID string) (Request, error) {
 	var item Request
 	var previewJSON []byte
-	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion)
+	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Request{}, ErrNotFound
 	}

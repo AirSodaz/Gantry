@@ -99,21 +99,49 @@ describe('TaskPage', () => {
     expect(MockWebSocket.instances[1].url).toContain('after=cur_1');
   });
 
+  it('replaces provisional output when its message is committed', async () => {
+		mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+		mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });
+		vi.stubGlobal('WebSocket', MockWebSocket);
+		renderTask();
+
+		await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+		MockWebSocket.instances[0].emit({ schema_version: 'gantry.copilot.event/v1', task_id: 'tsk_1', run_id: 'run_1', task_sequence: 1, run_sequence: 1, cursor: 'cur_1', event: { type: 'content_segment', message_id: 'msg_1', segment_index: 0, text: 'Provisional reply' } });
+		expect(await screen.findByText('Provisional reply')).toBeInTheDocument();
+		MockWebSocket.instances[0].emit({ schema_version: 'gantry.copilot.event/v1', task_id: 'tsk_1', run_id: 'run_1', task_sequence: 2, run_sequence: 2, cursor: 'cur_2', event: { type: 'message_committed', message: { id: 'msg_1', task_sequence: 2, role: 'agent', parts: [{ type: 'text', text: 'Provisional reply' }], created_at: '2026-08-14T08:00:00Z' } } });
+
+		await waitFor(() => expect(screen.getByText('Live output').closest('.run-output')).not.toHaveTextContent('Provisional reply'));
+	});
+
   it('replaces the task projection and cursor from a stream snapshot', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
     mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });
     mocked.api.listTaskRuns.mockResolvedValue({ items: [] });
+		mocked.api.listApprovals.mockImplementation(() => new Promise(() => {}));
     vi.stubGlobal('WebSocket', MockWebSocket);
     renderTask();
 
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
-    MockWebSocket.instances[0].emit({ type: 'snapshot', schema_version: 'gantry.copilot.snapshot/v1', cursor: 'cur_snapshot', task: { ...baseTask, agent_display_name: 'Snapshot Agent', status: 'completed', current_run: { id: 'run_1', status: 'completed' } }, runs: [{ id: 'run_1', attempt_number: 1, status: 'completed', created_at: '2026-08-14T08:00:00Z' }], approvals: [] });
+    MockWebSocket.instances[0].emit({ type: 'snapshot', schema_version: 'gantry.copilot.snapshot/v1', cursor: 'cur_snapshot', task: { ...baseTask, agent_display_name: 'Snapshot Agent', status: 'awaiting_approval', current_run: { id: 'run_1', status: 'awaiting_approval' } }, runs: [{ id: 'run_1', attempt_number: 1, status: 'awaiting_approval', created_at: '2026-08-14T08:00:00Z' }], approvals: [{ id: 'apr_1', run_id: 'run_1', status: 'pending' }] });
     expect(await screen.findByRole('heading', { name: 'Snapshot Agent' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Open approval' })).toBeInTheDocument();
 
     MockWebSocket.instances[0].close();
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2), { timeout: 1_500 });
     expect(MockWebSocket.instances[1].url).toContain('after=cur_snapshot');
   });
+
+  it('explains when expired stream history is replaced by a snapshot', async () => {
+		mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'running' });
+		mocked.api.createEventsTicket.mockResolvedValue({ ticket: 'evt.test', task_id: 'tsk_1', websocket_url: 'wss://stream.example.test/api/copilot/v1/tasks/tsk_1/events', expires_at: '2026-08-14T08:01:00Z' });
+		vi.stubGlobal('WebSocket', MockWebSocket);
+		renderTask();
+
+		await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+		MockWebSocket.instances[0].emit({ type: 'cursor_expired', snapshot: { type: 'snapshot', schema_version: 'gantry.copilot.snapshot/v1', cursor: 'cur_fresh', task: { ...baseTask, status: 'completed', current_run: { id: 'run_1', status: 'completed' } }, runs: [], approvals: [] } });
+
+		expect(await screen.findByText('Earlier live history expired, so the current task state was refreshed.')).toBeInTheDocument();
+	});
 
   it('shows a retry action when an artifact download fails', async () => {
     mocked.api.getTask.mockResolvedValue({ ...baseTask, status: 'completed', current_run: { id: 'run_1', status: 'completed' }, artifacts: [{ id: 'art_1', filename: 'result.txt', media_type: 'text/plain', size_bytes: 3, state: 'available', scan_status: 'passed' }] });
