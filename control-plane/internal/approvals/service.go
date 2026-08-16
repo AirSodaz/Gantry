@@ -84,12 +84,30 @@ type DecisionInput struct {
 // terminal non-executing state. The caller delivers each returned resolution to
 // an active runner, when one still owns the matching lease.
 func (s *Service) Expire(ctx context.Context, actor identity.Principal) ([]Resolution, error) {
+	return s.expire(ctx, actor.ID)
+}
+
+// ExpireAll reconciles every elapsed approval. It is reserved for the control
+// plane's background worker; requester-facing reads use Expire to retain their
+// narrower projection.
+func (s *Service) ExpireAll(ctx context.Context) ([]Resolution, error) {
+	return s.expire(ctx, "")
+}
+
+func (s *Service) expire(ctx context.Context, principalID string) ([]Resolution, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id WHERE ar.status='pending' AND ar.expires_at <= now() AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) FOR UPDATE OF ar, a`, actor.ID)
+	query := `SELECT ar.id, ar.run_id, ar.action_id, a.runner_call_id, ar.action_digest FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id WHERE ar.status='pending' AND ar.expires_at <= now()`
+	arguments := []any{}
+	if principalID != "" {
+		query += ` AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1))`
+		arguments = append(arguments, principalID)
+	}
+	query += ` FOR UPDATE OF ar, a`
+	rows, err := tx.Query(ctx, query, arguments...)
 	if err != nil {
 		return nil, err
 	}

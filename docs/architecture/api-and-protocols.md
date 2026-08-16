@@ -126,9 +126,9 @@ action approval is rejected or expires and the Agent has reached a safe input
 boundary. The command uses an idempotency key and creates a new Run attempt under
 the same Task; it never replays or mutates the denied action. A pending approval
 keeps the composer read-only by default until the decision is resolved.
-Requester-visible approval reads currently process elapsed requests into the
-same input-eligible projection; the target relies on a durable background expiry
-worker, which remains an incomplete runtime capability.
+The control plane runs a durable background expiry reconciliation loop. Requester
+reads also reconcile elapsed requests before projecting them, so a just-expired
+approval never remains actionable because a worker tick has not yet occurred.
 
 `GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
 redacted technical details, expiry state, linked Task context, and the latest

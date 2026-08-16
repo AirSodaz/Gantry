@@ -88,9 +88,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
   Requester-visible reads expire elapsed approvals and open Task follow-up input;
-  cancellation/retry and rejection/expiry continuation are idempotent. A durable
-  background expiry worker, retained suspension, revocation, and general
-  tool-gateway execution remain incomplete.
+  cancellation/retry and rejection/expiry continuation are idempotent. A
+  background expiry worker reconciles all elapsed requests and delivers their
+  durable resolution to an active Runner when present. Retained suspension,
+  revocation, and general tool-gateway execution remain incomplete.
 - **Artifacts, attachments, and streams:** Output upload, storage, download,
   requester attachment quarantine/binding, live events, and content segments
   exist. The private Runner contract does not yet define a scoped attachment
@@ -176,7 +177,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
   Current routes do not yet provide the target conversation ETag, Task-level
   cross-Run cursor, explicit audited Artifact download command, complete typed
-  message parts, or durable background expiry/reconciliation workers.
+  message parts, or any of the remaining approval capabilities identified
+  above.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a
@@ -222,7 +224,7 @@ governance loops were built early. This does not mean later phases are complete.
 | Phase 0 | Partial | Repository, contracts, Compose, runner session, PTY, and core lifecycle spikes exist; isolation, egress, telemetry, load evidence, and signed artifacts remain. |
 | Phase 1 | Partial | The core Copilot path, persistence, live events, artifacts, and runner loop exist; production model gateway, sandboxing, enterprise API, and full authorization remain. |
 | Phase 2 | Partial | Admin agent lifecycle and review-gated publication exist; configuration catalogs, operations, audit, evaluations, integrations, and access management remain. |
-| Phase 3 | Partial prototype | A requester-bound action approval loop exists; credential mediation, general tool execution, expiry processing, suspension, rejection resume, and audit integrity remain. |
+| Phase 3 | Partial prototype | A requester-bound action approval loop with background expiry reconciliation exists; credential mediation, general tool execution, suspension, and audit integrity remain. |
 | Phase 4 | Designed | Evaluation architecture exists only in documentation and scaffolding. |
 | Phase 5 | Not started | No production-pilot hardening claim. |
 | Phase 6 | Not started | No general-availability claim. |

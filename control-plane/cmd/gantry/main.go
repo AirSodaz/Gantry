@@ -116,8 +116,10 @@ func main() {
 	runner := runnerServer(cfg, logger, persistentScheduler)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	approvalExpiry := approvals.NewExpiryWorker(approvalService, persistentScheduler, logger, 5*time.Second)
 
 	errCh := make(chan error, 2)
+	go approvalExpiry.Run(ctx)
 	go serve(errCh, "public HTTP", public)
 	go serve(errCh, "runner gRPC", runner)
 
