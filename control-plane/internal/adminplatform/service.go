@@ -335,6 +335,340 @@ func (s *Service) CreateClassification(ctx context.Context, actor identity.Princ
 	return item, err
 }
 
+func (s *Service) ListLimitPolicies(ctx context.Context, actor identity.Principal, workspaceID string) ([]LimitPolicy, error) {
+	if err := s.requireScopeRead(ctx, actor, workspaceID); err != nil {
+		return nil, err
+	}
+	query := `SELECT id,organization_id,workspace_id,concurrency,duration_seconds,output_bytes,artifact_bytes,budget,etag::text FROM gantry.platform_limit_policies WHERE organization_id=$1`
+	args := []any{actor.OrganizationID}
+	if workspaceID != "" {
+		query += ` AND (workspace_id IS NULL OR workspace_id=$2)`
+		args = append(args, workspaceID)
+	}
+	query += ` ORDER BY workspace_id NULLS FIRST,id`
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]LimitPolicy, 0)
+	for rows.Next() {
+		var item LimitPolicy
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.WorkspaceID, &item.Concurrency, &item.DurationSeconds, &item.OutputBytes, &item.ArtifactBytes, &item.Budget, &item.ETag); err != nil {
+			return nil, err
+		}
+		if len(item.Budget) == 0 {
+			item.Budget = json.RawMessage(`{}`)
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) UpsertLimitPolicy(ctx context.Context, actor identity.Principal, id, expectedETag string, req UpsertLimitPolicyRequest) (LimitPolicy, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return LimitPolicy{}, err
+	}
+	if req.WorkspaceID != nil && strings.TrimSpace(*req.WorkspaceID) == "" {
+		return LimitPolicy{}, ErrInvalidInput
+	}
+	if req.WorkspaceID != nil {
+		if err := s.workspaceInOrganization(ctx, actor, *req.WorkspaceID); err != nil {
+			return LimitPolicy{}, err
+		}
+	}
+	if req.Concurrency < 0 || req.DurationSeconds <= 0 || req.OutputBytes < 0 || req.ArtifactBytes < 0 || !jsonObject(req.Budget) {
+		return LimitPolicy{}, ErrInvalidInput
+	}
+	if req.WorkspaceID != nil {
+		if err := s.validateLimitBound(ctx, actor.OrganizationID, *req.WorkspaceID, req); err != nil {
+			return LimitPolicy{}, err
+		}
+	}
+	expectedETag = strings.Trim(expectedETag, `"`)
+	if expectedETag == "" {
+		return LimitPolicy{}, ErrETagConflict
+	}
+	if len(req.Budget) == 0 {
+		req.Budget = json.RawMessage(`{}`)
+	}
+	if id == "" {
+		id = newID("limit")
+	}
+	var item LimitPolicy
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO gantry.platform_limit_policies(id,organization_id,workspace_id,concurrency,duration_seconds,output_bytes,artifact_bytes,budget,etag)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,1)
+		ON CONFLICT (id) DO UPDATE SET workspace_id=$3,concurrency=$4,duration_seconds=$5,output_bytes=$6,artifact_bytes=$7,budget=$8::jsonb,etag=gantry.platform_limit_policies.etag+1,updated_at=now()
+		WHERE gantry.platform_limit_policies.organization_id=$2 AND gantry.platform_limit_policies.etag::text=$9
+		RETURNING id,organization_id,workspace_id,concurrency,duration_seconds,output_bytes,artifact_bytes,budget,etag::text`, id, actor.OrganizationID, req.WorkspaceID, req.Concurrency, req.DurationSeconds, req.OutputBytes, req.ArtifactBytes, string(req.Budget), expectedETag).Scan(&item.ID, &item.OrganizationID, &item.WorkspaceID, &item.Concurrency, &item.DurationSeconds, &item.OutputBytes, &item.ArtifactBytes, &item.Budget, &item.ETag)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return LimitPolicy{}, ErrETagConflict
+	}
+	return item, err
+}
+
+func (s *Service) ListEnvironmentProfiles(ctx context.Context, actor identity.Principal, workspaceID string) ([]EnvironmentProfile, error) {
+	if err := s.requireScopeRead(ctx, actor, workspaceID); err != nil {
+		return nil, err
+	}
+	query := `SELECT id,organization_id,workspace_id,name,publication_posture,state,data_classification_id,allowed_target_controls,etag::text FROM gantry.platform_environment_profiles WHERE organization_id=$1`
+	args := []any{actor.OrganizationID}
+	if workspaceID != "" {
+		query += ` AND (workspace_id IS NULL OR workspace_id=$2)`
+		args = append(args, workspaceID)
+	}
+	query += ` ORDER BY workspace_id NULLS FIRST,name,id`
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]EnvironmentProfile, 0)
+	for rows.Next() {
+		var item EnvironmentProfile
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.WorkspaceID, &item.Name, &item.PublicationPosture, &item.State, &item.DataClassificationID, &item.AllowedTargetControls, &item.ETag); err != nil {
+			return nil, err
+		}
+		if len(item.AllowedTargetControls) == 0 {
+			item.AllowedTargetControls = json.RawMessage(`{}`)
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Service) UpsertEnvironmentProfile(ctx context.Context, actor identity.Principal, id, expectedETag string, req UpsertEnvironmentProfileRequest) (EnvironmentProfile, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return EnvironmentProfile{}, err
+	}
+	req.Name, req.PublicationPosture, req.State = strings.TrimSpace(req.Name), strings.TrimSpace(req.PublicationPosture), strings.TrimSpace(req.State)
+	if !validEnvironmentName(req.Name) || !validPublicationPosture(req.PublicationPosture) || !validEnvironmentState(req.State) || !jsonObject(req.AllowedTargetControls) {
+		return EnvironmentProfile{}, ErrInvalidInput
+	}
+	if req.WorkspaceID != nil {
+		if strings.TrimSpace(*req.WorkspaceID) == "" {
+			return EnvironmentProfile{}, ErrInvalidInput
+		}
+		if err := s.workspaceInOrganization(ctx, actor, *req.WorkspaceID); err != nil {
+			return EnvironmentProfile{}, err
+		}
+		if err := s.validateEnvironmentBound(ctx, actor.OrganizationID, *req.WorkspaceID, req); err != nil {
+			return EnvironmentProfile{}, err
+		}
+	}
+	if req.DataClassificationID != nil {
+		var exists bool
+		if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gantry.platform_data_classifications WHERE id=$1 AND organization_id=$2)`, *req.DataClassificationID, actor.OrganizationID).Scan(&exists); err != nil {
+			return EnvironmentProfile{}, err
+		}
+		if !exists {
+			return EnvironmentProfile{}, ErrInvalidInput
+		}
+	}
+	expectedETag = strings.Trim(expectedETag, `"`)
+	if expectedETag == "" {
+		return EnvironmentProfile{}, ErrETagConflict
+	}
+	if len(req.AllowedTargetControls) == 0 {
+		req.AllowedTargetControls = json.RawMessage(`{}`)
+	}
+	if id == "" {
+		id = newID("env")
+	}
+	var item EnvironmentProfile
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO gantry.platform_environment_profiles(id,organization_id,workspace_id,name,publication_posture,state,data_classification_id,allowed_target_controls,etag)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,1)
+		ON CONFLICT (id) DO UPDATE SET workspace_id=$3,name=$4,publication_posture=$5,state=$6,data_classification_id=$7,allowed_target_controls=$8::jsonb,etag=gantry.platform_environment_profiles.etag+1,updated_at=now()
+		WHERE gantry.platform_environment_profiles.organization_id=$2 AND gantry.platform_environment_profiles.etag::text=$9
+		RETURNING id,organization_id,workspace_id,name,publication_posture,state,data_classification_id,allowed_target_controls,etag::text`, id, actor.OrganizationID, req.WorkspaceID, req.Name, req.PublicationPosture, req.State, req.DataClassificationID, string(req.AllowedTargetControls), expectedETag).Scan(&item.ID, &item.OrganizationID, &item.WorkspaceID, &item.Name, &item.PublicationPosture, &item.State, &item.DataClassificationID, &item.AllowedTargetControls, &item.ETag)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return EnvironmentProfile{}, ErrETagConflict
+	}
+	return item, err
+}
+
+func (s *Service) GetSettings(ctx context.Context, actor identity.Principal, workspaceID string) (PlatformSettingsProjection, error) {
+	if err := s.requireScopeRead(ctx, actor, workspaceID); err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	limits, err := s.ListLimitPolicies(ctx, actor, workspaceID)
+	if err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	environments, err := s.ListEnvironmentProfiles(ctx, actor, workspaceID)
+	if err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	classifications, err := s.ListClassifications(ctx, actor)
+	if err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	overrides := json.RawMessage(`{}`)
+	etag := "1"
+	var storedETag string
+	if err := s.pool.QueryRow(ctx, `SELECT values,etag::text FROM gantry.platform_settings WHERE organization_id=$1 AND workspace_id IS NOT DISTINCT FROM $2 ORDER BY updated_at DESC,id DESC LIMIT 1`, actor.OrganizationID, nullableString(workspaceID)).Scan(&overrides, &storedETag); err == nil {
+		etag = storedETag
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return PlatformSettingsProjection{}, err
+	}
+	values, _ := json.Marshal(map[string]any{"limit_policies": limits, "environment_profiles": environments, "data_classifications": classifications, "overrides": json.RawMessage(overrides)})
+	scope := map[string]any{"type": "organization"}
+	if workspaceID != "" {
+		scope["type"] = "workspace"
+		scope["workspace_id"] = workspaceID
+	}
+	return PlatformSettingsProjection{Scope: scope, Values: values, ETag: etag, ValidationState: "valid"}, nil
+}
+
+func (s *Service) ValidateSettings(ctx context.Context, actor identity.Principal, req SettingsApplyRequest) (SettingsValidation, error) {
+	if req.WorkspaceID != nil {
+		if err := s.authz.RequireWorkspace(ctx, actor, *req.WorkspaceID); err != nil {
+			return SettingsValidation{}, err
+		}
+	} else if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return SettingsValidation{}, err
+	}
+	if !jsonObject(req.Values) {
+		return SettingsValidation{State: "invalid", Findings: []map[string]any{{"code": "values_object_required", "message": "values must be a JSON object"}}}, nil
+	}
+	return SettingsValidation{State: "valid", Findings: []map[string]any{}, SemanticDiff: []map[string]any{{"path": "overrides", "change": "replace"}}, RequiredCapabilities: []string{"platform.settings.manage"}}, nil
+}
+
+func (s *Service) ApplySettings(ctx context.Context, actor identity.Principal, expectedETag string, req SettingsApplyRequest) (PlatformSettingsProjection, error) {
+	if err := s.authz.RequireOrganizationAdmin(ctx, actor); err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	if !jsonObject(req.Values) {
+		return PlatformSettingsProjection{}, ErrInvalidInput
+	}
+	expectedETag = strings.Trim(expectedETag, `"`)
+	if expectedETag == "" {
+		return PlatformSettingsProjection{}, ErrETagConflict
+	}
+	var workspaceID any
+	if req.WorkspaceID != nil {
+		workspaceID = *req.WorkspaceID
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	defer tx.Rollback(ctx)
+	var currentETag string
+	lookupErr := tx.QueryRow(ctx, `SELECT etag::text FROM gantry.platform_settings WHERE organization_id=$1 AND workspace_id IS NOT DISTINCT FROM $2 ORDER BY updated_at DESC,id DESC LIMIT 1 FOR UPDATE`, actor.OrganizationID, workspaceID).Scan(&currentETag)
+	switch {
+	case lookupErr == nil:
+		if currentETag != expectedETag {
+			return PlatformSettingsProjection{}, ErrETagConflict
+		}
+		if _, err = tx.Exec(ctx, `UPDATE gantry.platform_settings SET values=$1::jsonb,etag=etag+1,updated_at=now() WHERE organization_id=$2 AND workspace_id IS NOT DISTINCT FROM $3 AND etag::text=$4`, string(req.Values), actor.OrganizationID, workspaceID, expectedETag); err != nil {
+			return PlatformSettingsProjection{}, err
+		}
+	case errors.Is(lookupErr, pgx.ErrNoRows):
+		if expectedETag != "0" && expectedETag != "1" {
+			return PlatformSettingsProjection{}, ErrETagConflict
+		}
+		if _, err = tx.Exec(ctx, `INSERT INTO gantry.platform_settings(id,organization_id,workspace_id,values,etag) VALUES($1,$2,$3,$4::jsonb,1)`, newID("settings"), actor.OrganizationID, workspaceID, string(req.Values)); err != nil {
+			return PlatformSettingsProjection{}, err
+		}
+	default:
+		return PlatformSettingsProjection{}, lookupErr
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return PlatformSettingsProjection{}, err
+	}
+	return s.GetSettings(ctx, actor, nullableStringValue(req.WorkspaceID))
+}
+
+func (s *Service) requireScopeRead(ctx context.Context, actor identity.Principal, workspaceID string) error {
+	if workspaceID != "" {
+		return s.authz.RequireWorkspace(ctx, actor, workspaceID)
+	}
+	return s.authz.RequireOrganizationAdmin(ctx, actor)
+}
+
+func (s *Service) workspaceInOrganization(ctx context.Context, actor identity.Principal, workspaceID string) error {
+	var organizationID string
+	if err := s.pool.QueryRow(ctx, `SELECT organization_id FROM gantry.workspaces WHERE id=$1`, workspaceID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	} else if organizationID != actor.OrganizationID {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *Service) validateLimitBound(ctx context.Context, organizationID, workspaceID string, req UpsertLimitPolicyRequest) error {
+	var bound UpsertLimitPolicyRequest
+	err := s.pool.QueryRow(ctx, `SELECT concurrency,duration_seconds,output_bytes,artifact_bytes FROM gantry.platform_limit_policies WHERE organization_id=$1 AND workspace_id IS NULL`, organizationID).Scan(&bound.Concurrency, &bound.DurationSeconds, &bound.OutputBytes, &bound.ArtifactBytes)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if req.Concurrency > bound.Concurrency || req.DurationSeconds > bound.DurationSeconds || req.OutputBytes > bound.OutputBytes || req.ArtifactBytes > bound.ArtifactBytes {
+		return ErrInvalidInput
+	}
+	return nil
+}
+
+func (s *Service) validateEnvironmentBound(ctx context.Context, organizationID, workspaceID string, req UpsertEnvironmentProfileRequest) error {
+	var posture string
+	err := s.pool.QueryRow(ctx, `SELECT publication_posture FROM gantry.platform_environment_profiles WHERE organization_id=$1 AND workspace_id IS NULL AND name=$2`, organizationID, req.Name).Scan(&posture)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if postureRank(req.PublicationPosture) > postureRank(posture) {
+		return ErrInvalidInput
+	}
+	return nil
+}
+
+func validEnvironmentName(v string) bool {
+	return v == "development" || v == "staging" || v == "production"
+}
+func validPublicationPosture(v string) bool {
+	return v == "test_only" || v == "review_required" || v == "production"
+}
+func validEnvironmentState(v string) bool {
+	return v == "active" || v == "emergency" || v == "disabled"
+}
+func postureRank(v string) int {
+	switch v {
+	case "test_only":
+		return 0
+	case "review_required":
+		return 1
+	case "production":
+		return 2
+	default:
+		return -1
+	}
+}
+func jsonObject(raw json.RawMessage) bool {
+	var value map[string]any
+	return len(raw) > 0 && json.Unmarshal(raw, &value) == nil && value != nil
+}
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+func nullableStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 func (s *Service) providerVisible(ctx context.Context, actor identity.Principal, providerID string) error {
 	var ok bool
 	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gantry.platform_model_providers WHERE id=$1 AND organization_id=$2)`, providerID, actor.OrganizationID).Scan(&ok)

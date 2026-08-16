@@ -166,6 +166,13 @@ type platformService interface {
 	RevokeCredential(context.Context, identity.Principal, string) (adminplatform.CredentialReference, error)
 	ListClassifications(context.Context, identity.Principal) ([]adminplatform.DataClassification, error)
 	CreateClassification(context.Context, identity.Principal, adminplatform.CreateDataClassificationRequest) (adminplatform.DataClassification, error)
+	ListLimitPolicies(context.Context, identity.Principal, string) ([]adminplatform.LimitPolicy, error)
+	UpsertLimitPolicy(context.Context, identity.Principal, string, string, adminplatform.UpsertLimitPolicyRequest) (adminplatform.LimitPolicy, error)
+	ListEnvironmentProfiles(context.Context, identity.Principal, string) ([]adminplatform.EnvironmentProfile, error)
+	UpsertEnvironmentProfile(context.Context, identity.Principal, string, string, adminplatform.UpsertEnvironmentProfileRequest) (adminplatform.EnvironmentProfile, error)
+	GetSettings(context.Context, identity.Principal, string) (adminplatform.PlatformSettingsProjection, error)
+	ValidateSettings(context.Context, identity.Principal, adminplatform.SettingsApplyRequest) (adminplatform.SettingsValidation, error)
+	ApplySettings(context.Context, identity.Principal, string, adminplatform.SettingsApplyRequest) (adminplatform.PlatformSettingsProjection, error)
 }
 
 type Handler struct {
@@ -312,6 +319,13 @@ func newHandlerWithEvaluation(auth authenticator, authorize authorizer, service 
 		mux.Handle("POST /platform/credentials/{credentialID}", h.withActor(h.platformCredentialCommand))
 		mux.Handle("GET /platform/data-classifications", h.withActor(h.listDataClassifications))
 		mux.Handle("POST /platform/data-classifications", h.withActor(h.createDataClassification))
+		mux.Handle("GET /platform/limit-policies", h.withActor(h.listLimitPolicies))
+		mux.Handle("PUT /platform/limit-policies/{policyID}", h.withActor(h.upsertLimitPolicy))
+		mux.Handle("GET /platform/environment-profiles", h.withActor(h.listEnvironmentProfiles))
+		mux.Handle("PUT /platform/environment-profiles/{profileID}", h.withActor(h.upsertEnvironmentProfile))
+		mux.Handle("GET /platform/settings", h.withActor(h.getPlatformSettings))
+		mux.Handle("POST /platform/settings:validate", h.withActor(h.validatePlatformSettings))
+		mux.Handle("POST /platform/settings:apply", h.withActor(h.applyPlatformSettings))
 	}
 	if target != nil {
 		h.registerTargetRoutes(mux)

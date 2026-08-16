@@ -117,8 +117,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   execution, signed delivery workers, usage projections, and full capability
   authorization remain incomplete. Platform now has provider/route and runner
   pool/runner metadata management as a partial organization-level slice;
-  credentials, classifications, limits, environments, settings composition,
-  and production health integration remain incomplete.
+  credentials and classifications expose non-secret metadata. Limit policies,
+  Environment Profiles, and the scope-aware Settings composition are now
+  implemented as typed metadata with ETag-protected updates and validation;
+  production health integration remains incomplete.
 
 ### Designed, Not Yet Implemented
 
@@ -140,9 +142,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   capabilities. Current authorization is workspace-role based.
 - Production credential broker, LLM gateway, tool gateway, egress gateway, and
   secret-store integration.
-- Credential Reference/Lease, attachment input lifecycle, and production
-  authorization/health projections. Model Provider/Route and Runner Pool/Runner
-  metadata management are implemented only as a partial Admin slice.
+- Credential Reference/Lease, attachment input lifecycle, full settings
+  idempotency/audit correlation, and production authorization/health
+  projections. Model Provider/Route, Runner Pool/Runner, Limit Policy,
+  Environment Profile, and composed Settings management are implemented only as
+  a partial Admin metadata slice.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, and delegated-user authority. Integration registration,
   client metadata, publication, and endpoint metadata are implemented as a

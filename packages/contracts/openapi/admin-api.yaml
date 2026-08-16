@@ -1251,6 +1251,68 @@ paths:
       tags: [Platform]
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateDataClassificationRequest"}}}}
       responses: {"201": {description: Data classification, content: {application/json: {schema: {$ref: "#/components/schemas/DataClassification"}}}}}
+  /platform/limit-policies:
+    get:
+      operationId: listPlatformLimitPolicies
+      summary: List organization and workspace limit policies
+      tags: [Platform]
+      parameters:
+        - {name: workspace_id, in: query, schema: {type: string}}
+      responses: {"200": {description: Limit policies, content: {application/json: {schema: {$ref: "#/components/schemas/LimitPolicyList"}}}}}
+  /platform/limit-policies/{policy_id}:
+    put:
+      operationId: upsertPlatformLimitPolicy
+      summary: Replace a bounded limit policy with ETag protection
+      tags: [Platform]
+      parameters:
+        - {name: policy_id, in: path, required: true, schema: {type: string}}
+        - {$ref: "#/components/parameters/IfMatch"}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpsertLimitPolicyRequest"}}}}
+      responses: {"200": {description: Limit policy, content: {application/json: {schema: {$ref: "#/components/schemas/LimitPolicy"}}}}, "409": {$ref: "#/components/responses/Conflict"}}
+  /platform/environment-profiles:
+    get:
+      operationId: listPlatformEnvironmentProfiles
+      summary: List organization and workspace environment profiles
+      tags: [Platform]
+      parameters:
+        - {name: workspace_id, in: query, schema: {type: string}}
+      responses: {"200": {description: Environment profiles, content: {application/json: {schema: {$ref: "#/components/schemas/EnvironmentProfileList"}}}}}
+  /platform/environment-profiles/{profile_id}:
+    put:
+      operationId: upsertPlatformEnvironmentProfile
+      summary: Replace a bounded environment profile with ETag protection
+      tags: [Platform]
+      parameters:
+        - {name: profile_id, in: path, required: true, schema: {type: string}}
+        - {$ref: "#/components/parameters/IfMatch"}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpsertEnvironmentProfileRequest"}}}}
+      responses: {"200": {description: Environment profile, content: {application/json: {schema: {$ref: "#/components/schemas/EnvironmentProfile"}}}}, "409": {$ref: "#/components/responses/Conflict"}}
+  /platform/settings:
+    get:
+      operationId: getPlatformSettings
+      summary: Get the composed scope-aware platform settings projection
+      tags: [Platform]
+      parameters:
+        - {name: scope, in: query, required: true, schema: {type: string, enum: [organization, workspace]}}
+        - {name: workspace_id, in: query, schema: {type: string}}
+      responses: {"200": {description: Platform settings projection, content: {application/json: {schema: {$ref: "#/components/schemas/PlatformSettingsProjection"}}}}}
+  /platform/settings:validate:
+    post:
+      operationId: validatePlatformSettings
+      summary: Validate a proposed settings section without writing
+      tags: [Platform]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/SettingsApplyRequest"}}}}
+      responses: {"200": {description: Validation result, content: {application/json: {schema: {$ref: "#/components/schemas/SettingsValidation"}}}}}
+  /platform/settings:apply:
+    post:
+      operationId: applyPlatformSettings
+      summary: Apply a settings section with ETag protection
+      tags: [Platform]
+      parameters:
+        - {$ref: "#/components/parameters/IfMatch"}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/SettingsApplyRequest"}}}}
+      responses: {"200": {description: Updated settings projection, content: {application/json: {schema: {$ref: "#/components/schemas/PlatformSettingsProjection"}}}}, "409": {$ref: "#/components/responses/Conflict"}}
 
 components:
   securitySchemes:
@@ -2426,3 +2488,81 @@ components:
         retention_class: {type: string}
         allowed_provider_ids: {type: array, items: {type: string}}
         allowed_tool_classes: {type: array, items: {type: string}}
+    LimitPolicy:
+      type: object
+      required: [id, organization_id, concurrency, duration_seconds, output_bytes, artifact_bytes, budget, etag]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        workspace_id: {type: string, nullable: true}
+        concurrency: {type: integer, minimum: 0}
+        duration_seconds: {type: integer, minimum: 1}
+        output_bytes: {type: integer, format: int64, minimum: 0}
+        artifact_bytes: {type: integer, format: int64, minimum: 0}
+        budget: {type: object, additionalProperties: true}
+        etag: {type: string}
+    LimitPolicyList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/LimitPolicy"}}
+    UpsertLimitPolicyRequest:
+      type: object
+      required: [concurrency, duration_seconds, output_bytes, artifact_bytes, budget]
+      properties:
+        workspace_id: {type: string, nullable: true}
+        concurrency: {type: integer, minimum: 0}
+        duration_seconds: {type: integer, minimum: 1}
+        output_bytes: {type: integer, format: int64, minimum: 0}
+        artifact_bytes: {type: integer, format: int64, minimum: 0}
+        budget: {type: object, additionalProperties: true}
+    EnvironmentProfile:
+      type: object
+      required: [id, organization_id, name, publication_posture, state, allowed_target_controls, etag]
+      properties:
+        id: {type: string}
+        organization_id: {type: string}
+        workspace_id: {type: string, nullable: true}
+        name: {type: string, enum: [development, staging, production]}
+        publication_posture: {type: string, enum: [test_only, review_required, production]}
+        state: {type: string, enum: [active, emergency, disabled]}
+        data_classification_id: {type: string, nullable: true}
+        allowed_target_controls: {type: object, additionalProperties: true}
+        etag: {type: string}
+    EnvironmentProfileList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/EnvironmentProfile"}}
+    UpsertEnvironmentProfileRequest:
+      type: object
+      required: [name, publication_posture, state, allowed_target_controls]
+      properties:
+        workspace_id: {type: string, nullable: true}
+        name: {type: string, enum: [development, staging, production]}
+        publication_posture: {type: string, enum: [test_only, review_required, production]}
+        state: {type: string, enum: [active, emergency, disabled]}
+        data_classification_id: {type: string, nullable: true}
+        allowed_target_controls: {type: object, additionalProperties: true}
+    PlatformSettingsProjection:
+      type: object
+      required: [scope, values, etag, validation_state]
+      properties:
+        scope: {type: object, additionalProperties: true}
+        values: {type: object, additionalProperties: true}
+        etag: {type: string}
+        validation_state: {type: string, enum: [valid, conflict, pending]}
+    SettingsApplyRequest:
+      type: object
+      required: [values]
+      properties:
+        workspace_id: {type: string, nullable: true}
+        values: {type: object, additionalProperties: true}
+    SettingsValidation:
+      type: object
+      required: [state, findings, semantic_diff, required_capabilities]
+      properties:
+        state: {type: string, enum: [valid, invalid, pending]}
+        findings: {type: array, items: {type: object, additionalProperties: true}}
+        semantic_diff: {type: array, items: {type: object, additionalProperties: true}}
+        required_capabilities: {type: array, items: {type: string}}

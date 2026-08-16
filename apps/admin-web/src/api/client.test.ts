@@ -90,4 +90,21 @@ describe('AdminApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/platform/model-providers', expect.anything());
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/platform/runner-pools', expect.anything());
   });
+
+  it('uses the scope-aware Platform settings routes with ETag and idempotency', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ scope: {}, values: {}, etag: '3', validation_state: 'valid' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'valid', findings: [], semantic_diff: [], required_capabilities: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ scope: {}, values: {}, etag: '4', validation_state: 'valid' }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const api = new AdminApi(() => 'admin-token');
+    await api.listLimitPolicies('ws_1');
+    await api.getPlatformSettings('workspace', 'ws_1');
+    await api.validatePlatformSettings({ workspace_id: 'ws_1', values: { retention: { audit_days: 30 } } });
+    await api.applyPlatformSettings('3', { workspace_id: 'ws_1', values: { retention: { audit_days: 30 } } }, 'settings-1');
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/admin/v1/platform/limit-policies?workspace_id=ws_1', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/admin/v1/platform/settings?scope=workspace&workspace_id=ws_1', expect.anything());
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/admin/v1/platform/settings:apply', expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"', 'Idempotency-Key': 'settings-1' }) }));
+  });
 });

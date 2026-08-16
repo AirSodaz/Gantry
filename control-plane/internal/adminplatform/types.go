@@ -63,6 +63,44 @@ type DataClassification struct {
 	ETag               string   `json:"etag"`
 }
 
+type LimitPolicy struct {
+	ID              string          `json:"id"`
+	OrganizationID  string          `json:"organization_id"`
+	WorkspaceID     *string         `json:"workspace_id"`
+	Concurrency     int             `json:"concurrency"`
+	DurationSeconds int             `json:"duration_seconds"`
+	OutputBytes     int64           `json:"output_bytes"`
+	ArtifactBytes   int64           `json:"artifact_bytes"`
+	Budget          json.RawMessage `json:"budget"`
+	ETag            string          `json:"etag"`
+}
+
+type EnvironmentProfile struct {
+	ID                    string          `json:"id"`
+	OrganizationID        string          `json:"organization_id"`
+	WorkspaceID           *string         `json:"workspace_id"`
+	Name                  string          `json:"name"`
+	PublicationPosture    string          `json:"publication_posture"`
+	State                 string          `json:"state"`
+	DataClassificationID  *string         `json:"data_classification_id"`
+	AllowedTargetControls json.RawMessage `json:"allowed_target_controls"`
+	ETag                  string          `json:"etag"`
+}
+
+type PlatformSettingsProjection struct {
+	Scope           map[string]any  `json:"scope"`
+	Values          json.RawMessage `json:"values"`
+	ETag            string          `json:"etag"`
+	ValidationState string          `json:"validation_state"`
+}
+
+type SettingsValidation struct {
+	State                string           `json:"state"`
+	Findings             []map[string]any `json:"findings"`
+	SemanticDiff         []map[string]any `json:"semantic_diff"`
+	RequiredCapabilities []string         `json:"required_capabilities"`
+}
+
 type CreateProviderRequest struct {
 	Name                  string   `json:"name"`
 	DataClasses           []string `json:"data_classes"`
@@ -87,4 +125,24 @@ type CreateDataClassificationRequest struct {
 	RetentionClass     string   `json:"retention_class"`
 	AllowedProviderIDs []string `json:"allowed_provider_ids"`
 	AllowedToolClasses []string `json:"allowed_tool_classes"`
+}
+type UpsertLimitPolicyRequest struct {
+	WorkspaceID     *string         `json:"workspace_id"`
+	Concurrency     int             `json:"concurrency"`
+	DurationSeconds int             `json:"duration_seconds"`
+	OutputBytes     int64           `json:"output_bytes"`
+	ArtifactBytes   int64           `json:"artifact_bytes"`
+	Budget          json.RawMessage `json:"budget"`
+}
+type UpsertEnvironmentProfileRequest struct {
+	WorkspaceID           *string         `json:"workspace_id"`
+	Name                  string          `json:"name"`
+	PublicationPosture    string          `json:"publication_posture"`
+	State                 string          `json:"state"`
+	DataClassificationID  *string         `json:"data_classification_id"`
+	AllowedTargetControls json.RawMessage `json:"allowed_target_controls"`
+}
+type SettingsApplyRequest struct {
+	WorkspaceID *string         `json:"workspace_id"`
+	Values      json.RawMessage `json:"values"`
 }

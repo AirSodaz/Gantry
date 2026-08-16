@@ -699,3 +699,45 @@ CREATE TABLE IF NOT EXISTS gantry.platform_data_classifications (
   UNIQUE (organization_id, label)
 );
 CREATE INDEX IF NOT EXISTS platform_data_classifications_org_idx ON gantry.platform_data_classifications (organization_id, label);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_limit_policies (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text REFERENCES gantry.workspaces(id),
+  concurrency integer NOT NULL CHECK (concurrency >= 0),
+  duration_seconds integer NOT NULL CHECK (duration_seconds > 0),
+  output_bytes bigint NOT NULL DEFAULT 0 CHECK (output_bytes >= 0),
+  artifact_bytes bigint NOT NULL DEFAULT 0 CHECK (artifact_bytes >= 0),
+  budget jsonb NOT NULL DEFAULT '{}'::jsonb,
+  etag bigint NOT NULL DEFAULT 1 CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE NULLS NOT DISTINCT (organization_id, workspace_id)
+);
+CREATE INDEX IF NOT EXISTS platform_limit_policies_scope_idx ON gantry.platform_limit_policies (organization_id, workspace_id);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_environment_profiles (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text REFERENCES gantry.workspaces(id),
+  name text NOT NULL CHECK (name IN ('development', 'staging', 'production')),
+  publication_posture text NOT NULL CHECK (publication_posture IN ('test_only', 'review_required', 'production')),
+  state text NOT NULL CHECK (state IN ('active', 'emergency', 'disabled')),
+  data_classification_id text,
+  allowed_target_controls jsonb NOT NULL DEFAULT '{}'::jsonb,
+  etag bigint NOT NULL DEFAULT 1 CHECK (etag > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE NULLS NOT DISTINCT (organization_id, workspace_id, name)
+);
+CREATE INDEX IF NOT EXISTS platform_environment_profiles_scope_idx ON gantry.platform_environment_profiles (organization_id, workspace_id, name);
+
+CREATE TABLE IF NOT EXISTS gantry.platform_settings (
+  id text PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES gantry.organizations(id),
+  workspace_id text REFERENCES gantry.workspaces(id),
+  values jsonb NOT NULL DEFAULT '{}'::jsonb,
+  etag bigint NOT NULL DEFAULT 1 CHECK (etag > 0),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE NULLS NOT DISTINCT (organization_id, workspace_id)
+);

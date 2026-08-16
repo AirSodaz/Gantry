@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Bot, Cable, ClipboardCheck, Database, FileSearch, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Shield, PlugZap, ServerCog } from 'lucide-react';
+import { Activity, Bot, Cable, ClipboardCheck, Database, FileSearch, Gauge, Layers3, LogOut, PanelLeft, PanelLeftClose, PanelLeftOpen, Plus, Settings, Shield, PlugZap, ServerCog } from 'lucide-react';
 import { IconButton, ThemeToggle } from '@gantry/design-system';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -103,6 +103,7 @@ export function AppShell() {
 
           {!isCollapsed ? <span className="admin-nav-label admin-nav-label-spaced">Platform</span> : <div className="admin-nav-divider admin-nav-divider-spaced" />}
           <NavLink to="/platform" title={isCollapsed ? 'Platform' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><ServerCog size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Platform</span> : null}</NavLink>
+          <NavLink to="/platform/settings" title={isCollapsed ? 'Platform settings' : undefined} className={({ isActive }) => `admin-nav-link ${isActive ? 'admin-nav-link-active' : ''} ${isCollapsed ? 'admin-nav-link-collapsed' : ''}`}><Settings size={17} className="admin-nav-icon" />{!isCollapsed ? <span>Settings</span> : null}</NavLink>
         </nav>
 
         {/* Sidebar Footer with Theme Toggle and Admin Profile */}

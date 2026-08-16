@@ -18,6 +18,7 @@ import { PoliciesPage, PolicyDetailPage } from './features/policies/PolicyPages'
 import { EvaluationsPage, EvaluationDetailPage } from './features/evaluations/EvaluationPages';
 import { IntegrationsPage, IntegrationDetailPage } from './features/integrations/IntegrationPages';
 import { PlatformPage, ProviderRoutesPage } from './features/platform/PlatformPages';
+import { PlatformSettingsPage } from './features/platform/PlatformSettingsPage';
 
 export default function App() {
   const { user, isLoading, error, signIn } = useAuth();
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="integrations/:integrationId" element={<IntegrationDetailPage />} />
         <Route path="platform" element={<PlatformPage />} />
+        <Route path="platform/settings" element={<PlatformSettingsPage />} />
         <Route path="platform/model-providers" element={<PlatformPage />} />
         <Route path="platform/runner-pools" element={<PlatformPage />} />
         <Route path="platform/providers/:providerId" element={<ProviderRoutesPage />} />

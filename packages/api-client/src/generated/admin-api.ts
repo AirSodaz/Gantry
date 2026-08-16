@@ -1431,6 +1431,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/limit-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization and workspace limit policies */
+        get: operations["listPlatformLimitPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/limit-policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a bounded limit policy with ETag protection */
+        put: operations["upsertPlatformLimitPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/environment-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization and workspace environment profiles */
+        get: operations["listPlatformEnvironmentProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/environment-profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a bounded environment profile with ETag protection */
+        put: operations["upsertPlatformEnvironmentProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the composed scope-aware platform settings projection */
+        get: operations["getPlatformSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a proposed settings section without writing */
+        post: operations["validatePlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings:apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply a settings section with ETag protection */
+        post: operations["applyPlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2493,6 +2612,96 @@ export interface components {
             retention_class: string;
             allowed_provider_ids: string[];
             allowed_tool_classes: string[];
+        };
+        LimitPolicy: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            concurrency: number;
+            duration_seconds: number;
+            /** Format: int64 */
+            output_bytes: number;
+            /** Format: int64 */
+            artifact_bytes: number;
+            budget: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        LimitPolicyList: {
+            items: components["schemas"]["LimitPolicy"][];
+        };
+        UpsertLimitPolicyRequest: {
+            workspace_id?: string | null;
+            concurrency: number;
+            duration_seconds: number;
+            /** Format: int64 */
+            output_bytes: number;
+            /** Format: int64 */
+            artifact_bytes: number;
+            budget: {
+                [key: string]: unknown;
+            };
+        };
+        EnvironmentProfile: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            name: "development" | "staging" | "production";
+            /** @enum {string} */
+            publication_posture: "test_only" | "review_required" | "production";
+            /** @enum {string} */
+            state: "active" | "emergency" | "disabled";
+            data_classification_id?: string | null;
+            allowed_target_controls: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        EnvironmentProfileList: {
+            items: components["schemas"]["EnvironmentProfile"][];
+        };
+        UpsertEnvironmentProfileRequest: {
+            workspace_id?: string | null;
+            /** @enum {string} */
+            name: "development" | "staging" | "production";
+            /** @enum {string} */
+            publication_posture: "test_only" | "review_required" | "production";
+            /** @enum {string} */
+            state: "active" | "emergency" | "disabled";
+            data_classification_id?: string | null;
+            allowed_target_controls: {
+                [key: string]: unknown;
+            };
+        };
+        PlatformSettingsProjection: {
+            scope: {
+                [key: string]: unknown;
+            };
+            values: {
+                [key: string]: unknown;
+            };
+            etag: string;
+            /** @enum {string} */
+            validation_state: "valid" | "conflict" | "pending";
+        };
+        SettingsApplyRequest: {
+            workspace_id?: string | null;
+            values: {
+                [key: string]: unknown;
+            };
+        };
+        SettingsValidation: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+            semantic_diff: {
+                [key: string]: unknown;
+            }[];
+            required_capabilities: string[];
         };
     };
     responses: {
@@ -5350,6 +5559,186 @@ export interface operations {
                     "application/json": components["schemas"]["DataClassification"];
                 };
             };
+        };
+    };
+    listPlatformLimitPolicies: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Limit policies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitPolicyList"];
+                };
+            };
+        };
+    };
+    upsertPlatformLimitPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertLimitPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Limit policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitPolicy"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listPlatformEnvironmentProfiles: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Environment profiles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentProfileList"];
+                };
+            };
+        };
+    };
+    upsertPlatformEnvironmentProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertEnvironmentProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Environment profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentProfile"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getPlatformSettings: {
+        parameters: {
+            query: {
+                scope: "organization" | "workspace";
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform settings projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsProjection"];
+                };
+            };
+        };
+    };
+    validatePlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsValidation"];
+                };
+            };
+        };
+    };
+    applyPlatformSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated settings projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsProjection"];
+                };
+            };
+            409: components["responses"]["Conflict"];
         };
     };
 }

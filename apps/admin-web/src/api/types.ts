@@ -48,6 +48,10 @@ export type RunnerPool = Components['schemas']['RunnerPool'];
 export type Runner = Components['schemas']['Runner'];
 export type CredentialReference = Components['schemas']['CredentialReference'];
 export type DataClassification = Components['schemas']['DataClassification'];
+export type LimitPolicy = Components['schemas']['LimitPolicy'];
+export type EnvironmentProfile = Components['schemas']['EnvironmentProfile'];
+export type PlatformSettingsProjection = Components['schemas']['PlatformSettingsProjection'];
+export type SettingsValidation = Components['schemas']['SettingsValidation'];
 
 export type AgentSpec = {
   kind: 'gantry.agent/v1';
