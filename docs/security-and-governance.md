@@ -53,7 +53,8 @@ Baseline roles:
 
 - Organization Administrator
 - Workspace Administrator
-- Agent Designer
+- Workspace Agent Editor (the Admin page role for Agent design; it does not
+  imply Workspace Administrator authority)
 - Security Reviewer
 - Operator
 - Auditor
@@ -107,6 +108,11 @@ Policy. Agent Revisions pin exact Policy Versions and remain constrained by the
 active organization, Workspace, resource, Deployment, and Integration
 Publication boundaries. Each Run Manifest captures all contributing Policy
 Version identities and digests.
+
+Decision composition is monotonic: deny dominates requester approval, and
+requester approval dominates allow. Sets intersect, numeric limits take the
+minimum, and time windows intersect. An uncomposable Binding is rejected rather
+than resolved through an implicit priority.
 
 Policy simulation is side-effect free. It may evaluate a Draft or Version and
 explain contributing rules, but it cannot execute a Tool, resolve a secret,
@@ -398,6 +404,9 @@ the canonical Audit event and preserve their operational detail.
   because they can inspect events. Export creation and download reapply scope,
   classification, and redaction checks, never include secret values or raw
   chain-of-thought, and are themselves append-only Audit events.
+- Export packages are asynchronous, digest-bound, independently expiring
+  resources. A failed package may be retried without changing its query scope;
+  changing the scope creates a new export request.
 
 ## 12. Data Protection and Retention
 

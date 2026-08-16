@@ -21,7 +21,8 @@ server-to-server Agent Invocation API while retaining their own user interface.
 | [Product Design](product-design.md) | Product boundaries, actors, use cases, requirements, and success measures |
 | [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md) | Agent Prompt, standalone Skill, Plugin, MCP, built-in tool, CLI, binding, validation, and publication model |
 | [Gantry Admin Site Design](admin-site-design.md) | Admin navigation, complete page inventory, scope, roles, delivery status, and page specifications |
-| [Frontend UX Design](frontend-ux-design.md) | Shared design language, directional information architecture, states, and next page-design contract |
+| [Gantry Copilot Site Design](copilot-site-design.md) | Copilot routes, task workflow, approvals, artifacts, states, and acceptance criteria |
+| [Frontend UX Design](frontend-ux-design.md) | Shared design language, cross-product information architecture, states, and rendered acceptance conventions |
 | [System Architecture](system-architecture.md) | Components, deployment topology, runtime lifecycle, and repository structure |
 | [Security and Governance](security-and-governance.md) | Identity, authorization, credentials, isolation, approvals, and audit controls |
 | [Data and Event Model](data-and-event-model.md) | Core entities, state machines, event schema, retention, and recovery semantics |
@@ -57,10 +58,11 @@ The documentation has three distinct authority levels:
 Roadmap placement does not prove completion, and an implemented narrow slice
 does not imply that its whole phase has passed the exit gate.
 
-The current frontend document fixes the product boundary, shared design
-language, and directional information architecture. Detailed page inventories,
-field-level behavior, interaction specifications, and per-page acceptance
-criteria for Admin and Copilot are intentionally the next design phase.
+The Admin and Copilot site-design documents now define the target page
+inventories, field-level behavior, interaction specifications, and per-page
+acceptance criteria. The remaining work is implementation alignment: each target
+route must be backed by an authoritative contract, handler, tests, and an updated
+implementation-status entry.
 
 ## Product Principles
 

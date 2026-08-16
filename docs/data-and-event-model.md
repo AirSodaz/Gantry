@@ -33,8 +33,11 @@ are modeled separately and retain their source.
 
 ### Role Binding
 
-Binds a principal or group to a role at organization, workspace, agent, or
-approval scope. A binding has validity timestamps and provenance.
+Binds a principal or group to a role at organization, workspace, or Agent scope.
+A binding has validity timestamps and provenance. Agent action approval eligibility
+is not granted by a role binding: the authenticated Task requester is the only
+eligible human approver. Business workflow approval remains owned by the external
+tool or enterprise system.
 
 ### Integration Client
 
@@ -42,6 +45,39 @@ Represents a registered enterprise application and environment. It records the
 OAuth client reference, owner, status, allowed authority modes, scopes, quotas,
 data classification, credential metadata, and operational contacts. Secret or
 private-key material remains in the identity or secret system.
+
+### Credential Reference and Lease
+
+A Credential Reference is a logical, organization-owned name such as
+`crm-read-as-user`; it contains owner, allowed modes, target service, data
+classification, rotation state, and policy metadata, but never secret material.
+A Credential Lease is a short-lived, run/action-bound authorization issued by the
+credential broker after action-time policy succeeds:
+
+- reference ID, run/action ID, actor and delegated subject;
+- audience, scope, lease epoch, issued/expiry times, and revocation state;
+- broker and secret-version provenance.
+
+Lease values are not persisted in prompts, manifests, events, logs, or browser
+responses. Rotation or revocation prevents new leases while preserving historical
+reference metadata.
+
+### Model Provider and Route
+
+A Model Provider records provider identity, environment, supported models,
+transport adapter, data-handling class, health state, credential reference,
+capacity, and emergency status. A Provider Route pins an allowed model set,
+fallback order, timeout, budget policy, and classification constraints. Route
+selection is recorded in the Run Manifest and cannot silently change a published
+Agent Revision.
+
+### Runner Pool and Runner
+
+A Runner Pool defines an isolation tier, compatible protocol/image set, capacity
+limits, network posture, and drain/quarantine state. A Runner records workload
+identity, pool, protocol version, health, lease epoch, and last heartbeat.
+Scheduling may choose only a compatible non-draining Runner; quarantine prevents
+new assignment and is auditable.
 
 ### Retention Policy
 
@@ -66,6 +102,11 @@ resources or data classes:
 - status, set time, optional release time, and release actor
 - matching records, protected deletion jobs, and provenance
 
+The selector is a bounded typed expression over organization/workspace, resource
+IDs, Task/Run/Artifact IDs, classification, and time range; arbitrary SQL or
+unbounded predicates are not accepted. The selector is immutable after activation.
+Creation records a match-preview snapshot for evidence, but active Holds are
+re-evaluated for newly created matching data and immediately before deletion.
 Hold creation and release are immutable, attributable events. A Hold is checked
 before deletion enters execution and may leave a deletion request pending until
 all matching Holds are released.
@@ -99,6 +140,15 @@ The owning records are:
 - **Retention Deletion Job**: asynchronous estimate, eligible window, Hold
   matches, protected and blocked counts, execution attempts, completion/failure
   state, and digest-preserving Tombstone summary without retained content.
+- **Audit Event**: immutable cross-resource evidence envelope containing event ID,
+  scope, actor, subject, action, resource, outcome, risk, correlation/causation
+  references, schema version, redaction metadata, and linked immutable digests.
+  Run events may link to an Audit Event but do not replace this projection.
+- **Audit Export Package**: a scoped, redacted export request with requester,
+  query/scope digest, package digest, state (`requested`, `processing`,
+  `ready`, `expired`, or `failed`), expiry, download count, and
+  failure reason. The package contains no secrets or raw chain-of-thought and
+  has independent retention from the source evidence.
 
 Settings reads are projections and do not create a second history store. Changes
 are represented by the owning typed record plus canonical Audit events.
@@ -312,11 +362,26 @@ A durable user request:
 
 - `id`, scope, requester, selected agent
 - input envelope and attachment references
+- ordered requester and Agent message references with a conversation version
 - visibility and retention class
 - invocation channel, integration client, optional delegated subject, source
   system/resource references, and external correlation ID
 - current run reference and aggregate status
 - idempotency key and timestamps
+
+### Task Message
+
+An employee-visible conversation turn within a Task:
+
+- `id`, `task_id`, monotonic sequence, author type, and author identity
+- message kind, redacted content or structured payload reference, and
+  classification
+- causation/correlation references, visibility, and timestamps
+
+Requester follow-up messages are accepted only in an input-eligible Task state.
+Each accepted follow-up advances the conversation version and creates a new Run
+attempt; it never mutates a prior message, rejected Approval Request, or
+completed Run.
 
 ### Run
 
@@ -335,6 +400,14 @@ One attempt:
 A signed, expiring document delivered to a runner. It contains only the
 configuration needed for one run, resource limits, gateway endpoints, scoped
 workload identity, and immutable digests. It contains no durable secret values.
+
+### Task and Run Event Ordering
+
+Each Run retains its own strictly increasing event sequence for operational
+diagnostics. A multi-Run Task stream additionally requires a Task-level sequence
+for requester messages and Run summaries; that sequence is the authority for a
+Task-bound browser cursor. Until that aggregate stream exists, a cursor is
+run-bound and a Run change requires snapshot replacement and reconnect.
 
 ### Artifact
 
@@ -480,6 +553,7 @@ unknown event types are retained but not projected until supported.
 ### Lifecycle
 
 - `task.accepted`
+- `task.message.submitted`
 - `run.queued`
 - `run.provisioning_started`
 - `run.started`
@@ -512,6 +586,7 @@ range, and optional token-count metadata.
 - `agent.plan_updated`
 - `agent.rationale_recorded`
 - `agent.user_input_requested`
+- `task.requester_input_required`
 
 These contain concise, user-facing summaries. They are not raw hidden reasoning.
 
@@ -562,7 +637,10 @@ These contain concise, user-facing summaries. They are not raw hidden reasoning.
 
 ## 10. Ordering and Idempotency
 
-- The database allocates one strictly increasing sequence per run.
+- The database allocates one strictly increasing sequence per run. The target
+  multi-Run Task projection also allocates a Task-level sequence for conversation
+  turns and cross-Run summaries; it is distinct from each Run's diagnostic
+  sequence.
 - Runner messages include runner-session ID and client sequence for
   deduplication.
 - Commands from clients require an idempotency key scoped to actor and route.

@@ -321,6 +321,29 @@ The initial ACL implementation is Allow-only. Unset or revoked capabilities are
 denied; outer policy or resource constraints explain ineffective grants rather
 than creating explicit Deny entries.
 
+### ADR-027: External Skill Package Versions
+
+**Status:** Accepted
+
+Skills are imported from external package sources, such as an `npx skills`
+marketplace, a Claude Code skills marketplace, a direct locator, or a manually
+provided complete package/local directory. The package source owns the Skill's
+declared version. Gantry records the source reference and content digest and
+displays the declared version, or `未声明` when the package has no declaration;
+it does not create a second Skill version or release lifecycle.
+
+Each import is an immutable Skill Artifact. Manual edits are not performed in
+Gantry; a changed package is imported as another artifact. Multiple artifacts,
+including artifacts with the same declared version but different digests, may
+coexist so test Agent Revisions can compare them without changing Production.
+An Agent Revision pins one exact artifact, and later imports never mutate an
+existing Revision or Run Manifest.
+
+**Reason:** Version authority remains with the marketplace or package author,
+while content-addressed artifacts preserve reproducibility and allow safe
+testing without introducing a duplicate release system. See
+[ADR-027](adr-027-external-skill-package-versions.md).
+
 ### ADR-028: Immutable Policy Versions and Narrowing Scope Intersection
 
 **Status:** Accepted

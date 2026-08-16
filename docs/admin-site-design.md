@@ -23,11 +23,11 @@ not add empty section landing pages.
 
 | Group | Page | Target route | Scope | Delivery |
 | --- | --- | --- | --- | --- |
-| Home | Overview | `/` | Current workspace or all workspaces | Next |
+| Home | Overview | `/` | Current workspace or all workspaces | Current |
 | Build | Agents | `/agents` | Workspace | Current |
-| Build | Skills | `/skills` | Workspace | Next |
-| Build | Plugins | `/plugins` | Organization catalog with workspace enablement | Next |
-| Build | Tools | `/tools` | Organization inventory with workspace availability | Next |
+| Build | Skills | `/skills` | Workspace | Current |
+| Build | Plugins | `/plugins` | Organization catalog with workspace enablement | Current |
+| Build | Tools | `/tools` | Organization inventory with workspace availability | Current |
 | Operate | Runs | `/runs` | Workspace or all workspaces | Later |
 | Operate | Evaluations | `/evaluations` | Workspace | Later |
 | Govern | Integrations | `/integrations` | Organization | Later |
@@ -99,7 +99,7 @@ server authorization and returns a non-leaking denied state.
 
 | Page | Route | Responsibility | Delivery |
 | --- | --- | --- | --- |
-| Overview | `/` | Scope-aware operational and governance summary | Next |
+| Overview | `/` | Scope-aware operational and governance summary | Current |
 
 ### Build
 
@@ -108,19 +108,19 @@ server authorization and returns a non-leaking denied state.
 | Agent list | `/agents` | Search, filter, create, and inspect workspace Agents | Current |
 | New Agent | `/agents/new` | Create Agent identity and initial draft | Current |
 | Agent resource | `/agents/:agentId/*` | Own the Agent overview, design, versions, usage, access, and history | Current, expanding next |
-| Agent review | `/agents/:agentId/review/:reviewId` | Review semantic changes and record a decision | Current, expanding next |
-| Agent revision | `/agents/:agentId/versions/:revisionHash` | Inspect one immutable revision and its review, test, and deployment evidence | Next |
-| Skill list | `/skills` | Browse and filter standalone workspace Skills | Next |
+| Agent review | `/agents/:agentId/review/:reviewId` | Review semantic changes and record a decision; current slice may embed this in Agent Design | Current, expanding next |
+| Agent revision | `/agents/:agentId/revisions/:revisionHash` | Inspect one immutable revision and its review, test, and deployment evidence | Current |
+| Skill list | `/skills` | Browse and filter standalone workspace Skills | Current |
 | Import Skill | `/skills/import` | Import a package from a marketplace, direct locator, or manual upload and validate its declared metadata | Next |
-| Skill resource | `/skills/:skillId/*` | Inspect imported artifacts, declared versions, source provenance, activation state, and Agent usage | Next |
+| Skill resource | `/skills/:assetId` | Inspect imported artifacts, declared versions, source provenance, activation state, and Agent usage | Current |
 | Skill artifact | `/skills/:skillId/artifacts/:artifactId` | Inspect one imported package artifact, content digest, requirements, and usage | Next |
-| Plugin catalog | `/plugins` | Browse installed/available Plugins and workspace enablement | Next |
+| Plugin catalog | `/plugins` | Browse installed/available Plugins and workspace enablement | Current |
 | Install Plugin | `/plugins/install` | Review source, contents, permissions, compatibility, and install | Next |
-| Plugin resource | `/plugins/:pluginId/*` | Inspect versions, contained assets, workspaces, health, and audit | Next |
+| Plugin resource | `/plugins/:assetId` | Inspect versions, contained assets, workspaces, health, and audit | Current |
 | Plugin version | `/plugins/:pluginId/versions/:versionId` | Review immutable package contents and permission changes | Next |
-| Tool inventory | `/tools` | Browse built-in, MCP, and CLI descriptors across providers | Next |
+| Tool inventory | `/tools` | Browse built-in, MCP, and CLI descriptors across providers | Current |
 | Tool Server | `/tools/servers/:serverId/*` | Configure connection metadata, discovery, health, and descriptors | Next |
-| Tool Descriptor | `/tools/descriptors/:descriptorId` | Inspect schemas, effects, risk, compatibility, and Agent usage | Next |
+| Tool Descriptor | `/tools/:assetId` | Inspect schemas, effects, risk, compatibility, and Agent usage | Current |
 | CLI Command Profile | `/tools/cli-profiles/:profileId` | Define and inspect governed structured command execution | Next |
 
 ### Operate
@@ -350,8 +350,8 @@ The Agent resource uses stable nested routes and the following tabs:
 
 | Tab | Route | Purpose | Delivery |
 | --- | --- | --- | --- |
-| Overview | `/agents/:agentId` | Current state, ownership, production/test deployments, attention items, and recent activity | Next |
-| Design | `/agents/:agentId/design/:draftId` | Edit one named Draft, validate it, commit Revisions, and start test/review workflows | Current, expanding next |
+| Overview | `/agents/:agentId` | Current state, ownership, production/test deployments, attention items, and recent activity | Current |
+| Design | `/agents/:agentId/design` | Edit one named Draft, validate it, commit Revisions, and start test/review workflows | Current, expanding next |
 | Versions | `/agents/:agentId/versions` | Browse Draft latest Revisions, immutable snapshots, test Deployments, and Production history | Next |
 | Runs | `/agents/:agentId/runs` | Filter runtime attempts for this Agent and exact Revisions | Later |
 | Evaluations | `/agents/:agentId/evaluations` | Compare suite results and publication-gate evidence by Revision | Later |
@@ -479,7 +479,7 @@ rollback Production, quarantine, deprecate, and copy full hash.
 
 ### Revision Detail
 
-- Route: `/agents/:agentId/versions/:revisionHash`.
+- Route: `/agents/:agentId/revisions/:revisionHash`.
 - Header: short hash, commit message, author, time, source Draft, optional
   provenance Revision, validation, review, evaluation, and deployment labels.
 - Configuration view: immutable effective Prompt Snapshot, selected Skill
@@ -1213,6 +1213,12 @@ download, and failure are themselves audit events; the export applies the
 caller's current scope and redaction rules and never includes secret values or
 raw chain-of-thought.
 
+Export is asynchronous. The page shows requested, processing, ready, expired,
+and failed states, the query/scope digest, package digest, expiry time, and a
+short-lived download command only after readiness. A failed export can be
+retried without changing its query digest; changing filters creates a new export
+request.
+
 ### Audit Acceptance Criteria
 
 - `/audit` and `/audit/events/:eventId` are the only full Audit routes.
@@ -1244,6 +1250,11 @@ Hold names its owner, authority basis, scope or selector, affected data classes,
 status, and set or release history. Active Holds block scheduled deletion and
 key destruction for matching content and evidence.
 
+Hold selectors use bounded fields for scope, resource identifiers,
+Task/Run/Artifact identifiers, classification, and time range. They are frozen
+when activated; the match preview is evidence, while deletion re-evaluates active
+Holds against newly matching data. Arbitrary SQL selectors are not exposed.
+
 Deletion is an explicit, asynchronous workflow. The confirmation surface shows
 the estimated scope, matching Holds, protected records, and resulting
 tombstone behavior. Deletion requests, pending state, blocked records,
@@ -1251,6 +1262,11 @@ completion, failure, retry, Hold creation, and Hold release are all visible in
 the global Audit explorer. Audit metadata and signed integrity checkpoints stay
 through the configured minimum even when content is removed; deleted content is
 represented by a digest-preserving Tombstone.
+
+Deletion Jobs use requested, evaluating, pending, running, completed, blocked,
+and failed states. Only failed jobs may be retried, and every execution attempt
+re-checks active Holds, minimum Audit retention, classification, and key
+destruction eligibility.
 
 ## 14. Platform Settings Page Specification
 

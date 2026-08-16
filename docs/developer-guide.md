@@ -154,8 +154,9 @@ so browser login does not depend on cross-origin discovery. The requested Dex
 cross-client audience scope preserves the API audience boundary. Start the
 frontend with `pnpm dev:copilot` after the Compose stack is ready and sign in
 with `copilot-demo@example.test` and password `gantry_demo_password`. The
-Approvals page is available for action-time approvals; artifacts remain disabled
-until their API exists.
+Approvals page is available for action-time approvals. Inline Task artifact
+metadata and download are available through the current artifact API; the
+standalone artifact browser remains a later target route.
 
 For a natively started control plane or a different browser origin, override
 the Vite settings before starting the app:
@@ -171,9 +172,9 @@ pnpm dev:copilot
 The browser flow uses Authorization Code + PKCE and keeps the OIDC session in
 `sessionStorage`. Approval requests are bound to an action digest and are
 decided by the authenticated Copilot user; the page never receives credentials
-or raw agent specs. The workbench is desktop-first in this slice. Narrow breakpoints
-keep the component structure usable for a later mobile pass, but mobile visual
-parity is not a runner V1 acceptance gate.
+or raw agent specs. The workbench is desktop-first in the current slice. The
+Copilot site design remains the target for responsive desktop/mobile behavior;
+mobile visual parity is not evidence that the current Runner V1 slice is complete.
 
 ### External identity providers
 

@@ -52,8 +52,12 @@ interactive session owners; non-PTY shell execution is kept separate.
 
 ## Rules and context
 
-The runner discovers `AGENTS.md` and `.omp/rules/*.md`, applies deterministic
-first-wins precedence, and injects always-apply rules into the system prompt.
+The current development runner discovers `AGENTS.md` and `.omp/rules/*.md`,
+applies deterministic first-wins precedence, and injects always-apply rules into
+the system prompt. This runtime discovery is not a production reproducibility
+contract: published execution must either snapshot the selected rule files and
+their digests into the Agent Revision/Run Manifest or explicitly disable them.
+The target compiler described above owns that decision.
 Assistant text, thinking and tool arguments are inspected as they stream.
 External file, web, shell and MCP results are untrusted data blocks; instruction
 override attempts produce `security.untrusted_context` events and high-risk

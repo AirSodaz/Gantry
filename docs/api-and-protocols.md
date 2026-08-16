@@ -47,17 +47,17 @@ Current and planned resources:
   test/Production Deployment resources. The current single integer-revision
   Draft and published-version endpoints remain an implementation limitation,
   not the target domain model.
+- Current catalog slice: `/api/admin/v1/skills`, `/plugins`, and `/tools`
+  support registration/listing, status changes, usage projections, and explicit
+  Plugin enablement. This slice does not yet provide complete package
+  materialization, Tool Server management, or full binding constraints.
+- Target extension: Skill marketplace/direct-locator/upload/local import with
+  complete artifact inspection; Plugin contained-asset inspection; Tool Server
+  discovery/health; descriptor authoring; and CLI Command Profiles. Gantry still
+  does not mint Skill versions or release pointers.
 - Planned: per-Agent access-grant resources that independently authorize safe
   metadata, configuration read, Draft edit, Review, deployment, run inspection,
   execution, and ACL management.
-- Planned: `/api/admin/v1/skills` for marketplace/direct-locator, complete
-  package upload, or local-directory import, artifact activation/deprecation,
-  exact-artifact inspection, and Agent usage; it does not mint Skill versions
-  or release pointers.
-- Planned: `/api/admin/v1/plugins` and workspace Plugin enablement resources
-- Planned: `/api/admin/v1/tool-servers`
-- Planned: `/api/admin/v1/tool-descriptors`
-- Planned: `/api/admin/v1/cli-command-profiles`
 - Planned: `/api/admin/v1/runs` for the organization or Workspace-scoped
   operational Run workbench and richer diagnostic event projection;
   `/evaluation-suites`, `/integrations`,
@@ -76,14 +76,20 @@ Current and planned resources:
 
 Audience: `gantry-copilot-api`.
 
-Representative resources:
+Checked-in routes are defined by
+[`packages/contracts/openapi/copilot-api.yaml`](../packages/contracts/openapi/copilot-api.yaml)
+and currently include agent discovery, task submission/list/detail, event tickets,
+run cancel/retry, approval list/decision, and artifact metadata/download.
 
-- `/api/copilot/v1/agents`
-- `/api/copilot/v1/tasks`
-- `/api/copilot/v1/tasks/{id}`
-- `/api/copilot/v1/tasks/{id}/runs`
-- `/api/copilot/v1/approvals`
-- `/api/copilot/v1/artifacts`
+The target Copilot contract additionally includes:
+
+- `/api/copilot/v1/tasks/{id}/messages` for requester follow-up messages;
+- `/api/copilot/v1/tasks/{id}/runs` for compact attempt history;
+- `/api/copilot/v1/approvals/{id}` for approval detail;
+- `/api/copilot/v1/artifacts` for a later standalone artifact browser.
+
+These target routes are not callable until they appear in the OpenAPI document,
+generated client, owning handler, and focused tests.
 
 The Copilot API uses employee-oriented response types. It does not return raw
 agent specs and rely on the frontend to hide privileged fields. Task and Run
@@ -91,6 +97,20 @@ responses are requester-scoped and conversation-first: they include the
 employee-visible Task, compact Run attempts, approvals, events, and artifacts,
 but not Admin runner, lease, credential, raw prompt, or cross-user diagnostic
 fields.
+
+The target Copilot Task Detail is conversation-first. Once the messages route is
+implemented, it will append a requester message only when the Task is in an
+input-eligible state, for example after an action approval is rejected or
+expires. The command will use an idempotency key and create a new Run attempt
+under the same Task; it will never replay or mutate the denied action. A pending
+approval keeps the composer read-only by default until the decision is resolved.
+
+The target `GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
+redacted technical details, expiry and supersession state, linked Task context,
+and the latest decision version. `POST /api/copilot/v1/approvals/{id}:decide`
+requires the authenticated Task requester, action digest, decision, and
+idempotency key. A duplicate or stale decision returns the server's winning
+state and never implies that approval resulted in execution.
 
 ### Enterprise Agent Invocation API
 
@@ -123,6 +143,10 @@ Copilot Task record is not a way to enumerate global Runs.
 
 - Resource IDs are opaque and never encode authorization-relevant data.
 - Creation and command endpoints accept `Idempotency-Key`.
+- The checked-in Copilot implementation currently enforces idempotency for task
+  submission and approval decisions. Cancel and retry are target commands and
+  must not be treated as complete until their request digest/key mapping and
+  retry behavior are durable.
 - An idempotent response is recoverable for at least the resource lifetime plus
   the published maximum client retry interval. After response content expires,
   a tombstone still prevents the same actor and route from reusing the key with
@@ -250,12 +274,30 @@ sufficient. The export applies the caller's redaction and scope rules and
 cannot contain secrets or raw chain-of-thought. Export creation, download, and
 failure are themselves auditable.
 
+The target export lifecycle is:
+
+- POST /api/admin/v1/audit-events:export -> requested or processing;
+- GET /api/admin/v1/audit-exports/{id} -> package state, digest, scope,
+  expiry, and failure reason;
+- GET /api/admin/v1/audit-exports/{id}/download -> a short-lived download
+  reference only when the package is ready.
+
+Packages transition to expired after their independent retention window.
+Download and expiry are attributable Audit events; a failed export may be
+retried only with the same query digest or a new explicit export request.
+
 ### Retention and Legal Hold Administration
 
 `/api/admin/v1/retention-policies` exposes organization bounds and Workspace
 values for each data class. Exact durations are deployment configuration and
 must be approved by Legal and Security before production data is admitted. A
 Workspace value outside organization bounds is rejected.
+
+The target Hold read/preview resources are:
+
+- GET /api/admin/v1/legal-holds and GET /api/admin/v1/legal-holds/{id};
+- POST /api/admin/v1/legal-holds/{id}:preview for a side-effect-free match
+  estimate and protected deletion-job summary.
 
 `POST /api/admin/v1/legal-holds` creates a scoped Hold with owner, authority
 basis, selector, affected data classes, and optional release condition.
@@ -265,6 +307,17 @@ retention immediately before content or key deletion. They return pending or
 blocked state when evidence is protected and retain a digest-preserving
 Tombstone after permitted deletion. Hold and deletion mutations are idempotent,
 auditable, and never return protected content.
+
+The selector is a bounded typed expression, not arbitrary SQL. Activation freezes
+the selector; the preview is an evidence snapshot, while deletion re-evaluates
+active Holds against newly matching data. A release is idempotent and never
+removes historical Hold events.
+
+The target deletion-job lifecycle is
+requested -> evaluating -> pending -> running -> completed, with terminal
+blocked or failed outcomes. A retry is allowed only for failed jobs, creates a
+new attempt, and re-checks Holds, minimum Audit retention, classification, and
+key-destruction eligibility at execution time.
 
 ### Platform Settings Projection and Commands
 
@@ -294,6 +347,18 @@ resources. `/platform/data-classifications`, `/platform/limit-policies`, and
 the Settings page links to those resources when a value is managed there. The
 page does not create a second Policy, Provider, Runner, Integration, or Audit
 contract. Recent activity is queried from `/audit-events` with Settings filters.
+
+The target platform resource contracts also include:
+
+- `/platform/model-providers` and provider routes for model allowlists,
+  health, fallback, budget, and classification constraints;
+- `/platform/runner-pools` and runner detail for compatibility, capacity,
+  drain, quarantine, and heartbeat state;
+- `/platform/credentials` for non-secret references, lease/rotation metadata,
+  expiry, and revocation state.
+
+These resources never return secret values. Their target contracts are separate
+from the Settings projection and are not current public routes.
 
 `GET /api/admin/v1/retention-deletion-jobs` returns cursor-paginated estimates,
 eligible windows, active Hold matches, blocked records, retry state, and
@@ -341,6 +406,11 @@ Protocol requirements:
 - Each application receives only its permitted event projection.
 - The stream sends an initial resource snapshot and 20-second heartbeats. A
   ticket expiry closes the stream; clients request a new ticket before reconnecting.
+
+The target multi-Run Task stream uses a Task-level sequence that orders requester
+messages and Run projections. The checked-in implementation still encodes the
+current `run_id` in its cursor and returns `cursor_expired` when the current Run
+changes; this is an implementation limitation, not the final multi-Run contract.
 
 ## 6. Runner gRPC Protocol
 
@@ -443,6 +513,12 @@ Tool servers must not trust claims supplied only inside model-generated
 arguments.
 
 ## 9. Artifact Protocol
+
+Target clients create an attachment with
+POST /api/copilot/v1/attachments, receive a short-lived upload reference, and
+finalize it with POST /api/copilot/v1/attachments/{id}:complete.
+GET /api/copilot/v1/attachments/{id} returns only requester-authorized metadata
+and scan state. These routes are not in the current Copilot OpenAPI.
 
 - Clients upload attachments through pre-authorized, size-limited upload URLs.
 - Uploaded objects remain quarantined until validation and malware scanning

@@ -1,9 +1,12 @@
 # Frontend UX Design
 
-This document fixes the shared experience principles and directional
-information architecture. It does not yet approve the complete page inventory,
-route map, field-level functions, interactions, or page acceptance criteria.
-Those Admin and Copilot decisions are the next product-design work package.
+This document fixes the shared experience principles and cross-product
+information architecture. The complete page inventory, route map, field-level
+functions, interactions, and page acceptance criteria are defined in the
+[Admin Site Design](admin-site-design.md) and
+[Copilot Site Design](copilot-site-design.md) documents. This document remains
+the shared UX contract; implementation status and rendered acceptance evidence
+are tracked separately.
 
 ## 1. Experience Boundary
 
@@ -43,8 +46,14 @@ comparison, and repeated action over marketing-style presentation.
 Use the same state names and icons everywhere:
 
 `Draft`, `In review`, `Published`, `Deprecated`, `Queued`, `Provisioning`,
-`Running`, `Awaiting approval`, `Suspended`, `Canceling`, `Completed`, `Failed`,
-`Canceled`, and `Expired`.
+`Running`, `Awaiting approval`, `Awaiting requester input`, `Suspended`,
+`Canceling`, `Completed`, `Failed`, `Canceled`, `Expired`, and `Unknown outcome`.
+
+Async governance and catalog surfaces use the same vocabulary where applicable:
+`Requested`, `Processing`, `Evaluating`, `Ready`, `Pending`, `Blocked`,
+`Quarantined`, `Active`, `Released`, and `Retired`. A page may expose a narrower
+subset, but it must not rename a shared state or silently collapse a blocked or
+unknown outcome into success or ordinary failure.
 
 ## 3. Design Style and Philosophy
 
@@ -125,7 +134,9 @@ the component's module header when overriding this default.
 The authoritative Admin page inventory, routes, roles, delivery status, and
 page-level specifications are maintained in
 [Gantry Admin Site Design](admin-site-design.md). This section summarizes the
-experience direction.
+experience direction. The authoritative Copilot route, state, permission, and
+acceptance specifications are maintained in
+[Gantry Copilot Site Design](copilot-site-design.md).
 
 Primary navigation uses labeled groups with direct page entries. The labels are
 not empty landing pages.
@@ -472,20 +483,22 @@ mobile widths where relevant:
 Gantry Admin is desktop-first but must remain usable on a tablet. Gantry
 Copilot is fully responsive for desktop and mobile use.
 
-## 11. Next Page and Function Design Package
+## 11. Page and Function Design Packages
 
-The next design pass must produce, for both applications:
+The detailed Admin and Copilot packages are maintained in
+[Gantry Admin Site Design](admin-site-design.md) and
+[Gantry Copilot Site Design](copilot-site-design.md). The remaining cross-product
+work is implementation traceability and rendered acceptance:
 
-- approved sitemap, route inventory, navigation ownership, and permission map;
+- route-to-contract, capability-to-page, and authorization traceability;
 - one specification per page covering purpose, actors, entry points, data,
   commands, filters, states, validation, errors, destructive actions, and
   responsive behavior;
-- cross-page workflows for Agent configuration/publication, task execution,
-  approvals, artifacts, operations, and recovery;
-- capability-to-page and API-to-page traceability;
+- cross-page workflow tests for Agent configuration/publication, operations,
+  governance, integrations, platform administration, and recovery;
 - desktop, tablet, and mobile requirements appropriate to each application;
 - accessibility, localization, empty/loading/error, realtime, and browser-test
   acceptance criteria.
 
-Existing page descriptions above are inputs to that pass and may be merged,
-renamed, split, or removed before implementation commitments are made.
+Existing page descriptions remain target behavior; a route is implementation-ready
+only after its contract, handler, tests, and status entry agree.

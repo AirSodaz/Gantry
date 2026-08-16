@@ -51,13 +51,18 @@ still has a named operational owner.
 No phase is complete until every exit-gate item has evidence on the relevant
 commit and environment.
 
-### Immediate Design Work Package
+### Design-to-Implementation Handoff
 
-Before expanding frontend implementation, complete the page and function design
-for both Admin and Copilot. This work consumes the platform documents and must
-produce an approved sitemap, route/permission matrix, page specifications,
-cross-page workflows, responsive requirements, and acceptance criteria. It does
-not change the phase dependency rules below.
+The complete Admin and Copilot page/function design is now documented in
+[Gantry Admin Site Design](admin-site-design.md) and
+[Gantry Copilot Site Design](copilot-site-design.md). Those documents contain
+the approved sitemap, route and permission matrix, page specifications,
+cross-page workflows, responsive requirements, and acceptance criteria.
+
+The remaining work is implementation traceability: each target route must be
+backed by an authoritative contract, an authorized handler, focused tests, and
+an updated entry in [Implementation Status](implementation-status.md). This
+does not change the phase dependency rules below.
 
 ## 3. Phase 0: Inception and Risk Prototypes
 

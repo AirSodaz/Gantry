@@ -24,6 +24,18 @@ Policy. Other authority boundaries, including Agent access, Tool Descriptors,
 Tool Bindings, credentials, destinations, runtime constraints, Deployments, and
 Integration Publications, remain part of the effective intersection.
 
+For a concrete action, decision composition is monotonic:
+
+- any applicable deny produces deny;
+- otherwise any applicable requester approval produces require approval;
+- only when all applicable layers allow does the result become allow.
+
+Set-valued permissions use set intersection. Numeric limits use the minimum
+permitted value, time windows use the intersection of windows, and boolean
+restrictions use the more restrictive value. A policy document that cannot be
+composed under these rules is rejected at Binding time; the server never resolves
+the conflict by broadening authority or by choosing a hidden priority.
+
 Policy simulation may compare a Draft or exact Version with current effective
 Bindings and explain `allow`, `deny`, or `require_requester_approval`. It is
 side-effect free: it cannot execute a Tool, resolve a secret, create an Approval

@@ -66,8 +66,8 @@ third Gantry user interface.
 
 | Actor | Primary application | Responsibilities |
 | --- | --- | --- |
-| Platform Administrator | Admin | Platform settings, providers, runner pools, retention, emergency controls |
-| Agent Designer | Admin | Draft specs, prompts, tools, model policies, tests, and release notes |
+| Organization Administrator | Admin | Platform settings, providers, runner pools, retention, emergency controls |
+| Workspace Agent Editor | Admin | Draft specs, prompts, tools, model policies, tests, and release notes within assigned Workspaces |
 | Security Reviewer | Admin | Review permissions, egress, credentials, commands, publication changes, and export scoped audit evidence |
 | Operator | Admin | Monitor runs, inspect failures, cancel or retry tasks, manage capacity, and inspect audit evidence without export |
 | Auditor | Admin | Search immutable events, inspect approvals, and export scoped evidence |
@@ -417,9 +417,10 @@ invented before representative agents and workloads exist.
 
 This document defines product capabilities, not the final page inventory. The
 Admin page structure is defined in
-[Gantry Admin Site Design](admin-site-design.md). The next design work will
-continue to refine every Admin page and then decide every Copilot page, route, function,
-permission state, field set, interaction, responsive behavior, and acceptance
-criterion. Until that pass is approved, page descriptions in
-[Frontend UX Design](frontend-ux-design.md) are directional information
-architecture rather than implementation-complete specifications.
+[Gantry Admin Site Design](admin-site-design.md). The Copilot page and function
+specification is defined in
+[Gantry Copilot Site Design](copilot-site-design.md). Remaining Admin pages will
+continue to be refined by route, function, permission state, field set,
+interaction, responsive behavior, and acceptance criterion. The shared
+[Frontend UX Design](frontend-ux-design.md) document remains the source for
+cross-application design language and interaction rules.

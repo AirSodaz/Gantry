@@ -67,8 +67,11 @@ Effective authority is the intersection of:
 4. Organization and workspace policy.
 5. Tool, credential, data, and network policy at action time.
 
-The application cannot claim an employee's permissions. Actions that require a
-human may create a durable approval assigned by policy.
+The application cannot claim an employee's permissions. It cannot create a
+requester-bound human approval because it has no authenticated human requester;
+an action requiring human confirmation must be denied or handled by the owning
+external business workflow. Application identity therefore does not enter the
+Copilot requester-input flow.
 
 ### Delegated User Identity
 
@@ -273,10 +276,12 @@ event projection includes only integration-relevant states:
 Internal model deltas, PTY output, tool payloads, policy internals, and raw run
 events are not exposed through the Agent Invocation API.
 
-Approval rejection and expiry do not introduce additional task states. Both
-resume execution with a schema-valid `action_denied` or `approval_expired`
-result and leave an interactive delegated-user task available for later
-requester input. The same projection is used by polling, events, and webhooks.
+For the current Enterprise projection, approval rejection and expiry return a
+schema-valid `action_denied` or `approval_expired` result and do not add a new
+externally visible Task state. Interactive continuation after that result is a
+Copilot capability. A future delegated-user continuation API must define its own
+message route and event projection before Enterprise tasks are described as
+interactive.
 
 ## 11. Webhooks
 
@@ -315,9 +320,9 @@ An API-started task may enter `awaiting_approval`.
   and presented by the tool's own workflow system. Gantry receives only a
   signed, idempotent external status callback and resumes the action after
   validating the external approval reference and bound digest.
-- Agent action rejection and expiry always resume with a structured denial
-  result. Neither outcome creates a failed task merely because the action was
-  not approved.
+- Agent action rejection and expiry return a structured denial result in the
+  Enterprise projection. Copilot may keep the requester conversation open, but
+  that interaction is not currently part of this server-to-server contract.
 
 ## 13. Artifacts
 
