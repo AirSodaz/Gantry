@@ -435,6 +435,196 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/lifecycle:
+    get:
+      operationId: getAgentLifecycle
+      summary: Get named Drafts, exact Deployments, and recent lifecycle activity
+      tags: [Agents]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200": {description: Agent lifecycle, content: {application/json: {schema: {$ref: "#/components/schemas/AgentLifecycleOverview"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/drafts:
+    get:
+      operationId: listAgentDrafts
+      summary: List named mutable Draft working copies
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200": {description: Drafts, content: {application/json: {schema: {$ref: "#/components/schemas/AgentDraftList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: createAgentDraft
+      summary: Create a named Draft, optionally from one exact Revision
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateAgentDraftRequest"}}}}
+      responses:
+        "201": {description: Draft created, content: {application/json: {schema: {$ref: "#/components/schemas/NamedAgentDraft"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /agents/{agent_id}/drafts/{draft_id}:
+    get:
+      operationId: getNamedAgentDraft
+      summary: Get one named Draft working copy
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: draft_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Draft, content: {application/json: {schema: {$ref: "#/components/schemas/NamedAgentDraft"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: updateNamedAgentDraft
+      summary: Replace a named Draft with optimistic concurrency
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: draft_id, in: path, required: true, schema: {type: string}}, {$ref: "#/components/parameters/IfMatch"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateDraftRequest"}}}}
+      responses:
+        "200": {description: Draft updated, content: {application/json: {schema: {$ref: "#/components/schemas/NamedAgentDraft"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "412": {$ref: "#/components/responses/RevisionConflict"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /agents/{agent_id}/drafts/{draft_id}:archive:
+    post:
+      operationId: archiveAgentDraft
+      summary: Archive a non-Main Draft without deleting its Revisions
+      tags: [Drafts]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: draft_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "204": {description: Draft archived}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+  /agents/{agent_id}/drafts/{draft_id}:commit:
+    post:
+      operationId: commitAgentDraft
+      summary: Commit one valid Draft as an immutable hash-identified Revision
+      tags: [Revisions]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: draft_id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CommitAgentDraftRequest"}}}}
+      responses:
+        "201": {description: Revision committed, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevision"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+  /agents/{agent_id}/revisions:
+    get:
+      operationId: listAgentRevisions
+      summary: List immutable Agent Revisions ordered by commit time
+      tags: [Revisions]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200": {description: Revisions, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevisionList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/revisions/{revision_hash}:
+    get:
+      operationId: getAgentRevision
+      summary: Inspect one immutable Revision by its full hash
+      tags: [Revisions]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: revision_hash, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Revision, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevision"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /agents/{agent_id}/revisions/{revision_hash}/review:
+    get:
+      operationId: getAgentRevisionReview
+      summary: Get review evidence for one exact Revision
+      tags: [Reviews]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: revision_hash, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: Revision review, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevisionReview"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: submitAgentRevisionReview
+      summary: Submit review evidence for one exact Revision
+      tags: [Reviews]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: revision_hash, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/SubmitReviewRequest"}}}}
+      responses:
+        "201": {description: Review submitted, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevisionReview"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+  /agents/{agent_id}/revisions/{revision_hash}:review-decision:
+    post:
+      operationId: decideAgentRevisionReview
+      summary: Approve or reject one exact Revision review
+      tags: [Reviews]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: revision_hash, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ReviewDecisionRequest"}}}}
+      responses:
+        "200": {description: Review decision recorded, content: {application/json: {schema: {$ref: "#/components/schemas/AgentRevisionReview"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+  /agents/{agent_id}/revisions/{revision_hash}:publish:
+    post:
+      operationId: publishAgentRevision
+      summary: Move the Production Deployment pointer to an approved Revision
+      tags: [Deployments]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: revision_hash, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: false, content: {application/json: {schema: {$ref: "#/components/schemas/PublishAgentRevisionRequest"}}}}
+      responses:
+        "200": {description: Production Deployment, content: {application/json: {schema: {$ref: "#/components/schemas/AgentDeployment"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
+        "412": {$ref: "#/components/responses/RevisionConflict"}
+  /agents/{agent_id}/deployments:
+    get:
+      operationId: listAgentDeployments
+      summary: List exact Revision Deployment pointers
+      tags: [Deployments]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      responses:
+        "200": {description: Deployments, content: {application/json: {schema: {$ref: "#/components/schemas/AgentDeploymentList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: createAgentTestDeployment
+      summary: Create a named Test Deployment for one exact Revision
+      tags: [Deployments]
+      parameters: [{$ref: "#/components/parameters/AgentId"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateAgentDeploymentRequest"}}}}
+      responses:
+        "201": {description: Test Deployment created, content: {application/json: {schema: {$ref: "#/components/schemas/AgentDeployment"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/InvalidInput"}
+  /agents/{agent_id}/deployments/{deployment_id}:stop:
+    post:
+      operationId: stopAgentTestDeployment
+      summary: Stop one Test Deployment without deleting its Revision
+      tags: [Deployments]
+      parameters: [{$ref: "#/components/parameters/AgentId"}, {name: deployment_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "204": {description: Test Deployment stopped}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/InvalidState"}
   /agents/{agent_id}/draft:
     get:
       operationId: getAgentDraft
@@ -701,13 +891,14 @@ components:
         page_info: {$ref: "#/components/schemas/PageInfo"}
     AssetUsage:
       type: object
-      required: [agent_id, agent_name, workspace_id, reference_kind, reference_index]
+      required: [agent_id, agent_name, workspace_id, reference_kind, reference_id]
       properties:
         agent_id: {type: string}
         agent_name: {type: string}
         workspace_id: {type: string}
         reference_kind: {type: string, enum: [draft, revision]}
-        reference_index: {type: integer}
+        reference_id: {type: string}
+        reference_hash: {type: string}
     AssetUsageList:
       type: object
       required: [items, page_info]
@@ -824,8 +1015,9 @@ components:
         display_name: {type: string}
         description: {type: string}
         category: {type: string}
-        lifecycle_status: {type: string, enum: [draft, published, retired]}
+        lifecycle_status: {type: string, enum: [draft, published, active, retired]}
         current_published_version_id: {type: string}
+        current_production_revision_hash: {type: string}
     AgentList:
       type: object
       required: [items, page_info]
@@ -841,6 +1033,135 @@ components:
         display_name: {type: string}
         description: {type: string}
         category: {type: string}
+    NamedAgentDraft:
+      type: object
+      required: [id, agent_id, name, status, spec, schema_version, working_copy_etag, validation_status, validation_findings, created_by, updated_by, created_at, updated_at]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [active, archived]}
+        derived_from_revision_hash: {type: string}
+        latest_revision_hash: {type: string}
+        spec: {type: object}
+        schema_version: {type: string}
+        working_copy_etag: {type: integer}
+        validation_status: {type: string, enum: [valid, invalid]}
+        validation_findings: {type: array, items: {$ref: "#/components/schemas/ValidationFinding"}}
+        created_by: {type: string}
+        updated_by: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AgentDraftList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/NamedAgentDraft"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    CreateAgentDraftRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+        from_revision_hash: {type: string}
+    CommitAgentDraftRequest:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string, maxLength: 4000}
+    AgentRevision:
+      type: object
+      required: [id, agent_id, revision_hash, source_draft_id, message, spec, spec_digest, created_at, created_by, prompt_snapshot]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        revision_hash: {type: string}
+        source_draft_id: {type: string}
+        message: {type: string}
+        spec: {type: object}
+        spec_digest: {type: string}
+        runtime_image_digest: {type: string}
+        created_at: {type: string, format: date-time}
+        created_by: {type: string}
+        prompt_snapshot: {$ref: "#/components/schemas/PromptSnapshot"}
+    AgentRevisionList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AgentRevision"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    AgentRevisionReview:
+      type: object
+      required: [agent_id, revision_hash, release_notes, diff, risk_summary, status]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        revision_hash: {type: string}
+        base_revision_hash: {type: string}
+        release_notes: {type: string}
+        diff: {type: array, items: {$ref: "#/components/schemas/DiffEntry"}}
+        risk_summary: {$ref: "#/components/schemas/RiskSummary"}
+        status: {type: string, enum: [not_submitted, pending, approved, rejected, superseded]}
+        submitted_by: {type: string}
+        reviewed_by: {type: string}
+        review_reason: {type: string}
+        submitted_at: {type: string, format: date-time}
+        reviewed_at: {type: string, format: date-time}
+    AgentDeployment:
+      type: object
+      required: [id, agent_id, workspace_id, name, environment_kind, revision_id, revision_hash, spec_digest, status, environment_policy, changed_by, created_at, updated_at]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        workspace_id: {type: string}
+        name: {type: string}
+        environment_kind: {type: string, enum: [test, production]}
+        revision_id: {type: string}
+        revision_hash: {type: string}
+        spec_digest: {type: string}
+        status: {type: string, enum: [active, stopped, quarantined]}
+        owner: {type: string}
+        purpose: {type: string}
+        expires_at: {type: string, format: date-time}
+        environment_policy: {type: object, additionalProperties: true}
+        changed_by: {type: string}
+        review_id: {type: string}
+        previous_revision_hash: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AgentDeploymentList:
+      type: object
+      required: [items, page_info]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AgentDeployment"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    CreateAgentDeploymentRequest:
+      type: object
+      required: [name, revision_hash]
+      properties:
+        name: {type: string}
+        revision_hash: {type: string}
+        purpose: {type: string}
+        expires_at: {type: string, format: date-time}
+        environment_policy: {type: object, additionalProperties: true}
+    PublishAgentRevisionRequest:
+      type: object
+      properties:
+        expected_production_revision_hash: {type: string}
+    AgentLifecycleOverview:
+      type: object
+      required: [agent, main_draft, drafts, test_deployments, revision_count, recent_activity]
+      properties:
+        agent: {$ref: "#/components/schemas/Agent"}
+        main_draft: {$ref: "#/components/schemas/NamedAgentDraft"}
+        drafts: {type: array, items: {$ref: "#/components/schemas/NamedAgentDraft"}}
+        production_deployment:
+          oneOf:
+            - {$ref: "#/components/schemas/AgentDeployment"}
+            - {type: 'null'}
+        test_deployments: {type: array, items: {$ref: "#/components/schemas/AgentDeployment"}}
+        revision_count: {type: integer}
+        recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
     AgentDraft:
       type: object
       required: [agent_id, revision, spec, validation_status, validation_findings, updated_by]
@@ -933,13 +1254,12 @@ components:
         created_at: {type: string, format: date-time}
     AdminOverviewPublication:
       type: object
-      required: [agent_id, agent_name, workspace_id, version_id, version, published_at]
+      required: [agent_id, agent_name, workspace_id, revision_hash, published_at]
       properties:
         agent_id: {type: string}
         agent_name: {type: string}
         workspace_id: {type: string}
-        version_id: {type: string}
-        version: {type: integer}
+        revision_hash: {type: string}
         published_at: {type: string, format: date-time}
     AdminOverview:
       type: object

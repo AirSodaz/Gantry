@@ -176,7 +176,7 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 	}
 	if adminAuth != nil {
 		overviewService := adminoverview.NewService(databasePool, authorizer)
-		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithAssetsAndOverview(adminAuth, authorizer, agentService, assetService, overviewService, logger)))
+		mux.Handle("/api/admin/v1/", http.StripPrefix("/api/admin/v1", adminapi.NewWithTarget(adminAuth, authorizer, agentService, agentService, assetService, overviewService, logger)))
 	}
 	// Product routes are OpenAPI-owned. Connect handlers are registered only below.
 	return &http.Server{Addr: cfg.HTTPAddress, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

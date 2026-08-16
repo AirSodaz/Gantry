@@ -406,7 +406,7 @@ func TestSkillUsageRouteReturnsScopedReferences(t *testing.T) {
 		if id != "skill_1" {
 			t.Fatalf("asset id=%q", id)
 		}
-		return []configassets.AssetUsage{{AgentID: "agt_1", AgentName: "Search", ReferenceKind: "draft", ReferenceIndex: 2}}, nil
+		return []configassets.AssetUsage{{AgentID: "agt_1", AgentName: "Search", ReferenceKind: "draft", ReferenceID: "drf_2", ReferenceHash: "sha256:abc"}}, nil
 	}}
 	handler := NewWithAssets(fakeAuthenticator{actor: identity.Principal{ID: "prn_1"}}, fakeAuthorizer{}, fakeLifecycleService{}, assets, nil)
 	response := httptest.NewRecorder()

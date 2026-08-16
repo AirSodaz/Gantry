@@ -51,7 +51,7 @@ export function OverviewPage() {
       <div className="admin-overview-grid">
         <section className="admin-detail-block">
           <div className="admin-section-heading"><div><span>Governance</span><h2>Recent publications</h2></div><Layers size={18} /></div>
-          {publications.length === 0 ? <p className="admin-muted">No published versions in this scope.</p> : <ul className="admin-detail-list">{publications.map((publication) => <li key={`${publication.agent_id}-${publication.version_id}`}><Link className="admin-overview-row-link" to={`/agents/${publication.agent_id}/versions/${publication.version_id}`}><strong>{publication.agent_name} <span>Version {publication.version}</span></strong><span>{formatTime(publication.published_at)}</span></Link></li>)}</ul>}
+          {publications.length === 0 ? <p className="admin-muted">No Production Deployments in this scope.</p> : <ul className="admin-detail-list">{publications.map((publication) => <li key={`${publication.agent_id}-${publication.revision_hash}`}><Link className="admin-overview-row-link" to={`/agents/${publication.agent_id}/revisions/${publication.revision_hash}`}><strong>{publication.agent_name} <span>{shortHash(publication.revision_hash)}</span></strong><span>{formatTime(publication.published_at)}</span></Link></li>)}</ul>}
         </section>
         <section className="admin-detail-block">
           <div className="admin-section-heading"><div><span>Immutable record</span><h2>Recent activity</h2></div><Activity size={18} /></div>
@@ -75,4 +75,8 @@ function Metric({ icon, label, value, detail, href }: { icon: ReactNode; label: 
 function formatTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function shortHash(value: string) {
+  return value.replace(/^sha256:/, '').slice(0, 12);
 }

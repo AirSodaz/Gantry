@@ -37,11 +37,12 @@ type Skill struct {
 }
 
 type AssetUsage struct {
-	AgentID        string `json:"agent_id"`
-	AgentName      string `json:"agent_name"`
-	WorkspaceID    string `json:"workspace_id"`
-	ReferenceKind  string `json:"reference_kind"`
-	ReferenceIndex int    `json:"reference_index"`
+	AgentID       string `json:"agent_id"`
+	AgentName     string `json:"agent_name"`
+	WorkspaceID   string `json:"workspace_id"`
+	ReferenceKind string `json:"reference_kind"`
+	ReferenceID   string `json:"reference_id"`
+	ReferenceHash string `json:"reference_hash,omitempty"`
 }
 
 type PluginWorkspace struct {
@@ -569,8 +570,8 @@ func (s *Service) ListToolUsage(ctx context.Context, actor identity.Principal, t
 
 func (s *Service) listUsage(ctx context.Context, actor identity.Principal, assetID, workspaceID, path, bindingField string) ([]AssetUsage, error) {
 	query := `
-		SELECT a.id, a.display_name, a.workspace_id, 'draft' AS reference_kind, d.revision AS reference_index
-		FROM gantry.agent_drafts d
+		SELECT a.id, a.display_name, a.workspace_id, 'draft' AS reference_kind, d.id AS reference_id, COALESCE(d.latest_revision_hash, '') AS reference_hash
+		FROM gantry.agent_draft_workspaces d
 		JOIN gantry.agents a ON a.id=d.agent_id
 		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2)
 		  AND d.spec_json->'` + path + `' @> jsonb_build_array(jsonb_build_object('` + bindingField + `', $3::text))
@@ -579,8 +580,8 @@ func (s *Service) listUsage(ctx context.Context, actor identity.Principal, asset
 			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
 		  )
 		UNION ALL
-		SELECT a.id, a.display_name, a.workspace_id, 'revision' AS reference_kind, v.version AS reference_index
-		FROM gantry.agent_versions v
+		SELECT a.id, a.display_name, a.workspace_id, 'revision' AS reference_kind, v.id AS reference_id, v.revision_hash AS reference_hash
+		FROM gantry.agent_revisions v
 		JOIN gantry.agents a ON a.id=v.agent_id
 		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2)
 		  AND v.spec_json->'` + path + `' @> jsonb_build_array(jsonb_build_object('` + bindingField + `', $3::text))
@@ -588,7 +589,7 @@ func (s *Service) listUsage(ctx context.Context, actor identity.Principal, asset
 			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
 			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$4 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
 		  )
-		ORDER BY display_name, reference_kind, reference_index DESC, id`
+		ORDER BY display_name, reference_kind, reference_id`
 	rows, err := s.pool.Query(ctx, query, actor.OrganizationID, workspaceID, assetID, actor.ID)
 	if err != nil {
 		return nil, err
@@ -597,7 +598,7 @@ func (s *Service) listUsage(ctx context.Context, actor identity.Principal, asset
 	items := make([]AssetUsage, 0)
 	for rows.Next() {
 		var item AssetUsage
-		if err := rows.Scan(&item.AgentID, &item.AgentName, &item.WorkspaceID, &item.ReferenceKind, &item.ReferenceIndex); err != nil {
+		if err := rows.Scan(&item.AgentID, &item.AgentName, &item.WorkspaceID, &item.ReferenceKind, &item.ReferenceID, &item.ReferenceHash); err != nil {
 			return nil, err
 		}
 		items = append(items, item)

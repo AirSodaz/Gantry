@@ -433,6 +433,214 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/{agent_id}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get named Drafts, exact Deployments, and recent lifecycle activity */
+        get: operations["getAgentLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List named mutable Draft working copies */
+        get: operations["listAgentDrafts"];
+        put?: never;
+        /** Create a named Draft, optionally from one exact Revision */
+        post: operations["createAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one named Draft working copy */
+        get: operations["getNamedAgentDraft"];
+        /** Replace a named Draft with optimistic concurrency */
+        put: operations["updateNamedAgentDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}:archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a non-Main Draft without deleting its Revisions */
+        post: operations["archiveAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}:commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit one valid Draft as an immutable hash-identified Revision */
+        post: operations["commitAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Agent Revisions ordered by commit time */
+        get: operations["listAgentRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one immutable Revision by its full hash */
+        get: operations["getAgentRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get review evidence for one exact Revision */
+        get: operations["getAgentRevisionReview"];
+        put?: never;
+        /** Submit review evidence for one exact Revision */
+        post: operations["submitAgentRevisionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}:review-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject one exact Revision review */
+        post: operations["decideAgentRevisionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}:publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move the Production Deployment pointer to an approved Revision */
+        post: operations["publishAgentRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List exact Revision Deployment pointers */
+        get: operations["listAgentDeployments"];
+        put?: never;
+        /** Create a named Test Deployment for one exact Revision */
+        post: operations["createAgentTestDeployment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/deployments/{deployment_id}:stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop one Test Deployment without deleting its Revision */
+        post: operations["stopAgentTestDeployment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}/draft": {
         parameters: {
             query?: never;
@@ -636,7 +844,8 @@ export interface components {
             workspace_id: string;
             /** @enum {string} */
             reference_kind: "draft" | "revision";
-            reference_index: number;
+            reference_id: string;
+            reference_hash?: string;
         };
         AssetUsageList: {
             items: components["schemas"]["AssetUsage"][];
@@ -743,8 +952,9 @@ export interface components {
             description: string;
             category: string;
             /** @enum {string} */
-            lifecycle_status: "draft" | "published" | "retired";
+            lifecycle_status: "draft" | "published" | "active" | "retired";
             current_published_version_id?: string;
+            current_production_revision_hash?: string;
         };
         AgentList: {
             items: components["schemas"]["Agent"][];
@@ -756,6 +966,127 @@ export interface components {
             display_name: string;
             description: string;
             category: string;
+        };
+        NamedAgentDraft: {
+            id: string;
+            agent_id: string;
+            name: string;
+            /** @enum {string} */
+            status: "active" | "archived";
+            derived_from_revision_hash?: string;
+            latest_revision_hash?: string;
+            spec: Record<string, never>;
+            schema_version: string;
+            working_copy_etag: number;
+            /** @enum {string} */
+            validation_status: "valid" | "invalid";
+            validation_findings: components["schemas"]["ValidationFinding"][];
+            created_by: string;
+            updated_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AgentDraftList: {
+            items: components["schemas"]["NamedAgentDraft"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAgentDraftRequest: {
+            name: string;
+            from_revision_hash?: string;
+        };
+        CommitAgentDraftRequest: {
+            message: string;
+        };
+        AgentRevision: {
+            id: string;
+            agent_id: string;
+            revision_hash: string;
+            source_draft_id: string;
+            message: string;
+            spec: Record<string, never>;
+            spec_digest: string;
+            runtime_image_digest?: string;
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            prompt_snapshot: components["schemas"]["PromptSnapshot"];
+        };
+        AgentRevisionList: {
+            items: components["schemas"]["AgentRevision"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AgentRevisionReview: {
+            id?: string;
+            agent_id: string;
+            revision_hash: string;
+            base_revision_hash?: string;
+            release_notes: string;
+            diff: components["schemas"]["DiffEntry"][];
+            risk_summary: components["schemas"]["RiskSummary"];
+            /** @enum {string} */
+            status: "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
+            submitted_by?: string;
+            reviewed_by?: string;
+            review_reason?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            reviewed_at?: string;
+        };
+        AgentDeployment: {
+            id: string;
+            agent_id: string;
+            workspace_id: string;
+            name: string;
+            /** @enum {string} */
+            environment_kind: "test" | "production";
+            revision_id: string;
+            revision_hash: string;
+            spec_digest: string;
+            /** @enum {string} */
+            status: "active" | "stopped" | "quarantined";
+            owner?: string;
+            purpose?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            environment_policy: {
+                [key: string]: unknown;
+            };
+            changed_by: string;
+            review_id?: string;
+            previous_revision_hash?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AgentDeploymentList: {
+            items: components["schemas"]["AgentDeployment"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAgentDeploymentRequest: {
+            name: string;
+            revision_hash: string;
+            purpose?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            environment_policy?: {
+                [key: string]: unknown;
+            };
+        };
+        PublishAgentRevisionRequest: {
+            expected_production_revision_hash?: string;
+        };
+        AgentLifecycleOverview: {
+            agent: components["schemas"]["Agent"];
+            main_draft: components["schemas"]["NamedAgentDraft"];
+            drafts: components["schemas"]["NamedAgentDraft"][];
+            production_deployment?: components["schemas"]["AgentDeployment"] | null;
+            test_deployments: components["schemas"]["AgentDeployment"][];
+            revision_count: number;
+            recent_activity: components["schemas"]["ActivityItem"][];
         };
         AgentDraft: {
             agent_id: string;
@@ -838,8 +1169,7 @@ export interface components {
             agent_id: string;
             agent_name: string;
             workspace_id: string;
-            version_id: string;
-            version: number;
+            revision_hash: string;
             /** Format: date-time */
             published_at: string;
         };
@@ -1738,6 +2068,454 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentLifecycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent lifecycle */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentLifecycleOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAgentDrafts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Drafts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDraftList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getNamedAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateNamedAgentDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current draft revision. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            412: components["responses"]["RevisionConflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    archiveAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft archived */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    commitAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitAgentDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Revision committed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevision"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    listAgentRevisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revisions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevision"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revision review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Review submitted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    decideAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Review decision recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    publishAgentRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishAgentRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Production Deployment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeployment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+            412: components["responses"]["RevisionConflict"];
+        };
+    };
+    listAgentDeployments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deployments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeploymentList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAgentTestDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentDeploymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Test Deployment created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeployment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    stopAgentTestDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                deployment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Test Deployment stopped */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
         };
     };
     getAgentDraft: {

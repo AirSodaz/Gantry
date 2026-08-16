@@ -65,8 +65,8 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, err
 	}
 	defer tx.Rollback(ctx)
-	var agentID, workspaceID, versionID, oldRunID, oldStatus string
-	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_version_id, r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &versionID, &oldRunID, &oldStatus)
+	var agentID, workspaceID, revisionID, oldRunID, oldStatus string
+	err = tx.QueryRow(ctx, `SELECT t.agent_id, t.workspace_id, r.agent_revision_id, r.id, r.status FROM gantry.tasks t JOIN gantry.runs r ON r.id=t.current_run_id WHERE t.id=$1 AND t.requester_principal_id=$2 FOR UPDATE`, taskID, actor.ID).Scan(&agentID, &workspaceID, &revisionID, &oldRunID, &oldStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -77,7 +77,7 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, ErrInvalidState
 	}
 	if useLatest {
-		err = tx.QueryRow(ctx, `SELECT p.agent_version_id FROM gantry.agents a JOIN gantry.agent_publications p ON p.agent_id=a.id AND p.workspace_id=a.workspace_id AND p.status='published' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.workspace_id=$3`, actor.ID, agentID, workspaceID).Scan(&versionID)
+		err = tx.QueryRow(ctx, `SELECT d.revision_id FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.workspace_id=$3`, actor.ID, agentID, workspaceID).Scan(&revisionID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Task{}, ErrNotFound
 		}
@@ -90,7 +90,7 @@ func (s *Service) Retry(ctx context.Context, actor identity.Principal, taskID st
 		return Task{}, err
 	}
 	runID := newID("run")
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, status) VALUES ($1,$2,$3,$4,'queued')`, runID, taskID, versionID, attempt); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, attempt_number, status) VALUES ($1,$2,$3,$4,'queued')`, runID, taskID, revisionID, attempt); err != nil {
 		return Task{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET current_run_id=$2, status='queued' WHERE id=$1`, taskID, runID); err != nil {

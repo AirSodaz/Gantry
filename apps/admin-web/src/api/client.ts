@@ -1,4 +1,4 @@
-import type { AdminOverview, Agent, AgentOverview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
+import type { AdminOverview, Agent, AgentDeployment, AgentLifecycleOverview, AgentOverview, AgentRevision, AgentRevisionReview, AgentReview, AgentVersion, AssetUsage, CreateAgentInput, Draft, NamedAgentDraft, Plugin, PluginDetail, Skill, Tool, Workspace } from './types';
 
 const baseUrl = import.meta.env.VITE_ADMIN_API_BASE ?? '/api/admin/v1';
 
@@ -61,6 +61,22 @@ export class AdminApi {
   }
   getAgent(agentId: string) { return this.request<Agent>(`/agents/${encodeURIComponent(agentId)}`); }
   getAgentOverview(agentId: string) { return this.request<AgentOverview>(`/agents/${encodeURIComponent(agentId)}/overview`); }
+  getAgentLifecycle(agentId: string) { return this.request<AgentLifecycleOverview>(`/agents/${encodeURIComponent(agentId)}/lifecycle`); }
+  listDrafts(agentId: string) { return this.request<{ items: NamedAgentDraft[] }>(`/agents/${encodeURIComponent(agentId)}/drafts`); }
+  getNamedDraft(agentId: string, draftId: string) { return this.request<NamedAgentDraft>(`/agents/${encodeURIComponent(agentId)}/drafts/${encodeURIComponent(draftId)}`); }
+  createDraft(agentId: string, input: { name: string; from_revision_hash?: string }) { return this.request<NamedAgentDraft>(`/agents/${encodeURIComponent(agentId)}/drafts`, { method: 'POST', body: JSON.stringify(input) }); }
+  updateNamedDraft(agentId: string, draftId: string, etag: number, spec: unknown) { return this.request<NamedAgentDraft>(`/agents/${encodeURIComponent(agentId)}/drafts/${encodeURIComponent(draftId)}`, { method: 'PUT', headers: { 'If-Match': String(etag) }, body: JSON.stringify({ spec }) }); }
+  archiveDraft(agentId: string, draftId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}/drafts/${encodeURIComponent(draftId)}:archive`, { method: 'POST', body: '{}' }); }
+  commitDraft(agentId: string, draftId: string, message: string) { return this.request<AgentRevision>(`/agents/${encodeURIComponent(agentId)}/drafts/${encodeURIComponent(draftId)}:commit`, { method: 'POST', body: JSON.stringify({ message }) }); }
+  listRevisions(agentId: string) { return this.request<{ items: AgentRevision[] }>(`/agents/${encodeURIComponent(agentId)}/revisions`); }
+  getRevision(agentId: string, revisionHash: string) { return this.request<AgentRevision>(`/agents/${encodeURIComponent(agentId)}/revisions/${encodeURIComponent(revisionHash)}`); }
+  getRevisionReview(agentId: string, revisionHash: string) { return this.request<AgentRevisionReview>(`/agents/${encodeURIComponent(agentId)}/revisions/${encodeURIComponent(revisionHash)}/review`); }
+  submitRevisionReview(agentId: string, revisionHash: string, releaseNotes: string) { return this.request<AgentRevisionReview>(`/agents/${encodeURIComponent(agentId)}/revisions/${encodeURIComponent(revisionHash)}/review`, { method: 'POST', body: JSON.stringify({ release_notes: releaseNotes }) }); }
+  decideRevisionReview(agentId: string, revisionHash: string, decision: 'approve' | 'reject', reason: string) { return this.request<AgentRevisionReview>(`/agents/${encodeURIComponent(agentId)}/revisions/${encodeURIComponent(revisionHash)}:review-decision`, { method: 'POST', body: JSON.stringify({ decision, reason }) }); }
+  publishRevision(agentId: string, revisionHash: string, expectedProductionRevisionHash = '') { return this.request<AgentDeployment>(`/agents/${encodeURIComponent(agentId)}/revisions/${encodeURIComponent(revisionHash)}:publish`, { method: 'POST', body: JSON.stringify({ expected_production_revision_hash: expectedProductionRevisionHash }) }); }
+  listDeployments(agentId: string) { return this.request<{ items: AgentDeployment[] }>(`/agents/${encodeURIComponent(agentId)}/deployments`); }
+  createTestDeployment(agentId: string, input: { name: string; revision_hash: string; purpose?: string; expires_at?: string; environment_policy?: Record<string, unknown> }) { return this.request<AgentDeployment>(`/agents/${encodeURIComponent(agentId)}/deployments`, { method: 'POST', body: JSON.stringify(input) }); }
+  stopTestDeployment(agentId: string, deploymentId: string) { return this.request<void>(`/agents/${encodeURIComponent(agentId)}/deployments/${encodeURIComponent(deploymentId)}:stop`, { method: 'POST', body: '{}' }); }
   createAgent(input: CreateAgentInput) { return this.request<Agent>('/agents', { method: 'POST', body: JSON.stringify(input) }); }
   getDraft(agentId: string) { return this.request<Draft>(`/agents/${encodeURIComponent(agentId)}/draft`); }
   updateDraft(agentId: string, revision: number, spec: unknown) {

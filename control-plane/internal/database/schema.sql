@@ -199,6 +199,98 @@ CREATE TABLE IF NOT EXISTS gantry.agent_reviews (
 );
 CREATE INDEX IF NOT EXISTS agent_reviews_current_idx ON gantry.agent_reviews (agent_id, status, draft_revision DESC);
 
+-- The target Agent lifecycle is intentionally flat. Named Draft working copies,
+-- immutable hash-addressed Revisions, and Deployments are separate resources.
+-- The earlier single-Draft/publication tables remain only for previously
+-- initialized development databases and are not read by the current domain.
+CREATE TABLE IF NOT EXISTS gantry.agent_draft_workspaces (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  name text NOT NULL,
+  status text NOT NULL CHECK (status IN ('active', 'archived')),
+  derived_from_revision_hash text NOT NULL DEFAULT '',
+  latest_revision_hash text NOT NULL DEFAULT '',
+  spec_json jsonb NOT NULL,
+  schema_version text NOT NULL DEFAULT 'gantry.agent/v1',
+  working_copy_etag integer NOT NULL CHECK (working_copy_etag > 0),
+  validation_status text NOT NULL CHECK (validation_status IN ('valid', 'invalid')),
+  validation_findings jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  updated_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (agent_id, name)
+);
+CREATE INDEX IF NOT EXISTS agent_draft_workspaces_agent_idx
+  ON gantry.agent_draft_workspaces (agent_id, status, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.agent_revisions (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  revision_hash text NOT NULL UNIQUE,
+  source_draft_id text NOT NULL REFERENCES gantry.agent_draft_workspaces(id),
+  message text NOT NULL,
+  spec_json jsonb NOT NULL,
+  spec_digest text NOT NULL,
+  runtime_image_digest text NOT NULL DEFAULT '',
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  prompt_snapshot_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  prompt_snapshot_digest text NOT NULL DEFAULT '',
+  prompt_compiler_version text NOT NULL DEFAULT 'prompt-compiler/v1',
+  UNIQUE (id, agent_id)
+);
+CREATE INDEX IF NOT EXISTS agent_revisions_agent_idx
+  ON gantry.agent_revisions (agent_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.agent_revision_reviews (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  revision_id text NOT NULL,
+  revision_hash text NOT NULL,
+  base_revision_hash text NOT NULL DEFAULT '',
+  release_notes text NOT NULL DEFAULT '',
+  diff_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+  risk_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL CHECK (status IN ('pending', 'approved', 'rejected', 'superseded')),
+  submitted_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  reviewed_by_principal_id text REFERENCES gantry.principals(id),
+  review_reason text NOT NULL DEFAULT '',
+  submitted_at timestamptz NOT NULL DEFAULT now(),
+  reviewed_at timestamptz,
+  UNIQUE (revision_id),
+  FOREIGN KEY (revision_id, agent_id) REFERENCES gantry.agent_revisions(id, agent_id)
+);
+CREATE INDEX IF NOT EXISTS agent_revision_reviews_agent_idx
+  ON gantry.agent_revision_reviews (agent_id, status, submitted_at DESC);
+
+CREATE TABLE IF NOT EXISTS gantry.agent_deployments (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  name text NOT NULL,
+  environment_kind text NOT NULL CHECK (environment_kind IN ('test', 'production')),
+  revision_id text NOT NULL,
+  revision_hash text NOT NULL,
+  spec_digest text NOT NULL,
+  status text NOT NULL CHECK (status IN ('active', 'stopped', 'quarantined')),
+  owner_principal_id text REFERENCES gantry.principals(id),
+  purpose text NOT NULL DEFAULT '',
+  expires_at timestamptz,
+  environment_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+  changed_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  review_id text REFERENCES gantry.agent_revision_reviews(id),
+  previous_revision_hash text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (agent_id, name),
+  FOREIGN KEY (revision_id, agent_id) REFERENCES gantry.agent_revisions(id, agent_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_deployments_one_production_idx
+  ON gantry.agent_deployments (agent_id) WHERE environment_kind='production' AND status='active';
+CREATE INDEX IF NOT EXISTS agent_deployments_agent_idx
+  ON gantry.agent_deployments (agent_id, environment_kind, status, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS gantry.audit_events (
   id bigserial PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),
@@ -226,7 +318,7 @@ CREATE TABLE IF NOT EXISTS gantry.tasks (
 CREATE TABLE IF NOT EXISTS gantry.runs (
   id text PRIMARY KEY,
   task_id text NOT NULL REFERENCES gantry.tasks(id),
-  agent_version_id text NOT NULL REFERENCES gantry.agent_versions(id),
+  agent_revision_id text NOT NULL REFERENCES gantry.agent_revisions(id),
   attempt_number integer NOT NULL,
   status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
   status_reason text NOT NULL DEFAULT '',
@@ -239,6 +331,10 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   completed_at timestamptz,
   UNIQUE (task_id, attempt_number)
 );
+ALTER TABLE gantry.runs ADD COLUMN IF NOT EXISTS agent_revision_id text REFERENCES gantry.agent_revisions(id);
+ALTER TABLE gantry.runs ADD COLUMN IF NOT EXISTS agent_version_id text;
+ALTER TABLE gantry.runs ALTER COLUMN agent_revision_id DROP NOT NULL;
+ALTER TABLE gantry.runs ALTER COLUMN agent_version_id DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS gantry.run_events (
   run_id text NOT NULL REFERENCES gantry.runs(id),

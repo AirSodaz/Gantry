@@ -96,15 +96,16 @@ type Finding struct {
 }
 
 type Agent struct {
-	ID                        string `json:"id"`
-	OrganizationID            string `json:"organization_id"`
-	WorkspaceID               string `json:"workspace_id"`
-	Slug                      string `json:"slug"`
-	DisplayName               string `json:"display_name"`
-	Description               string `json:"description"`
-	Category                  string `json:"category"`
-	LifecycleStatus           string `json:"lifecycle_status"`
-	CurrentPublishedVersionID string `json:"current_published_version_id,omitempty"`
+	ID                            string `json:"id"`
+	OrganizationID                string `json:"organization_id"`
+	WorkspaceID                   string `json:"workspace_id"`
+	Slug                          string `json:"slug"`
+	DisplayName                   string `json:"display_name"`
+	Description                   string `json:"description"`
+	Category                      string `json:"category"`
+	LifecycleStatus               string `json:"lifecycle_status"`
+	CurrentPublishedVersionID     string `json:"current_published_version_id,omitempty"`
+	CurrentProductionRevisionHash string `json:"current_production_revision_hash,omitempty"`
 }
 
 type Draft struct {

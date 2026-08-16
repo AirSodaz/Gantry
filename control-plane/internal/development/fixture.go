@@ -10,17 +10,23 @@ import (
 )
 
 const (
-	OrganizationID         = "org_development"
-	WorkspaceID            = "wsp_development"
-	CompleteAgentID        = "agt_lifecycle_complete"
-	CompleteVersionID      = "agtv_lifecycle_complete_1"
-	AwaitCancelAgentID     = "agt_lifecycle_await_cancel"
-	AwaitCancelVersionID   = "agtv_lifecycle_await_cancel_1"
-	AwaitApprovalAgentID   = "agt_lifecycle_await_approval"
-	AwaitApprovalVersionID = "agtv_lifecycle_await_approval_1"
-	DevelopmentPrincipalID = "prn_copilot_development"
-	OtherPrincipalID       = "prn_copilot_other"
-	AdminPrincipalID       = "prn_admin_demo"
+	OrganizationID          = "org_development"
+	WorkspaceID             = "wsp_development"
+	CompleteAgentID         = "agt_lifecycle_complete"
+	CompleteVersionID       = "agtv_lifecycle_complete_1"
+	CompleteDraftID         = "drf_lifecycle_complete_main"
+	CompleteRevisionID      = "arv_lifecycle_complete_1"
+	AwaitCancelAgentID      = "agt_lifecycle_await_cancel"
+	AwaitCancelVersionID    = "agtv_lifecycle_await_cancel_1"
+	AwaitCancelDraftID      = "drf_lifecycle_await_cancel_main"
+	AwaitCancelRevisionID   = "arv_lifecycle_await_cancel_1"
+	AwaitApprovalAgentID    = "agt_lifecycle_await_approval"
+	AwaitApprovalVersionID  = "agtv_lifecycle_await_approval_1"
+	AwaitApprovalDraftID    = "drf_lifecycle_await_approval_main"
+	AwaitApprovalRevisionID = "arv_lifecycle_await_approval_1"
+	DevelopmentPrincipalID  = "prn_copilot_development"
+	OtherPrincipalID        = "prn_copilot_other"
+	AdminPrincipalID        = "prn_admin_demo"
 	// Dex encodes the local user ID and connector ID into the OIDC subject.
 	DevelopmentSubject = "CiQxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTESBWxvY2Fs"
 	OtherSubject       = "CiQyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjISBWxvY2Fs"
@@ -34,6 +40,12 @@ func Seed(ctx context.Context, pool *pgxpool.Pool) error {
 	completeDigest := sha256.Sum256([]byte(completeSpec))
 	awaitCancelDigest := sha256.Sum256([]byte(awaitCancelSpec))
 	awaitApprovalDigest := sha256.Sum256([]byte(awaitApprovalSpec))
+	completeRevisionIdentity := sha256.Sum256([]byte("seed revision\n" + completeSpec))
+	awaitCancelRevisionIdentity := sha256.Sum256([]byte("seed revision\n" + awaitCancelSpec))
+	awaitApprovalRevisionIdentity := sha256.Sum256([]byte("seed revision\n" + awaitApprovalSpec))
+	completeRevisionHash := "sha256:" + hex.EncodeToString(completeRevisionIdentity[:])
+	awaitCancelRevisionHash := "sha256:" + hex.EncodeToString(awaitCancelRevisionIdentity[:])
+	awaitApprovalRevisionHash := "sha256:" + hex.EncodeToString(awaitApprovalRevisionIdentity[:])
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -56,14 +68,23 @@ func Seed(ctx context.Context, pool *pgxpool.Pool) error {
 		{`INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3) ON CONFLICT (agent_id) DO NOTHING`, []any{CompleteAgentID, completeSpec, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, 1, 1, $3::jsonb, $4, $5) ON CONFLICT (id) DO NOTHING`, []any{CompleteVersionID, CompleteAgentID, completeSpec, "sha256:" + hex.EncodeToString(completeDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ('pub_lifecycle_complete', $1, $2, $3, 'published', $4) ON CONFLICT (id) DO NOTHING`, []any{CompleteAgentID, CompleteVersionID, WorkspaceID, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_draft_workspaces (id, agent_id, name, status, latest_revision_hash, spec_json, working_copy_etag, validation_status, validation_findings, created_by_principal_id, updated_by_principal_id) VALUES ($1, $2, 'Main', 'active', $3, $4::jsonb, 1, 'valid', '[]'::jsonb, $5, $5) ON CONFLICT (id) DO NOTHING`, []any{CompleteDraftID, CompleteAgentID, completeRevisionHash, completeSpec, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_revisions (id, agent_id, revision_hash, source_draft_id, message, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, $3, $4, 'Seeded development revision', $5::jsonb, $6, $7) ON CONFLICT (id) DO NOTHING`, []any{CompleteRevisionID, CompleteAgentID, completeRevisionHash, CompleteDraftID, completeSpec, "sha256:" + hex.EncodeToString(completeDigest[:]), AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_deployments (id, agent_id, workspace_id, name, environment_kind, revision_id, revision_hash, spec_digest, status, owner_principal_id, changed_by_principal_id) VALUES ('dpl_lifecycle_complete_production', $1, $2, 'Production', 'production', $3, $4, $5, 'active', $6, $6) ON CONFLICT (id) DO NOTHING`, []any{CompleteAgentID, WorkspaceID, CompleteRevisionID, completeRevisionHash, "sha256:" + hex.EncodeToString(completeDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agents (id, organization_id, workspace_id, owner_principal_id, slug, display_name, description, category) VALUES ($1, $2, $3, $4, 'lifecycle-await-cancel', 'Lifecycle Await Cancel', 'Deterministic cancellation lifecycle agent.', 'Development') ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelAgentID, OrganizationID, WorkspaceID, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3) ON CONFLICT (agent_id) DO NOTHING`, []any{AwaitCancelAgentID, awaitCancelSpec, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, 1, 1, $3::jsonb, $4, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelVersionID, AwaitCancelAgentID, awaitCancelSpec, "sha256:" + hex.EncodeToString(awaitCancelDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ('pub_lifecycle_await_cancel', $1, $2, $3, 'published', $4) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelAgentID, AwaitCancelVersionID, WorkspaceID, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_draft_workspaces (id, agent_id, name, status, latest_revision_hash, spec_json, working_copy_etag, validation_status, validation_findings, created_by_principal_id, updated_by_principal_id) VALUES ($1, $2, 'Main', 'active', $3, $4::jsonb, 1, 'valid', '[]'::jsonb, $5, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelDraftID, AwaitCancelAgentID, awaitCancelRevisionHash, awaitCancelSpec, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_revisions (id, agent_id, revision_hash, source_draft_id, message, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, $3, $4, 'Seeded development revision', $5::jsonb, $6, $7) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelRevisionID, AwaitCancelAgentID, awaitCancelRevisionHash, AwaitCancelDraftID, awaitCancelSpec, "sha256:" + hex.EncodeToString(awaitCancelDigest[:]), AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_deployments (id, agent_id, workspace_id, name, environment_kind, revision_id, revision_hash, spec_digest, status, owner_principal_id, changed_by_principal_id) VALUES ('dpl_lifecycle_await_cancel_production', $1, $2, 'Production', 'production', $3, $4, $5, 'active', $6, $6) ON CONFLICT (id) DO NOTHING`, []any{AwaitCancelAgentID, WorkspaceID, AwaitCancelRevisionID, awaitCancelRevisionHash, "sha256:" + hex.EncodeToString(awaitCancelDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agents (id, organization_id, workspace_id, owner_principal_id, slug, display_name, description, category) VALUES ($1, $2, $3, $4, 'lifecycle-await-approval', 'Lifecycle Await Approval', 'Deterministic action approval lifecycle agent.', 'Development') ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalAgentID, OrganizationID, WorkspaceID, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3) ON CONFLICT (agent_id) DO NOTHING`, []any{AwaitApprovalAgentID, awaitApprovalSpec, AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_versions (id, agent_id, version, source_draft_revision, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, 1, 1, $3::jsonb, $4, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalVersionID, AwaitApprovalAgentID, awaitApprovalSpec, "sha256:" + hex.EncodeToString(awaitApprovalDigest[:]), AdminPrincipalID}},
 		{`INSERT INTO gantry.agent_publications (id, agent_id, agent_version_id, workspace_id, status, published_by_principal_id) VALUES ('pub_lifecycle_await_approval', $1, $2, $3, 'published', $4) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalAgentID, AwaitApprovalVersionID, WorkspaceID, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_draft_workspaces (id, agent_id, name, status, latest_revision_hash, spec_json, working_copy_etag, validation_status, validation_findings, created_by_principal_id, updated_by_principal_id) VALUES ($1, $2, 'Main', 'active', $3, $4::jsonb, 1, 'valid', '[]'::jsonb, $5, $5) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalDraftID, AwaitApprovalAgentID, awaitApprovalRevisionHash, awaitApprovalSpec, AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_revisions (id, agent_id, revision_hash, source_draft_id, message, spec_json, spec_digest, created_by_principal_id) VALUES ($1, $2, $3, $4, 'Seeded development revision', $5::jsonb, $6, $7) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalRevisionID, AwaitApprovalAgentID, awaitApprovalRevisionHash, AwaitApprovalDraftID, awaitApprovalSpec, "sha256:" + hex.EncodeToString(awaitApprovalDigest[:]), AdminPrincipalID}},
+		{`INSERT INTO gantry.agent_deployments (id, agent_id, workspace_id, name, environment_kind, revision_id, revision_hash, spec_digest, status, owner_principal_id, changed_by_principal_id) VALUES ('dpl_lifecycle_await_approval_production', $1, $2, 'Production', 'production', $3, $4, $5, 'active', $6, $6) ON CONFLICT (id) DO NOTHING`, []any{AwaitApprovalAgentID, WorkspaceID, AwaitApprovalRevisionID, awaitApprovalRevisionHash, "sha256:" + hex.EncodeToString(awaitApprovalDigest[:]), AdminPrincipalID}},
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(ctx, statement.query, statement.args...); err != nil {

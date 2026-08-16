@@ -36,11 +36,9 @@ func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, work
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id, a.organization_id, a.workspace_id, a.slug, a.display_name, a.description, a.category,
-			COALESCE(current_publication.status, CASE WHEN retired_publication.agent_id IS NULL THEN 'draft' ELSE 'retired' END),
-			COALESCE(current_publication.agent_version_id, '')
+			COALESCE(production.status, 'draft'), COALESCE(production.revision_hash, '')
 		FROM gantry.agents a
-		LEFT JOIN gantry.agent_publications current_publication ON current_publication.agent_id=a.id AND current_publication.status='published'
-		LEFT JOIN LATERAL (SELECT agent_id FROM gantry.agent_publications WHERE agent_id=a.id AND status='retired' LIMIT 1) retired_publication ON true
+		LEFT JOIN gantry.agent_deployments production ON production.agent_id=a.id AND production.environment_kind='production' AND production.status='active'
 		WHERE a.organization_id=$1 AND ($2='' OR a.workspace_id=$2) AND (
 			EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='organization_admin' AND rb.workspace_id IS NULL)
 			OR EXISTS (SELECT 1 FROM gantry.role_bindings rb WHERE rb.principal_id=$3 AND rb.role='workspace_agent_editor' AND rb.workspace_id=a.workspace_id)
@@ -82,6 +80,12 @@ func (s *Service) Create(ctx context.Context, actor identity.Principal, request 
 		return Agent{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.agent_drafts (agent_id, revision, spec_json, validation_status, updated_by_principal_id) VALUES ($1, 1, $2::jsonb, 'valid', $3)`, agent.ID, string(defaultSpec()), actor.ID); err != nil {
+		return Agent{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO gantry.agent_draft_workspaces
+		(id, agent_id, name, status, spec_json, working_copy_etag, validation_status, validation_findings, created_by_principal_id, updated_by_principal_id)
+		VALUES ($1,$2,'Main','active',$3::jsonb,1,'valid','[]'::jsonb,$4,$4)`, newID("drf"), agent.ID, string(defaultSpec()), actor.ID); err != nil {
 		return Agent{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -596,7 +600,7 @@ func (s *Service) loadAgent(ctx context.Context, querier interface {
 		FROM gantry.agents a
 		LEFT JOIN gantry.agent_publications current_publication ON current_publication.agent_id=a.id AND current_publication.status='published'
 		LEFT JOIN LATERAL (SELECT agent_id FROM gantry.agent_publications WHERE agent_id=a.id AND status='retired' LIMIT 1) retired_publication ON true
-		WHERE a.id=$1`, agentID).Scan(&agent.ID, &agent.OrganizationID, &agent.WorkspaceID, &agent.Slug, &agent.DisplayName, &agent.Description, &agent.Category, &agent.LifecycleStatus, &agent.CurrentPublishedVersionID)
+		WHERE a.id=$1`, agentID).Scan(&agent.ID, &agent.OrganizationID, &agent.WorkspaceID, &agent.Slug, &agent.DisplayName, &agent.Description, &agent.Category, &agent.LifecycleStatus, &agent.CurrentProductionRevisionHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Agent{}, ErrNotFound
 	}

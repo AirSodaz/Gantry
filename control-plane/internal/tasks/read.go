@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Service) ListAgents(ctx context.Context, actor identity.Principal, category, search string, limit int) ([]Agent, error) {
-	rows, err := s.pool.Query(ctx, `SELECT a.id, a.display_name, a.description, a.category FROM gantry.agents a JOIN gantry.agent_publications p ON p.agent_id=a.id AND p.workspace_id=a.workspace_id AND p.status='published' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.organization_id=$2 AND ($3='' OR a.category=$3) AND ($4='' OR a.display_name ILIKE '%' || $4 || '%' OR a.description ILIKE '%' || $4 || '%') ORDER BY a.display_name, a.id LIMIT $5`, actor.ID, actor.OrganizationID, category, search, boundedLimit(limit))
+	rows, err := s.pool.Query(ctx, `SELECT a.id, a.display_name, a.description, a.category FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.organization_id=$2 AND ($3='' OR a.category=$3) AND ($4='' OR a.display_name ILIKE '%' || $4 || '%' OR a.description ILIKE '%' || $4 || '%') ORDER BY a.display_name, a.id LIMIT $5`, actor.ID, actor.OrganizationID, category, search, boundedLimit(limit))
 	if err != nil {
 		return nil, err
 	}

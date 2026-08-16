@@ -46,7 +46,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if err != nil {
 		return Task{}, false, err
 	}
-	workspaceID, versionID, displayName, err := resolvePublishedAgent(ctx, tx, actor, request.AgentID)
+	workspaceID, revisionID, displayName, err := resolveProductionAgent(ctx, tx, actor, request.AgentID)
 	if err != nil {
 		return Task{}, false, err
 	}
@@ -54,7 +54,7 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	if _, err := tx.Exec(ctx, `INSERT INTO gantry.tasks (id, organization_id, workspace_id, requester_principal_id, agent_id, input_json, current_run_id, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'queued')`, taskID, actor.OrganizationID, workspaceID, actor.ID, request.AgentID, input, runID); err != nil {
 		return Task{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_version_id, attempt_number, status) VALUES ($1,$2,$3,1,'queued')`, runID, taskID, versionID); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO gantry.runs (id, task_id, agent_revision_id, attempt_number, status) VALUES ($1,$2,$3,1,'queued')`, runID, taskID, revisionID); err != nil {
 		return Task{}, false, err
 	}
 	if err := appendEvent(ctx, tx, runID, "task.accepted"); err != nil {
@@ -69,8 +69,8 @@ func (s *Service) Submit(ctx context.Context, actor identity.Principal, key stri
 	return Task{ID: taskID, AgentID: request.AgentID, AgentDisplayName: displayName, Status: "queued", CurrentRun: Run{ID: runID, Status: "queued"}, CreatedAt: time.Now().UTC()}, false, nil
 }
 
-func resolvePublishedAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, versionID, displayName string, err error) {
-	err = tx.QueryRow(ctx, `SELECT a.workspace_id, p.agent_version_id, a.display_name FROM gantry.agents a JOIN gantry.agent_publications p ON p.agent_id=a.id AND p.workspace_id=a.workspace_id AND p.status='published' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.organization_id=$3`, actor.ID, agentID, actor.OrganizationID).Scan(&workspaceID, &versionID, &displayName)
+func resolveProductionAgent(ctx context.Context, tx pgx.Tx, actor identity.Principal, agentID string) (workspaceID, revisionID, displayName string, err error) {
+	err = tx.QueryRow(ctx, `SELECT a.workspace_id, d.revision_id, a.display_name FROM gantry.agents a JOIN gantry.agent_deployments d ON d.agent_id=a.id AND d.workspace_id=a.workspace_id AND d.environment_kind='production' AND d.status='active' JOIN gantry.workspace_memberships m ON m.workspace_id=a.workspace_id AND m.principal_id=$1 WHERE a.id=$2 AND a.organization_id=$3`, actor.ID, agentID, actor.OrganizationID).Scan(&workspaceID, &revisionID, &displayName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}

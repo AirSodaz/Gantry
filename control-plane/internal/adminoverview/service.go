@@ -40,8 +40,7 @@ type Publication struct {
 	AgentID     string `json:"agent_id"`
 	AgentName   string `json:"agent_name"`
 	WorkspaceID string `json:"workspace_id"`
-	VersionID   string `json:"version_id"`
-	Version     int    `json:"version"`
+	RevisionHash string `json:"revision_hash"`
 	PublishedAt string `json:"published_at"`
 }
 
@@ -117,11 +116,11 @@ func (s *Service) loadMetrics(ctx context.Context, actor identity.Principal, wor
 	err := s.pool.QueryRow(ctx, `
 		SELECT
 			count(*),
-			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM gantry.agent_publications p WHERE p.agent_id=a.id AND p.workspace_id=a.workspace_id AND p.status='published')),
-			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM gantry.agent_reviews r WHERE r.agent_id=a.id AND r.status='pending')),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM gantry.agent_deployments p WHERE p.agent_id=a.id AND p.workspace_id=a.workspace_id AND p.environment_kind='production' AND p.status='active')),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM gantry.agent_revision_reviews r WHERE r.agent_id=a.id AND r.status='pending')),
 			count(*) FILTER (WHERE d.validation_status='invalid')
 		FROM gantry.agents a
-		JOIN gantry.agent_drafts d ON d.agent_id=a.id
+		JOIN gantry.agent_draft_workspaces d ON d.agent_id=a.id AND d.name='Main'
 		WHERE `+accessibleAgent, actor.OrganizationID, workspaceID, actor.ID).Scan(
 		&metrics.AgentsTotal, &metrics.PublishedAgents, &metrics.DraftsNeedingReview, &metrics.InvalidDrafts)
 	if err != nil {
@@ -144,11 +143,11 @@ func (s *Service) loadAttention(ctx context.Context, actor identity.Principal, w
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, kind, severity, title, description, href, created_at FROM (
 			SELECT 'invalid-draft:' || a.id, 'invalid_draft', 'high', a.display_name || ' has an invalid draft', 'Resolve validation findings before review or publication.', '/agents/' || a.id || '/design', d.updated_at
-			FROM gantry.agents a JOIN gantry.agent_drafts d ON d.agent_id=a.id
+			FROM gantry.agents a JOIN gantry.agent_draft_workspaces d ON d.agent_id=a.id AND d.name='Main'
 			WHERE `+accessibleAgent+` AND d.validation_status='invalid'
 			UNION ALL
-			SELECT 'review:' || r.id, 'review', 'medium', a.display_name || ' is awaiting review', 'An approved review is required before publication.', '/agents/' || a.id || '/design', r.submitted_at
-			FROM gantry.agent_reviews r JOIN gantry.agents a ON a.id=r.agent_id
+			SELECT 'review:' || r.id, 'review', 'medium', a.display_name || ' is awaiting review', 'An approved review is required before Production deployment.', '/agents/' || a.id || '/design', r.submitted_at
+			FROM gantry.agent_revision_reviews r JOIN gantry.agents a ON a.id=r.agent_id
 			WHERE `+accessibleAgent+` AND r.status='pending'
 			UNION ALL
 			SELECT 'approval:' || ar.id, 'approval', 'high', a.display_name || ' has a requester approval pending', 'The requester must decide the exact action before this run continues.', '/agents/' || a.id, ar.created_at
@@ -179,12 +178,12 @@ func (s *Service) loadAttention(ctx context.Context, actor identity.Principal, w
 
 func (s *Service) loadPublications(ctx context.Context, actor identity.Principal, workspaceID string, target *[]Publication) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT a.id, a.display_name, a.workspace_id, v.id, v.version, p.created_at
-		FROM gantry.agent_publications p
+		SELECT a.id, a.display_name, a.workspace_id, v.revision_hash, p.updated_at
+		FROM gantry.agent_deployments p
 		JOIN gantry.agents a ON a.id=p.agent_id
-		JOIN gantry.agent_versions v ON v.id=p.agent_version_id
-		WHERE `+accessibleAgent+` AND p.status='published'
-		ORDER BY p.created_at DESC, p.id DESC LIMIT 8`, actor.OrganizationID, workspaceID, actor.ID)
+		JOIN gantry.agent_revisions v ON v.id=p.revision_id
+		WHERE `+accessibleAgent+` AND p.environment_kind='production' AND p.status='active'
+		ORDER BY p.updated_at DESC, p.id DESC LIMIT 8`, actor.OrganizationID, workspaceID, actor.ID)
 	if err != nil {
 		return err
 	}
@@ -192,7 +191,7 @@ func (s *Service) loadPublications(ctx context.Context, actor identity.Principal
 	for rows.Next() {
 		var item Publication
 		var publishedAt time.Time
-		if err := rows.Scan(&item.AgentID, &item.AgentName, &item.WorkspaceID, &item.VersionID, &item.Version, &publishedAt); err != nil {
+		if err := rows.Scan(&item.AgentID, &item.AgentName, &item.WorkspaceID, &item.RevisionHash, &publishedAt); err != nil {
 			return err
 		}
 		item.PublishedAt = publishedAt.UTC().Format(time.RFC3339)

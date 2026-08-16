@@ -28,7 +28,7 @@ export default function App() {
             </span>
           </div>
           <h1>Control the agent lifecycle.</h1>
-          <p>Sign in to manage draft execution configurations and their immutable published versions.</p>
+          <p>Sign in to manage named Drafts, immutable Revisions, and exact Deployments.</p>
           {error ? (
             <p className="admin-error" role="alert" style={{ marginBottom: '20px' }}>
               {error.message}
@@ -51,7 +51,7 @@ export default function App() {
         <Route path="agents/new" element={<NewAgentPage />} />
         <Route path="agents/:agentId" element={<AgentOverviewPage />} />
         <Route path="agents/:agentId/design" element={<AgentDetailPage />} />
-        <Route path="agents/:agentId/versions/:versionId" element={<AgentVersionPage />} />
+        <Route path="agents/:agentId/revisions/:revisionHash" element={<AgentVersionPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="skills/:assetId" element={<AssetDetailPage kind="skills" />} />
         <Route path="plugins" element={<PluginsPage />} />

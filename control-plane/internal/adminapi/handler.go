@@ -44,6 +44,25 @@ type lifecycleService interface {
 	Rollback(context.Context, identity.Principal, string, string) error
 }
 
+type targetLifecycleService interface {
+	GetTargetOverview(context.Context, identity.Principal, string) (agentlifecycle.AgentTargetOverview, error)
+	ListNamedDrafts(context.Context, identity.Principal, string) ([]agentlifecycle.NamedDraft, error)
+	GetNamedDraft(context.Context, identity.Principal, string, string) (agentlifecycle.NamedDraft, error)
+	CreateNamedDraft(context.Context, identity.Principal, string, agentlifecycle.CreateDraftRequest) (agentlifecycle.NamedDraft, error)
+	UpdateNamedDraft(context.Context, identity.Principal, string, string, int, json.RawMessage) (agentlifecycle.NamedDraft, error)
+	ArchiveNamedDraft(context.Context, identity.Principal, string, string) error
+	CommitNamedDraft(context.Context, identity.Principal, string, string, agentlifecycle.CommitDraftRequest) (agentlifecycle.Revision, error)
+	ListRevisions(context.Context, identity.Principal, string) ([]agentlifecycle.Revision, error)
+	GetRevision(context.Context, identity.Principal, string, string) (agentlifecycle.Revision, error)
+	GetRevisionReview(context.Context, identity.Principal, string, string) (agentlifecycle.RevisionReview, error)
+	SubmitRevisionReview(context.Context, identity.Principal, string, string, string) (agentlifecycle.RevisionReview, error)
+	DecideRevisionReview(context.Context, identity.Principal, string, string, string, string) (agentlifecycle.RevisionReview, error)
+	ListDeployments(context.Context, identity.Principal, string) ([]agentlifecycle.Deployment, error)
+	CreateTestDeployment(context.Context, identity.Principal, string, agentlifecycle.CreateDeploymentRequest) (agentlifecycle.Deployment, error)
+	PublishRevision(context.Context, identity.Principal, string, agentlifecycle.PublishRevisionRequest) (agentlifecycle.Deployment, error)
+	StopTestDeployment(context.Context, identity.Principal, string, string) error
+}
+
 type assetService interface {
 	ListSkills(context.Context, identity.Principal, configassets.ListOptions) ([]configassets.Skill, error)
 	GetSkill(context.Context, identity.Principal, string) (configassets.Skill, error)
@@ -78,28 +97,33 @@ type Handler struct {
 	auth      authenticator
 	authorize authorizer
 	service   lifecycleService
+	target    targetLifecycleService
 	assets    assetService
 	overview  overviewService
 	logger    *slog.Logger
 }
 
 func New(auth authenticator, authorize authorizer, service lifecycleService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, nil, nil, logger)
+	return newHandler(auth, authorize, service, nil, nil, nil, logger)
 }
 
 func NewWithAssets(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, assets, nil, logger)
+	return newHandler(auth, authorize, service, nil, assets, nil, logger)
 }
 
 func NewWithAssetsAndOverview(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
-	return newHandler(auth, authorize, service, assets, overview, logger)
+	return newHandler(auth, authorize, service, nil, assets, overview, logger)
 }
 
-func newHandler(auth authenticator, authorize authorizer, service lifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
+func NewWithTarget(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
+	return newHandler(auth, authorize, service, target, assets, overview, logger)
+}
+
+func newHandler(auth authenticator, authorize authorizer, service lifecycleService, target targetLifecycleService, assets assetService, overview overviewService, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := Handler{auth: auth, authorize: authorize, service: service, assets: assets, overview: overview, logger: logger}
+	h := Handler{auth: auth, authorize: authorize, service: service, target: target, assets: assets, overview: overview, logger: logger}
 	mux := http.NewServeMux()
 	mux.Handle("GET /overview", h.withActor(h.getOverview))
 	mux.Handle("GET /workspaces", h.withActor(h.listWorkspaces))
@@ -112,6 +136,9 @@ func newHandler(auth authenticator, authorize authorizer, service lifecycleServi
 	mux.Handle("GET /agents/{agentID}/versions", h.withActor(h.listVersions))
 	mux.Handle("GET /agents/{agentID}/versions/{versionID}", h.withActor(h.getVersion))
 	mux.Handle("GET /agents/{agentID}/review", h.withActor(h.getReview))
+	if target != nil {
+		h.registerTargetRoutes(mux)
+	}
 	if assets != nil {
 		mux.Handle("GET /skills", h.withActor(h.listSkills))
 		mux.Handle("GET /skills/{skillID}", h.withActor(h.getSkill))

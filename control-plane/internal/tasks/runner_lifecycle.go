@@ -22,7 +22,7 @@ func (s *Service) ClaimNext(ctx context.Context, runnerID string) (Assignment, b
 	defer tx.Rollback(ctx)
 	var runID string
 	var spec json.RawMessage
-	err = tx.QueryRow(ctx, `SELECT r.id, v.spec_json FROM gantry.runs r JOIN gantry.agent_versions v ON v.id=r.agent_version_id WHERE r.status='queued' ORDER BY r.created_at, r.id FOR UPDATE OF r SKIP LOCKED LIMIT 1`).Scan(&runID, &spec)
+	err = tx.QueryRow(ctx, `SELECT r.id, v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.status='queued' ORDER BY r.created_at, r.id FOR UPDATE OF r SKIP LOCKED LIMIT 1`).Scan(&runID, &spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Assignment{}, false, nil
 	}
@@ -56,7 +56,7 @@ func (s *Service) Accept(ctx context.Context, runnerID, runID string, epoch uint
 	}
 	defer tx.Rollback(ctx)
 	var spec json.RawMessage
-	err = tx.QueryRow(ctx, `SELECT v.spec_json FROM gantry.runs r JOIN gantry.agent_versions v ON v.id=r.agent_version_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 AND r.status='assigned' FOR UPDATE OF r`, runID, runnerID, epoch).Scan(&spec)
+	err = tx.QueryRow(ctx, `SELECT v.spec_json FROM gantry.runs r JOIN gantry.agent_revisions v ON v.id=r.agent_revision_id WHERE r.id=$1 AND r.runner_id=$2 AND r.lease_epoch=$3 AND r.status='assigned' FOR UPDATE OF r`, runID, runnerID, epoch).Scan(&spec)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}

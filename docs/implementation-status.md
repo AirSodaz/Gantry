@@ -26,22 +26,26 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   API audiences.
 - OpenAPI-owned public Admin and Copilot HTTP contracts and a private
   protobuf/Connect runner session.
-- Workspace-scoped Admin agent lifecycle: create, edit with optimistic
-  concurrency, validate, review, publish immutable versions, retire, and roll
-  back.
+- Workspace-scoped Admin Agent target lifecycle: create and edit named Drafts
+  with optimistic concurrency, validate, commit hash-identified Revisions,
+  review exact Revisions, create multiple Test Deployments, and move one
+  Production Deployment pointer. The older integer-version routes remain
+  available only for the existing compatibility test surface and are not used
+  by the Admin UI or Copilot runtime.
 - Admin configuration catalog slice: register immutable Skill artifacts,
   Plugin versions, and Tool descriptor versions; enable Plugins per workspace;
   bind exact catalog IDs to Agent Drafts; and revalidate availability at draft
   write and publication time.
-- Admin Agent workspace views: scope-authorized Agent Overview and immutable
-  Version Detail routes expose current publication, draft validation, audit
-  activity, version metadata, and the frozen Prompt Snapshot projection.
+- Admin Agent workspace views: scope-authorized Agent Overview, named Draft
+  Design, and immutable Revision Detail routes expose Production/Test
+  Deployments, draft validation, audit activity, exact hashes, and frozen
+  Prompt Snapshot projections.
 - Admin home Overview: scope-authorized aggregation of Agent lifecycle state,
   pending reviews, invalid Drafts, active and failed runs, requester approval
   waits, recent publications, and scoped Agent audit activity. Provider health
   and runner capacity remain explicitly unavailable until their owning platform
   services are implemented.
-- Prompt Snapshot compilation: published versions persist compiler version,
+- Prompt Snapshot compilation: committed Agent Revisions persist compiler version,
   ordered prompt content, and a deterministic content digest. Tool descriptor
   schemas can be authored at registration and declared operation lists are
   enforced as the upper bound for Agent bindings.
@@ -74,7 +78,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
   Expiry processing, retained/durable suspension, revocation, rejection resume,
-  and general tool-gateway execution remain incomplete.
+  cancel/retry command idempotency, multi-Run continuation, and general
+  tool-gateway execution remain incomplete.
 - **Artifacts and streams:** Upload, storage, download, live events, and content
   segments exist. Production malware scanning, preview isolation, retention,
   compaction, backpressure evidence, and object-store failure handling remain.
@@ -93,7 +98,8 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   package materialization and full contained-asset validation are not. Descriptor schema authoring and
   operation-level narrow binding constraints are implemented for the current
   catalog model; broader schema compatibility and authority checks remain.
-- **Admin lifecycle UX:** The core lifecycle is usable. Policies, evaluations,
+- **Admin lifecycle UX:** The Draft/Revision/Deployment core lifecycle is usable.
+  Policies, evaluations,
   run operations, audit search, integrations, and platform administration are
   not complete product areas.
 
@@ -103,23 +109,26 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
   [Agent Configuration, Skills, and Tools](agent-configuration-and-tooling.md).
-- Hash-identified Agent Revisions with commit messages, multiple independent named
-  Drafts, multiple test Deployments, and one default Production Deployment. The
-  current implementation has one integer-revision Draft and a monotonic list of
-  published versions instead.
+- Detailed deployment history, policy projections, evaluations, run operations,
+  audit search, integrations, and platform administration remain designed but
+  are not complete product areas.
 - Per-Agent ACLs with independent metadata read, configuration read, Draft edit,
   Review, deployment, run-inspection, execution, and access-management
   capabilities. Current authorization is workspace-role based.
 - Production credential broker, LLM gateway, tool gateway, egress gateway, and
   secret-store integration.
+- Credential Reference/Lease, Model Provider/Route, Runner Pool/Runner,
+  attachment input lifecycle, and their production authorization/health
+  projections.
 - Enterprise Agent Invocation API, registered integration clients, signed
   webhooks, and delegated-user authority.
 - Evaluation suites, VCR replay, filesystem/database assertions, publication
   gates, and trajectory export.
 - Admin run explorer, audit search, runner-pool operations, emergency controls,
   integration management, and policy administration.
-- Production deployment, gVisor isolation, Helm, scaling, SLOs, retention jobs,
-  hash-chained audit export, backup/restore, SBOM, signing, and release gates.
+- Production deployment, gVisor isolation, Helm, scaling, SLOs, retention
+  deletion jobs, Legal Hold matching, Audit Event/Export Package integrity,
+  backup/restore, SBOM, signing, and release gates.
 
 ### Deferred
 
