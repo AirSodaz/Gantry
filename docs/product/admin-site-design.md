@@ -132,7 +132,7 @@ server authorization and returns a non-leaking denied state.
 
 | Page | Route | Responsibility | Delivery |
 | --- | --- | --- | --- |
-| Run list | `/runs` | Cross-actor operational search, diagnosis, comparison, and authorized task-attempt operations | Later |
+| Run list | `/runs` | Cross-actor operational search, diagnosis, comparison, and authorized Run operations | Later |
 | Run detail | `/runs/:runId` | Timeline, output, tools, approvals, artifacts, configuration, and diagnostics | Later |
 | Evaluation suite list | `/evaluations` | Browse suites, coverage, regressions, and publication gates | Later |
 | Evaluation suite | `/evaluations/suites/:suiteId/*` | Author cases, versions, assertions, and gate policy | Later |
@@ -263,7 +263,7 @@ The ACL exposes independent capabilities:
 | `deployment.test` | Create, update, or stop named test Deployments using approved test policies | Production publish or production credentials |
 | `deployment.production` | Move the default Production pointer or rollback to an approved Revision | Review decision or ACL management |
 | `runs.read` | Inspect runs, artifacts, and operational evidence within allowed redaction | Configuration read or execution |
-| `execute` | Discover and invoke the Agent through an authorized Copilot or integration surface | Configuration read, Draft access, or unrestricted tool authority |
+| `execute` | Discover and invoke the Agent through an authorized Copilot, integration, or owner-managed webhook surface | Configuration read, Draft access, or unrestricted tool authority |
 | `access.manage` | Grant, remove, and review Agent ACL entries | Bypass of organization/workspace authorization or policy |
 
 `configuration.read` is intentionally separate from `metadata.read`, and
@@ -541,6 +541,12 @@ reason when policy or risk level requires it.
 - Required capability: `access.manage` for mutation; authorized configuration
   readers may receive a read-only effective-access view.
 - Primary command: `Add access`.
+
+The typed resource, Admin route contract, persistence invariants, and
+owner-transfer behavior are defined in
+[Agent Access Contracts](../architecture/agent-access-contracts.md). The page
+does not expose a separate Deny model or a second ACL history; Recent activity
+links to the canonical Audit explorer.
 
 The page uses role presets only to populate an explicit capability matrix:
 
@@ -832,7 +838,7 @@ view prioritizes active, blocked, failed, and recently completed runs without
 losing access to historical runs.
 
 The Agent route `/agents/:agentId/runs` is the same run projection with a fixed
-Agent filter and preserves the global query controls. A run row shows task and
+Agent filter and preserves the global query controls. A Run row shows Session and
 run identifiers, Agent and Revision, Deployment, actor, state, elapsed time,
 tool or approval activity, failure summary, and last event time. It never
 silently substitutes the current Production Revision for the recorded one.
@@ -857,14 +863,14 @@ Admin Runs are an organization or Workspace-scoped operational projection. The
 workbench supports cross-actor search, failure diagnosis, runner and lease
 evidence, model and Tool details, policy decisions, resource usage, and
 authorized operational commands. It is not a second approval inbox: approval
-evidence is read-only and only the authenticated task requester can decide.
+evidence is read-only and only the authenticated Run requester can decide.
 
-Copilot does not expose this global operational table. Its `My tasks` and task
-detail views are requester-scoped, conversation-first projections that show the
-task's Run attempts, user-visible activity, approvals, and artifacts. Copilot
+Copilot does not expose this global operational table. Its Sessions and Session
+detail views are member-scoped, conversation-first projections that show Run
+history, user-visible activity, requester approvals, and Artifacts. Copilot
 does not expose runner internals, raw prompts, credentials, unrestricted
 terminal output, or cross-user operational data. Both projections link the same
-immutable Task, Run, event, and artifact identities when the actor is allowed
+immutable Session, Run, event, and Artifact identities when the actor is allowed
 to see them.
 
 ### Run Actions
@@ -896,7 +902,7 @@ when the same effective permission is present.
 - Every run identifies one immutable Agent Revision, Deployment, run-manifest
   digest, actor, and effective policy context.
 - Admin Run detail is operational and cross-actor within the authorized scope;
-  Copilot task detail is requester-scoped and conversation-first. Neither
+  Copilot Session detail is member-scoped and conversation-first. Neither
   projection can approve an action from the other surface.
 - Retry creates a new attributable Run with an explicit Revision target.
 - Cancellation, quarantine, and external-effect controls fail closed when
@@ -985,9 +991,10 @@ exact candidate Revision.
 
 `/integrations` is an organization-scoped directory of external enterprise
 systems. Each row shows Integration name, owner, environments, client status,
-published Agents, authority modes, webhook health, recent requests, quota
+published Agents, delegated-subject policy, webhook health, recent requests, quota
 state, and last activity. Search and filters cover owner, environment, status,
-authority mode, published Agent, webhook health, and recent failures.
+delegated-subject requirement, published Agent, webhook health, and recent
+failures.
 
 Creating an Integration establishes its identity and ownership only. It does
 not issue a client credential, publish an Agent, or grant invocation authority
@@ -1007,18 +1014,19 @@ Integration pre-filtered.
 
 ### Clients
 
-Clients are environment-bound OAuth registrations with audience, approved
-grant and authentication modes, owner, status, credential fingerprint, issue
-and expiry time, and rotation history. A generated secret or private key is
-shown only once. Rotation can overlap old and new credentials for a bounded
+Clients are environment-bound OAuth registrations with audience,
+delegated-user token-exchange policy, owner, status, credential fingerprint,
+issue and expiry time, and rotation history. A generated secret or private key
+is shown only once. Rotation can overlap old and new credentials for a bounded
 interval and is independently auditable. Disabling a client blocks new calls
-without deleting historical tasks, runs, deliveries, or evidence.
+without deleting historical tasks, runs, deliveries, or evidence. A client
+credential authenticates transport only and never becomes a Run requester.
 
 ### Agent Publications
 
 An Agent Publication is nested under one Integration and pins an exact Agent
 Revision, input and output contract versions, workspace, environment,
-application or verified delegated-user authority mode, allowed scopes,
+verified delegated-user requirements, allowed scopes,
 visible artifacts and event projection, quotas, budgets, retention, and
 effective interval. Publication cannot broaden the selected Agent Revision's
 Tools, credentials, destinations, or policy authority.
@@ -1027,7 +1035,7 @@ Creating or changing a Publication uses a semantic diff and compatibility
 check. The detail route shows the exact Revision and contract digests, effective
 authority, client/environment bindings, usage, recent failures, review evidence,
 and audit history. Expiry or revocation blocks new invocations while preserving
-existing Task and Run evidence. There is no global Publications page; Agent
+existing Session and Run evidence. There is no global Publications page; Agent
 Overview and Versions may link back to consuming Integration Publications.
 
 ### Webhooks
@@ -1040,7 +1048,7 @@ keys and secrets are never shown after creation.
 Webhook detail shows ordered delivery attempts, event and delivery IDs,
 signature-key reference, response class, latency, retry schedule, and terminal
 state. Explicit redelivery reuses the same immutable event and creates an
-auditable delivery attempt; it never changes the Task result. Destination
+auditable delivery attempt; it never changes the Run result. Destination
 changes require SSRF/private-network validation and a confirmation of affected
 subscriptions.
 
@@ -1057,14 +1065,16 @@ explorer.
 - Integration identity, client credential issuance, Agent Publication, and
   webhook registration are separate authorized actions.
 - Every invocation resolves one active client, one exact Agent Publication, one
-  Agent Revision, and one input/output contract pair.
-- Application identity cannot invent a delegated user, and delegated identity
-  is preserved independently in policy and audit evidence.
+  Agent Revision, one input/output contract pair, and one verified delegated
+  subject.
+- A client without a delegated subject cannot invoke directly; client and
+  subject identities remain independent in Policy and Audit evidence, while
+  only the subject becomes Session owner and Run requester.
 - Publication never broadens Agent authority and fails closed on incompatible
   contracts, expired clients, revoked scope, or invalid environment binding.
 - Secret values are one-time or never displayed; normal pages expose only
   references, fingerprints, status, and rotation metadata.
-- Webhook delivery is signed, idempotent, auditable, and independent of Task
+- Outbound Webhook delivery is signed, idempotent, auditable, and independent of Run
   outcome.
 - Revocation and expiry block new work without rewriting historical evidence.
 
@@ -1165,7 +1175,7 @@ authorization decisions.
 ### Approval Policy Boundary
 
 An Approval Policy configures whether a concrete Agent action is allowed,
-denied, or requires approval from its authenticated task requester, including
+denied, or requires approval from its authenticated Run requester, including
 risk criteria and expiry. It does not nominate generic approvers, create an
 Admin approval queue, or represent business workflow approvals. Pending Agent
 action approvals remain in Copilot; Admin Run Detail and Audit expose
@@ -1265,7 +1275,7 @@ status, and set or release history. Active Holds block scheduled deletion and
 key destruction for matching content and evidence.
 
 Hold selectors use bounded fields for scope, resource identifiers,
-Task/Run/Artifact identifiers, classification, and time range. They are frozen
+Session/Run/Artifact identifiers, classification, and time range. They are frozen
 when activated; the match preview is evidence, while deletion re-evaluates active
 Holds against newly matching data. Arbitrary SQL selectors are not exposed.
 
@@ -1346,7 +1356,7 @@ sections are:
    inheritance, and affected resources. Classification changes validate against
    provider, Tool, Integration, and retention constraints.
 6. **Limits and Quotas**: organization ceilings and Workspace allocations for
-   concurrency, run duration, output/artifact size, task volume, and budget.
+   concurrency, Run duration, output/Artifact size, instruction volume, and budget.
    Provider budgets, runner capacity, and Integration quotas remain on their
    owning pages; Settings only supplies global bounds and defaults.
 7. **Environments**: named `development`, `staging`, and `production` profiles,

@@ -13,8 +13,12 @@ example, submit employee policy data to an approved HR agent and display the
 structured answer inside the HR system without loading the Gantry Copilot web
 application.
 
+The typed target route, schema, authorization, and inbound automation trigger
+contract is in
+[Enterprise Agent API Contracts](enterprise-agent-api-contracts.md).
+
 The Enterprise Agent Invocation API is separate from the browser-oriented
-Copilot API. Both create the same durable Task and Run identities and use the
+Copilot API. Both create the same durable Session and Run identities and use the
 same authorization, action-time execution, and audit model, but each API returns
 an independently authorized projection. Enterprise responses are limited by the
 published Integration contract and never become a shortcut to Admin diagnostics
@@ -32,7 +36,7 @@ such as `hr-management-production`. Registration records:
 - Allowed organization and workspaces.
 - Allowed agents or integration publications.
 - Permitted invocation and result scopes.
-- Approved authority modes.
+- Approved delegated-user invocation policy.
 - Rate, concurrency, token, cost, attachment, and artifact limits.
 - Allowed webhook destinations and authentication method.
 - Credential rotation and expiry policy.
@@ -40,10 +44,9 @@ such as `hr-management-production`. Registration records:
 
 ### Subject User
 
-An employee on whose behalf the application may invoke an agent. The subject is
-present only in delegated-user mode and must come from a verifiable token
-exchange. A caller-supplied employee ID or email is business input, not proof of
-identity.
+An employee on whose behalf the integration client may invoke an Agent. Every
+Enterprise Session/Run invocation has a subject user from a verifiable token exchange. A
+caller-supplied employee ID or email is business input, not proof of identity.
 
 ### Agent Principal
 
@@ -53,26 +56,6 @@ application.
 
 ## 3. Authority Modes
 
-### Application Identity
-
-The enterprise application uses OAuth 2.0 client credentials and invokes an
-agent as itself. This is suitable for system-owned workflows such as nightly
-policy classification or processing an HR queue.
-
-Effective authority is the intersection of:
-
-1. The integration client's grants.
-2. The integration publication's agent and workspace assignment.
-3. The deployed Agent Revision's maximum permissions.
-4. Organization and workspace policy.
-5. Tool, credential, data, and network policy at action time.
-
-The application cannot claim an employee's permissions. It cannot create a
-requester-bound human approval because it has no authenticated human requester;
-an action requiring human confirmation must be denied or handled by the owning
-external business workflow. Application identity therefore does not enter the
-Copilot requester-input flow.
-
 ### Delegated User Identity
 
 The HR system acts for its currently authenticated employee. Its backend
@@ -80,10 +63,16 @@ exchanges a verifiable user token for a short-lived Gantry token using OAuth 2.0
 Token Exchange or a deployment-approved equivalent. Gantry records both the
 calling application and subject user.
 
-Effective authority also intersects the subject user's current permissions.
+Effective authority intersects the subject user's current permissions.
 The application cannot select another subject through request JSON, forward a
 browser token directly to the agent, or turn a delegated call into application-
 wide authority.
+
+There is no application authority in the first contract. A client credential
+authenticates the integration caller, but never becomes a Run requester or
+approval identity. Unattended work is configured as an owner-bound scheduled
+or Webhook trigger; its owner is the requester and its runtime Service
+Principal is execution-only.
 
 ## 4. Publication to Integrations
 
@@ -93,7 +82,7 @@ Copilot. Administrators create an **integration publication** that binds:
 - One immutable Agent Revision or a controlled release channel.
 - One or more registered integration clients.
 - Workspace and environment.
-- Allowed authority modes.
+- Delegated-user subject and token-exchange requirements.
 - Input and output contract versions.
 - Exposed artifact types.
 - Allowed result-event projection.
@@ -107,10 +96,10 @@ revision.
 ## 5. Canonical Invocation Flow
 
 ```text
-HR browser -> HR backend -> OAuth token -> Gantry Invocation API
+HR browser -> HR backend -> delegated OAuth token -> Gantry Invocation API
                                       -> validate integration publication
                                       -> validate input and business context
-                                      -> create Task and Run
+                                      -> create personal Session and first Run
                                       -> execute published HR Agent
                                       -> poll or signed webhook events
 HR backend <- structured result/artifact references <- Gantry
@@ -128,26 +117,31 @@ Representative endpoints:
 
 - `GET /api/agent/v1/agents`
 - `GET /api/agent/v1/agents/{agent_id}`
-- `POST /api/agent/v1/tasks`
-- `GET /api/agent/v1/tasks/{task_id}`
-- `GET /api/agent/v1/tasks/{task_id}/events`
-- `POST /api/agent/v1/tasks/{task_id}:cancel`
-- `POST /api/agent/v1/tasks/{task_id}:retry`
+- `POST /api/agent/v1/sessions`
+- `GET /api/agent/v1/sessions/{session_id}`
+- `GET /api/agent/v1/sessions/{session_id}/events`
+- `POST /api/agent/v1/sessions/{session_id}/runs/{run_id}:cancel`
+- `POST /api/agent/v1/sessions/{session_id}/runs/{run_id}:retry`
 - `GET /api/agent/v1/artifacts/{artifact_id}`
-- `POST /api/agent/v1/webhook-endpoints`
-- `GET /api/agent/v1/webhook-deliveries/{delivery_id}`
+
+Outbound Webhook Endpoint registration and delivery inspection remain Admin
+Integration resources. They are not created by an enterprise client through
+this invocation API. User-owned inbound automation triggers are managed through
+the Copilot projection and receive external events at the separate hook endpoint
+defined in [Enterprise Agent API Contracts](enterprise-agent-api-contracts.md).
 
 Agent discovery returns only integration publications assigned to the calling
-client. It exposes public metadata, input/output JSON Schemas, contract version,
-authority modes, and limits, not the system prompt or internal tool bindings.
+client and allowed by the verified subject's Agent metadata access. It exposes
+public metadata, input/output JSON Schemas, contract version, delegated-subject
+requirements, and limits, not the system prompt or internal tool bindings.
 
-## 7. Task Submission Contract
+## 7. Session Invocation Contract
 
-Example application-identity request:
+Example delegated-user request:
 
 ```http
-POST /api/agent/v1/tasks
-Authorization: Bearer <application-access-token>
+POST /api/agent/v1/sessions
+Authorization: Bearer <delegated-user-access-token>
 Idempotency-Key: hr-case-84721-policy-review-v1
 Content-Type: application/json
 Prefer: respond-async
@@ -176,7 +170,7 @@ Prefer: respond-async
   },
   "delivery": {
     "webhook_endpoint_id": "whe_hr_production",
-    "events": ["task.awaiting_approval", "task.completed", "task.failed"]
+    "events": ["run.awaiting_approval", "run.completed", "run.failed"]
   }
 }
 ```
@@ -185,26 +179,32 @@ Response:
 
 ```http
 HTTP/1.1 202 Accepted
-Location: /api/agent/v1/tasks/tsk_01...
+Location: /api/agent/v1/sessions/ses_01...
 ```
 
 ```json
 {
-  "id": "tsk_01...",
-  "status": "queued",
+  "id": "ses_01...",
+  "state": "active",
   "agent": {
     "id": "agt_hr_policy_advisor",
     "version": "12",
     "contract_version": "2026-08-01"
   },
   "authority": {
-    "mode": "application",
-    "client_id": "int_hr_management_production"
+    "client_id": "int_hr_management_production",
+    "subject_principal_id": "usr_01...",
+    "token_exchange_id": "txe_01..."
+  },
+  "current_run": {
+    "id": "run_01...",
+    "requester_principal_id": "usr_01...",
+    "status": "queued"
   },
   "created_at": "2026-08-13T08:00:00Z",
   "links": {
-    "self": "/api/agent/v1/tasks/tsk_01...",
-    "events": "/api/agent/v1/tasks/tsk_01.../events"
+    "self": "/api/agent/v1/sessions/ses_01...",
+    "events": "/api/agent/v1/sessions/ses_01.../events"
   }
 }
 ```
@@ -219,7 +219,8 @@ Agent input is validated against the published JSON Schema. The optional
 `context` envelope provides traceability and typed references, not additional
 authority.
 
-- The application may send only fields allowed by the integration contract.
+- The integration client may send only fields allowed by the integration
+  contract.
 - Resource references are treated as claims until a trusted tool resolves and
   authorizes them.
 - Gantry records source system and correlation IDs for audit and support.
@@ -232,11 +233,12 @@ authority.
 
 ## 9. Result Contract
 
-Completed tasks expose a stable application-oriented projection:
+Completed Runs expose a stable application-oriented projection:
 
 ```json
 {
-  "id": "tsk_01...",
+  "session_id": "ses_01...",
+  "run_id": "run_01...",
   "status": "completed",
   "result": {
     "contract_version": "2026-08-01",
@@ -254,23 +256,23 @@ Completed tasks expose a stable application-oriented projection:
 }
 ```
 
-The output is validated against the published output schema before the task can
+The output is validated against the published output schema before the Run can
 be marked successfully completed. The external projection excludes private
 reasoning, terminal streams, internal prompts, credentials, and administrator-
 only policy details.
 
 ## 10. Status and Event Projection
 
-API clients may poll the task or retrieve cursor-paginated events. The external
+API clients may poll the Session or retrieve cursor-paginated events. The external
 event projection includes only integration-relevant states:
 
-- `task.accepted`
-- `task.running`
-- `task.awaiting_approval`
-- `task.suspended`
-- `task.completed`
-- `task.failed`
-- `task.canceled`
+- `run.accepted`
+- `run.running`
+- `run.awaiting_approval`
+- `run.suspended`
+- `run.completed`
+- `run.failed`
+- `run.canceled`
 - `artifact.available`
 
 Internal model deltas, PTY output, tool payloads, policy internals, and raw run
@@ -278,48 +280,50 @@ events are not exposed through the Agent Invocation API.
 
 For the current Enterprise projection, approval rejection and expiry return a
 schema-valid `action_denied` or `approval_expired` result and do not add a new
-externally visible Task state. Interactive continuation after that result is a
+externally visible Session state. Interactive continuation after that result is a
 Copilot capability. A future delegated-user continuation API must define its own
-message route and event projection before Enterprise tasks are described as
+message route and event projection before Enterprise Sessions are described as
 interactive.
 
 ## 11. Webhooks
 
 Webhooks provide asynchronous status and terminal result notification.
 
-- Endpoint registration is an administrator-approved operation.
+- Outbound Endpoint registration is an administrator-approved operation and is
+  not part of the enterprise invocation client surface.
 - Destinations use HTTPS, pass SSRF and private-network policy, and are bound to
   an integration client and environment.
-- Deliveries contain event ID, delivery ID, task ID, event type, timestamp,
+- Deliveries contain event ID, delivery ID, Session ID, Run ID, event type, timestamp,
   attempt, contract version, and a minimal payload.
 - Gantry signs the timestamp and raw body with an endpoint secret or uses mTLS.
 - Consumers reject old timestamps and duplicate delivery IDs.
 - Delivery is at least once with exponential backoff and a finite retry window.
-- Ordering is guaranteed per task through event sequence, not across tasks.
+- Ordering is guaranteed per Session through event sequence, not across Sessions.
 - A delivery log supports inspection and explicit redelivery.
-- Webhook failure does not change the task result.
+- Webhook failure does not change the Run result.
 
 Sensitive result fields may be omitted from webhooks. The consumer fetches the
-authorized task result from the API when policy requires it.
+authorized Run result from the API when policy requires it.
 
 ## 12. Approvals
 
-An API-started task may enter `awaiting_approval`.
+An API-started Run may enter `awaiting_approval`.
 
-- Application-identity calls may execute only actions that policy allows without
-  human confirmation. An application credential cannot stand in for a human
-  requester or nominate an administrator as approver.
 - Delegated-user calls route any required Agent action approval only to the
-  verified subject user who initiated the task.
+  verified subject user who initiated the Run.
 - The enterprise application receives status and a safe approval reference; it
   cannot approve merely by possessing the application client credential.
-- Agent action approvals are decided only by the authenticated task requester
+- Agent action approvals are decided only by the authenticated Run requester
   through the Copilot approval surface or a requester-authenticated approval
   API. The decision is bound to the exact action digest.
 - Business approvals such as leave, expense, or purchase approval are initiated
   and presented by the tool's own workflow system. Gantry receives only a
-  signed, idempotent external status callback and resumes the action after
+  signed, idempotent external status callback and resumes the Run after
   validating the external approval reference and bound digest.
+- A pending business approval suspends the same Run with a typed external wait.
+  The callback resumes the next Agent loop; it never approves a Gantry action,
+  replays the original Tool call, or reuses its execution permit. See
+  [External Business Approval Callback Contracts](external-business-approval-contracts.md).
 - Agent action rejection and expiry return a structured denial result in the
   Enterprise projection. Copilot may keep the requester conversation open, but
   that interaction is not currently part of this server-to-server contract.
@@ -330,39 +334,39 @@ An API-started task may enter `awaiting_approval`.
   publication.
 - Downloads require an authorized API request and return a short-lived object
   URL or streamed content.
-- Artifact access is audited independently of task access.
+- Artifact access is audited independently of Session access.
 - Active content is served from a separate origin with safe disposition and
   preview rules.
-- Retention and deletion follow the task's integration publication policy.
+- Retention and deletion follow the Session's integration publication policy.
 
 ## 14. Reliability and Idempotency
 
-- Every task submission requires an `Idempotency-Key` unique within the
-  integration client. The mapping is retained through the task's terminal state
-  plus the published maximum client retry interval. After task content is
-  deleted, a tombstone containing the request digest and original task ID still
+- Every Session invocation requires an `Idempotency-Key` unique within the
+  integration client. The mapping is retained through the Run's terminal state
+  plus the published maximum client retry interval. After Session content is
+  deleted, a tombstone containing the request digest and original Session ID still
   prevents key reuse for that interval.
 - Repeating the same key and semantically identical request returns the original
-  task. Reusing the key with a different request returns a conflict.
+  Session and Run. Reusing the key with a different request returns a conflict.
 - The API publishes its minimum idempotency retention interval. It never creates
-  a new task merely because the original response body has expired.
-- If the same request is repeated after the original task has been deleted but
+  a new Session merely because the original response body has expired.
+- If the same request is repeated after the original Session has been deleted but
   its idempotency tombstone remains, the API returns
-  `410 idempotency_resource_expired` and the original task ID. The caller must
+  `410 idempotency_resource_expired` and the original Session ID. The caller must
   make an explicit new business decision with a new key before starting another
-  task.
+  Session.
 - The application uses its own correlation ID for end-to-end tracing.
 - Cancellation, retry, and webhook redelivery are idempotent commands.
 - A non-repeatable tool action with an unknown outcome is never automatically
   replayed.
 - API clients must handle `429` with `Retry-After`, transient `5xx`, token
-  expiry, and task states that outlive the caller process.
+  expiry, and Run states that outlive the caller process.
 
 ## 15. Security Requirements
 
 - Confidential clients authenticate using private-key JWT or mTLS where
   possible; shared client secrets are a lower-assurance compatibility option.
-- Client credentials never appear in browsers, mobile packages, URLs, task
+- Client credentials never appear in browsers, mobile packages, URLs, Session
   inputs, or Agent prompts.
 - Access tokens are short lived, audience restricted, scope restricted, and
   bound to the registered environment.
@@ -379,16 +383,16 @@ An API-started task may enter `awaiting_approval`.
 For an employee policy assistant inside an HR system:
 
 1. An administrator publishes `HR Policy Advisor` to the registered HR client.
-2. The HR backend obtains an application token or exchanges the signed-in
-   employee's token for a delegated Gantry token.
+2. The HR backend exchanges the signed-in employee's token for a delegated
+   Gantry token.
 3. The backend submits typed employee and case data using an idempotency key.
-4. Gantry binds the task to the published HR Agent version and executes it.
+4. Gantry binds the Run to the published HR Agent version and executes it.
 5. If the Agent proposes a protected HR action, current policy may require a
    human approval.
-6. The HR backend receives a signed terminal webhook or polls the task.
+6. The HR backend receives a signed terminal webhook or polls the Session.
 7. It renders the schema-validated result in its own HR interface.
 8. Gantry retains the complete governed audit trail; the HR system retains its
-   own business record and Gantry task reference.
+   own business record and Gantry Session/Run reference.
 
 ## 17. SDK and Contract Distribution
 
@@ -396,4 +400,4 @@ The protocol remains usable with ordinary HTTP clients. Gantry should generate
 and publish server-side SDKs only after the OpenAPI contract stabilizes, starting
 with languages used by target enterprise systems. SDKs provide authentication,
 idempotency, polling, webhook verification, error types, and schema models; they
-must not hide task states or retry non-repeatable actions automatically.
+must not hide Run states or retry non-repeatable actions automatically.

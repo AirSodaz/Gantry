@@ -35,7 +35,7 @@ Enterprise Systems -- OAuth/HTTPS/Webhooks
         | Identity Context       |
         | Agent Registry         |
         | Configuration Registry |
-        | Task Service           |
+        | Session Service        |
         | Policy Decision Point  |
         | Approval Service       |
         | Scheduler              |
@@ -98,22 +98,25 @@ never discovers or fetches
 mutable Admin configuration during execution. The complete model is defined in
 [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
 
-### Task Service
+### Session Service
 
-Accepts idempotent task submissions, binds the submission to immutable resource
-versions, creates runs, owns run state transitions, and exposes cancellation
-and retry commands.
+Owns personal, shared, and channel-bound Sessions; fixed membership roles;
+ordered Messages; Run creation; and the one-executing-Run Session queue. It
+accepts idempotent Session creation and instruction commands, binds each Run to
+immutable resource versions, and exposes cancellation and retry commands.
 
 For enterprise callers, it also validates the integration publication, binds
-the application and optional delegated-user principals, validates versioned
-input contracts, and produces the restricted external result projection.
+the integration client and required delegated-user principal, records the
+subject as Session owner and first Run requester, validates versioned input contracts, and produces
+the restricted external result projection. Client and runtime Service
+Principal identities never substitute for the requester.
 
 ### Integration Registry and Delivery
 
 Owns confidential client registrations, integration publications, scopes,
 contract assignments, webhook endpoints, delivery attempts, quotas, and
 environment bindings. It signs webhook messages and manages at-least-once
-delivery without changing task outcomes when delivery fails.
+delivery without changing Run outcomes when delivery fails.
 
 ### Policy Decision Point
 
@@ -129,7 +132,7 @@ the need.
 ### Approval Service
 
 Creates durable approval requests for concrete Agent actions, binds the sole
-human decision authority to the authenticated task requester, enforces expiry
+human decision authority to the authenticated Run requester, enforces expiry
 and single-use decisions, and appends the result to the run event stream. It
 revalidates the action digest and requester identity immediately before
 execution resumes. It does not own business workflow approvals defined by tools
@@ -157,7 +160,7 @@ effect after its lease has been lost.
 
 ### Event Service
 
-Appends ordered Run events and Task-level conversation events, serves
+Appends ordered Run events and Session-level conversation events, serves
 cursor-based history, fans out live events, and produces audit and telemetry
 projections. It is the canonical execution and conversation history, while
 relational tables hold queryable current state.
@@ -308,8 +311,9 @@ Queued -> Canceled/Expired
 AwaitingApproval -> Running/Failed/Canceled
 ```
 
-An employee task creates a task record and an initial run. The scheduler claims
-the run with a lease, provisions a sandbox, and sends a signed manifest. The
+An employee instruction creates or updates a Session and appends one queued Run.
+The scheduler claims the next eligible Run with a lease, provisions a sandbox,
+and sends a signed manifest. The
 runner emits events with monotonically increasing client sequence numbers and
 presents the assignment's lease epoch to every trusted gateway. The control
 plane assigns canonical run sequence numbers and acknowledges receipt only after
@@ -332,6 +336,14 @@ policy revocation, lease loss, webhook retries, and durable resume can race in
 separate processes. All transitions therefore use expected state and revision,
 and terminal or superseding transitions invalidate unconsumed execution permits.
 
+After the requester-approved Tool call is claimed, the Tool may return a typed
+external business-approval wait instead of a terminal result. The consumed
+permit is not restored. The action moves to `awaiting_external_approval`, the
+same Run becomes `Suspended` with reason `external_business_approval`, and a
+signed idempotent callback later supplies the Tool result for the next Agent
+loop. Callback processing never replays the original call; any subsequent
+effect receives a new action digest and authorization decision.
+
 Consuming the execution permit is the linearization point. Cancellation that
 wins before the claim prevents invocation. Cancellation received after the
 permit is consumed requests cooperative interruption, but cannot claim that an
@@ -343,11 +355,10 @@ recorded as a reconciliation event and never rewrites the original observation.
 
 `Rejected` and approval `Expired` are approval outcomes, not run states. Both
 resume the loop with a structured `action_denied` or `approval_expired` result
-and keep the task conversation available for new requester input. Neither
+and keep the Session conversation available for new contributor input. Neither
 outcome terminates the run merely because the action was not authorized in
-time. Cancellation always wins before an execution permit is consumed. Task
-aggregate state is then derived from the run rather than inventing a separate
-approval terminal state.
+time. Cancellation always wins before an execution permit is consumed. Session
+lifecycle remains independent from Run execution state.
 
 ## 9. Suspension and Recovery
 
@@ -418,7 +429,7 @@ apps/
 control-plane/
   cmd/gantry/
   internal/agentregistry/
-  internal/tasks/
+  internal/sessions/
   internal/policy/
   internal/approvals/
   internal/scheduler/
@@ -465,7 +476,7 @@ the generated-code check.
 ## 13. Observability
 
 All services use OpenTelemetry-compatible traces, metrics, and structured logs.
-Every task, run, approval, tool call, provider request, sandbox, and artifact has
+Every Session, Run, approval, tool call, provider request, sandbox, and Artifact has
 a stable identifier included in telemetry.
 
 Required platform signals include:

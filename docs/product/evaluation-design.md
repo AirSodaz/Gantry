@@ -30,7 +30,7 @@ demands it. The original run remains unchanged.
 ### Shadow Evaluation
 
 A later capability may execute a candidate version against copied inputs with
-all writes blocked. Shadow results never affect the employee's production task.
+all writes blocked. Shadow results never affect the employee's production Run.
 
 ## 3. Golden Case Contents
 

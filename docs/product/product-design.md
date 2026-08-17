@@ -31,7 +31,7 @@ and recommended deployment origins.
 Enterprise systems may also invoke published agents through the server-to-
 server Agent Invocation API. For example, an HR management system can call an
 approved HR agent and present its structured result in the HR system's own UI.
-This is a third consumption channel over the same governed task model, not a
+This is a third consumption channel over the same governed Session/Run model, not a
 third Gantry user interface.
 
 ## 2. Product Goals
@@ -69,10 +69,10 @@ third Gantry user interface.
 | Organization Administrator | Admin | Platform settings, providers, runner pools, retention, emergency controls |
 | Workspace Agent Editor | Admin | Draft specs, prompts, tools, model policies, tests, and release notes within assigned Workspaces |
 | Security Reviewer | Admin | Review permissions, egress, credentials, commands, publication changes, and export scoped audit evidence |
-| Operator | Admin | Monitor runs, inspect failures, cancel or retry tasks, manage capacity, and inspect audit evidence without export |
+| Operator | Admin | Monitor runs, inspect failures, cancel or retry runs, manage capacity, and inspect audit evidence without export |
 | Auditor | Admin | Search immutable events, inspect approvals, and export scoped evidence |
-| Employee | Copilot | Discover approved agents, submit tasks, review progress, receive artifacts |
-| Integration Client | Agent Invocation API | Invoke explicitly published agents as an application or on behalf of a verified user |
+| Employee | Copilot | Discover approved Agents, use personal or shared Sessions, submit instructions, review progress, and receive Artifacts |
+| Integration Client | Agent Invocation API | Authenticate a backend call made only on behalf of a verified delegated user; never become a Run requester |
 
 One person may hold several roles. Authorization is evaluated from the union of
 assigned roles, constrained by organization and workspace boundaries.
@@ -106,6 +106,11 @@ configuration surface. Copilot never exposes Platform Settings.
 A named enterprise capability visible to employees, such as "Procurement
 Analyst" or "Incident Triage". An Agent has stable descriptive metadata, named
 Drafts, immutable Revisions, and environment Deployments.
+
+The initial product does not split this resource into Agent Template and Agent
+Instance. Personal continuity and team collaboration are Session concerns. A
+future instance resource is justified only by independent long-term memory,
+credentials, or configuration that must span multiple Sessions.
 
 ### Agent Draft
 
@@ -172,12 +177,14 @@ A Tool Server registers a built-in, MCP, or governed CLI provider. Immutable
 Tool Descriptor Versions define names, schemas, effects, idempotency, data
 classification, credential capabilities, destinations, and execution limits.
 
-### Task and Run
+### Session and Run
 
-A task represents user intent and durable ownership. A run is one execution
-attempt of a task against a specific Agent Revision and policy snapshot. Retrying
-a task creates a new Run rather than rewriting history. Copilot presents Tasks,
-conversation, requester approvals, and a compact list of Run attempts. Admin
+A Session is a durable personal, shared, or channel-bound conversation around
+one Agent. It has one human owner and fixed owner, contributor, and viewer member
+roles. A Run executes one accepted instruction against a specific Agent Revision
+and Policy snapshot. The instruction author is the immutable Run requester;
+retrying creates a new Run rather than rewriting history. Copilot presents
+Sessions, conversation, requester approvals, and ordered Run history. Admin
 presents the same immutable Run records as a cross-actor operational and
 diagnostic workbench, subject to role, scope, and redaction controls.
 
@@ -200,7 +207,7 @@ approvals or business workflow approvals.
 
 A durable requester decision for one proposed Agent action. It includes an
 exact action preview, risk explanation, policy reason, expiry, authenticated
-task requester, and the resulting decision. Business workflow approvals remain
+Run requester, and the resulting decision. Business workflow approvals remain
 owned by the tool or enterprise system that defines them.
 
 ### Golden Case
@@ -283,8 +290,12 @@ simple agents.
   clear capability descriptions.
 - Display the data and action scope at a useful level without exposing secrets
   or internal policy implementation.
+- Freeze typical inputs, expected output, capability summary, data disclosure,
+  and action disclosure with the published Agent Revision. Deployment-specific
+  temporary availability is separate from requester preferences; favorites and
+  recently used Agents are scoped to the requester and Workspace.
 
-### Task Experience
+### Session Experience
 
 - Start from conversational input or an agent-specific structured form.
 - Attach files subject to type, size, malware-scan, and workspace policy.
@@ -292,25 +303,32 @@ simple agents.
 - Distinguish waiting, running, awaiting approval, suspended, failed, canceled,
   and completed states.
 - Allow cancellation and safe retry when policy permits.
-- After an action is rejected or its approval expires, keep the task
-  conversation open so the requester can tell the Agent how to revise the
-  action or what to do next.
-- Resume the task view after browser disconnect or a later login.
+- Keep the Session open across completed, failed, rejected, and expired Runs so
+  an authorized contributor can provide the next instruction.
+- After an approved action enters a Tool-owned business approval workflow,
+  suspend the Run with a safe external-wait reason. A signed callback resumes
+  the same Run's next Agent loop; it does not approve or replay the action.
+- Resume the Session view after browser disconnect or a later login.
+- Allow Session owners to invite contributors and viewers; membership never
+  grants Agent configuration or execution authority.
+- Execute at most one Run per Session while accepting later instructions into an
+  ordered queue.
 
-### Task History
+### Session History
 
-- List only tasks visible to the current employee and organize them by intent,
-  status, last activity, requester action, and artifacts.
-- Show Run attempts inside Task detail without exposing runner, lease,
+- List only Sessions where the current employee is a member and organize them by
+  intent, mode, current Run, queued work, last activity, my action, and Artifacts.
+- Show Run history inside Session detail without exposing runner, lease,
   credential, raw prompt, or cross-user operational internals.
-- Keep retry, cancel, and requester guidance attached to the Task; every retry
+- Keep retry, cancel, and requester guidance attached to the Run; the Run
+  requester or Session owner may cancel, while every retry
   creates a new immutable Run.
-- Link to the same Task, Run, event, and artifact identities used by Admin when
+- Link to the same Session, Run, event, and Artifact identities used by Admin when
   the current actor is authorized to see the corresponding evidence.
 
 ### Employee Approvals
 
-Employees may approve only actions from tasks they initiated and only when their
+Employees may approve only actions from Runs they initiated and only when their
 current authorization still permits the action. The approval view must show the exact
 target, arguments or human-readable diff, credential identity class, expected
 side effects, and expiry. Approval is never represented as a generic "continue"
@@ -324,8 +342,8 @@ invoking a domain agent while keeping its own user interface and workflow.
 
 - Administrators explicitly publish an immutable agent contract to registered
   integration clients.
-- Calls may use application identity for system-owned work or verified
-  delegated-user identity for work performed on behalf of an employee.
+- API calls require verified delegated-user identity; the integration client
+  authenticates the caller but never becomes the Run requester.
 - Inputs and outputs follow versioned JSON Schemas.
 - The canonical interaction is asynchronous and supports polling and signed
   webhooks.
@@ -335,9 +353,29 @@ invoking a domain agent while keeping its own user interface and workflow.
   but never grants authority by itself.
 - The caller cannot select unapproved tools, credentials, model providers,
   runtime images, or mutable Drafts.
+- An employee may own an inbound automation trigger when they have Agent
+  `execute`; Trigger management is non-shareable. It creates a Run in a new or
+  owner-bound Session with the owner as requester and uses a fixed Service
+  Principal for runtime execution rather than inheriting the employee's full
+  permissions.
+- Inbound hook events require signature verification, replay protection,
+  event-id idempotency, schema validation, and trigger-scoped quotas. The
+  resulting Run can wait for the owner's ordinary Agent-action approval in
+  Copilot; the hook request never approves an action.
+- Unattended work is represented by an owner-bound schedule or Webhook trigger,
+  not application authority. Each occurrence creates an ordinary Run whose
+  human owner is requester; a runtime Service Principal remains execution-only.
+- Trigger configuration selects a new Session per occurrence or one exact bound
+  Session. Bound occurrences execute sequentially, and a stable occurrence ID
+  prevents the same delivery from being queued twice.
+- Scheduled Triggers use five-field cron with minute granularity and an explicit
+  IANA time zone. Missed or nonexistent local instants are skipped; a repeated
+  local instant runs once at its first UTC mapping. Schedule edits create a new
+  schedule revision rather than changing historical occurrence identity.
 
 The complete contract is defined in
-[Enterprise Agent Invocation API](../architecture/enterprise-integration-api.md).
+[Enterprise Agent Invocation API](../architecture/enterprise-integration-api.md)
+and [Enterprise Agent API Contracts](../architecture/enterprise-agent-api-contracts.md).
 
 ## 10. Functional Requirements
 
@@ -354,8 +392,8 @@ The complete contract is defined in
 | FR-09 | Production trajectory export applies configurable redaction before storage. |
 | FR-10 | Audit exports identify the actor, policy, resource version, action, and result. |
 | FR-11 | Registered enterprise systems can invoke only agents explicitly published to their client identity. |
-| FR-12 | API-started tasks support application and verifiable delegated-user authority without caller impersonation. |
-| FR-13 | Integration task results conform to a versioned output contract and support polling or signed webhooks. |
+| FR-12 | API-started Sessions require a verifiable delegated user; integration clients and runtime Service Principals cannot impersonate the Run requester. |
+| FR-13 | Integration Run results conform to a versioned output contract and support polling or signed webhooks. |
 | FR-14 | Stale runner assignments are fenced at every effect-capable gateway by a monotonic lease epoch. |
 | FR-15 | Model and PTY streams remain durably replayable without requiring one PostgreSQL transaction per token or output fragment. |
 | FR-16 | Approval, cancellation, expiry, policy change, lease loss, and execution claims resolve through one atomic action state machine with at most one consumed execution permit. |
@@ -365,6 +403,14 @@ The complete contract is defined in
 | FR-20 | MCP discovery and CLI registration cannot silently change a deployed Agent Revision. |
 | FR-21 | Installing or enabling a Plugin never grants an Agent all contained Skills or Tools; Agent bindings remain explicit. |
 | FR-22 | Agent metadata read, configuration read, Draft edit, and execution permissions are independently grantable and revocable. |
+| FR-23 | User-owned inbound Webhook Triggers create ordinary Runs in new or owner-bound Sessions; they cannot broaden Agent or Policy authority, and any required Agent-action approval belongs to the owner requester. |
+| FR-24 | Unattended schedules and Webhooks are owner-bound Triggers; losing owner authority or archiving a bound Session disables new occurrences without rewriting historical evidence. |
+| FR-25 | Personal, shared, and channel Sessions use fixed owner, contributor, and viewer roles; membership never grants Agent configuration or execution authority. |
+| FR-26 | Every accepted instruction has one immutable Run requester, and only that requester can decide the Run's Agent-action approvals. |
+| FR-27 | Stable Webhook event IDs and scheduled occurrence IDs are committed before queueing so retries cannot create duplicate Session Messages or Runs. |
+| FR-28 | A Run requester or current Session owner may cancel a queued or active Run, but Session ownership never grants Agent-action approval authority. |
+| FR-29 | Scheduled Triggers accept five-field cron plus an IANA time zone, use skip-only misfire semantics, execute a repeated local time once, and atomically advance the next planned instant with occurrence creation. |
+| FR-30 | Webhook secret rotation atomically invalidates the previous key with no overlap; secret-bearing command replays are redacted, and rejected requests cannot reserve an occurrence event ID. |
 
 ## 11. Quality Attributes
 
@@ -375,7 +421,7 @@ execution, encrypted transport and storage, and attributable audit events.
 
 ### Reliability
 
-Control-plane restarts must not lose accepted tasks or approval decisions.
+Control-plane restarts must not lose accepted Session instructions or approval decisions.
 Runner loss must produce a terminal or recoverable state rather than an
 indefinitely active run.
 
@@ -407,7 +453,7 @@ The first production pilot should measure:
 - Regression escape rate after publication.
 - Mean time to identify the cause of a failed run from the Admin timeline.
 - Percentage of external actions executed with a traceable user and policy.
-- Integration task success, webhook delivery latency, duplicate suppression,
+- Integration Run success, webhook delivery latency, duplicate suppression,
   and contract-validation failure rates.
 
 Initial targets should be set after an internal baseline pilot rather than

@@ -35,16 +35,18 @@ are modeled separately and retain their source.
 
 Binds a principal or group to a role at organization, workspace, or Agent scope.
 A binding has validity timestamps and provenance. Agent action approval eligibility
-is not granted by a role binding: the authenticated Task requester is the only
+is not granted by a role binding: the authenticated Run requester is the only
 eligible human approver. Business workflow approval remains owned by the external
 tool or enterprise system.
 
 ### Integration Client
 
 Represents a registered enterprise application and environment. It records the
-OAuth client reference, owner, status, allowed authority modes, scopes, quotas,
-data classification, credential metadata, and operational contacts. Secret or
-private-key material remains in the identity or secret system.
+OAuth client reference, owner, status, delegated-user token-exchange policy,
+scopes, quotas, data classification, credential metadata, and operational
+contacts. The client authenticates transport but never becomes a Run requester
+or approval identity. Secret or private-key material remains in the identity or
+secret system.
 
 ### Credential Reference and Lease
 
@@ -103,7 +105,7 @@ resources or data classes:
 - matching records, protected deletion jobs, and provenance
 
 The selector is a bounded typed expression over organization/workspace, resource
-IDs, Task/Run/Artifact IDs, classification, and time range; arbitrary SQL or
+IDs, Session/Run/Artifact IDs, classification, and time range; arbitrary SQL or
 unbounded predicates are not accepted. The selector is immutable after activation.
 Creation records a match-preview snapshot for evidence, but active Holds are
 re-evaluated for newly created matching data and immediately before deletion.
@@ -164,9 +166,19 @@ Mutable identity and ownership record:
 - `owner_principal_id`, `lifecycle_status`
 - creation and update metadata
 
+This is the company-governed Agent definition used for authoring, revision,
+deployment, discovery, and execution authorization. Gantry does not introduce a
+separate Agent Template or per-user Agent Instance in the initial model.
+Personal history, shared work, and channel-bound continuity belong to Sessions;
+an Agent instance becomes justified only if a future product requirement needs
+independent long-term memory, credentials, or configuration across Sessions.
+
 ### Agent Access Grant
 
 An explicit Agent-scoped capability grant:
+
+The typed Admin resource, route matrix, owner-transfer transaction, and
+persistence constraints are defined in [Agent Access Contracts](agent-access-contracts.md).
 
 - `id`, `agent_id`, subject type and subject ID
 - capability: `metadata.read`, `configuration.read`, `draft.edit`,
@@ -174,6 +186,10 @@ An explicit Agent-scoped capability grant:
   `execute`, or `access.manage`
 - `grant_batch_id` and optional informational `source_preset`
 - grant status, issuer, reason, effective interval, and timestamps
+
+The Agent row also carries a monotonic `access_revision` used as the ACL
+collection ETag. Grant and owner mutations update it in the same transaction as
+the canonical Audit event.
 
 The effective permission is the intersection of organization/workspace
 authorization, Agent Access Grants, resource state, and action-time policy.
@@ -231,12 +247,34 @@ An Agent may have multiple test Deployments but one default Production
 Deployment in its workspace. Publication and rollback create deployment events
 and move the pointer without creating or rewriting a Revision.
 
+### Published Copilot Metadata and Preferences
+
+Employee-facing catalog metadata is split at the same boundary as the Agent
+lifecycle. Stable identity fields remain on the Agent. Typical inputs, the
+expected output shape, capability summary, data disclosure, and action
+disclosure are authored in the Draft's typed catalog metadata and copied into
+the immutable Revision snapshot. A Deployment contributes only publication
+availability (available or temporarily unavailable, with a bounded reason and
+optional expiry). The Copilot projection joins the active Deployment, exact
+Revision metadata, stable Agent identity, and the caller's own preference row;
+it never exposes the raw Draft, prompt, Tool bindings, model route, or Policy.
+
+`copilot_agent_preferences` is keyed by `(principal_id, workspace_id,
+agent_id)` and stores `is_favorite` plus nullable `last_used_at`. The principal
+and Workspace are derived from authorization, not request fields. A successful
+Session creation updates `last_used_at` in the same durable command/outbox
+boundary. A small maintenance step prunes non-favorite rows outside the eight
+most recent successful Agent uses for that principal and Workspace; favorite
+rows remain available to the favorites collection. Preference mutations are
+ordinary audited commands and cannot grant Agent ACL capabilities or override
+Deployment availability.
+
 ### Integration Publication
 
 Binds an immutable Agent Revision or controlled release channel to registered
 integration clients. It pins input/output contract versions, workspace,
-authority modes, visible artifacts and events, webhook policy, quotas, budgets,
-retention, reviewers, and effective interval.
+delegated-subject requirements, visible artifacts and events, webhook policy,
+quotas, budgets, retention, reviewers, and effective interval.
 
 ### Agent Prompt Snapshot
 
@@ -382,15 +420,17 @@ Integration Client is environment-bound and stores authentication modes,
 audience, credential fingerprint, status, and expiry metadata. An Agent
 Publication binds one exact Agent Revision and input/output contract pair to a
 Client or Integration environment. Disabling or revoking a Client or
-Publication blocks new invocations while retaining Tasks, Runs, deliveries,
-and evidence.
+Publication blocks new invocations while retaining Sessions, Runs, deliveries,
+and evidence. A verified delegated subject is mandatory for direct Enterprise
+invocation; owner-bound Webhook or scheduled Triggers create ordinary Runs for
+unattended work.
 
 ### Webhook Endpoint and Delivery
 
 A Webhook Endpoint stores validated destination metadata, subscribed event
 projection, signing-key fingerprint, and retry policy. A Webhook Delivery is an
 immutable attempt identified by event ID and delivery ID. Redelivery creates a
-new attempt and never changes the Task result.
+new attempt and never changes the Run result.
 
 ### Platform Resource Records
 
@@ -401,40 +441,81 @@ authorization. Platform Settings is only their effective projection and
 section command facade. The typed fields and route ownership are defined in
 [Admin Governed Resource Contracts](admin-governed-resource-contracts.md).
 
-## 5. Task and Run Entities
+## 5. Session and Run Entities
 
-### Task
+### Session
 
-A durable user request:
+A durable personal or collaborative Agent context:
 
-- `id`, scope, requester, selected agent
-- input envelope and attachment references
-- ordered requester and Agent message references with a conversation version
-- visibility and retention class
-- invocation channel, integration client, optional delegated subject, source
-  system/resource references, and external correlation ID
-- current run reference and aggregate status
-- idempotency key and timestamps
+- `id`, organization and Workspace scope, selected Agent
+- `owner_principal_id`, mode (`personal`, `shared`, or `channel`), lifecycle
+  state (`active` or `archived`), and retention class
+- ordered member, message, Run-summary, and Artifact references with a
+  monotonic conversation revision and Session sequence
+- optional external channel binding
+- optional owner-bound trigger references and source tags (`webhook` or
+  `schedule`) when automation appends work to the Session
+- current executing Run, queued Run count, and timestamps
 
-### Task Message
+A Session binds an Agent identity, not one mutable Draft or implicit latest
+Revision. Every Run resolves an allowed Deployment and freezes the exact Agent
+Revision and Policy snapshots used for that execution. Session history can
+therefore continue across Production updates without rewriting prior evidence.
 
-An employee-visible conversation turn within a Task:
+### Session Member
 
-- `id`, `task_id`, monotonic sequence, author type, and author identity
+Session collaboration uses three fixed roles rather than another general ACL:
+
+- `owner`: read, contribute, manage membership, archive, and bind a Trigger or
+  external channel;
+- `contributor`: read and submit instructions when the principal still has
+  Agent `execute` authority;
+- `viewer`: read authorized Session history and Artifacts without execution.
+
+Every Session has exactly one human owner. Membership never grants Agent
+configuration access, Agent execution authority, or approval authority. Adding
+or removing a member is an audited Session command subject to Workspace and
+data-classification policy. Historical reads require current Session membership
+and applicable data policy; starting a new Run separately requires current
+Agent `execute` authority. Owner transfer is explicit and atomic; it disables
+old-owner Triggers bound to that Session rather than transferring them silently.
+
+### Session Message
+
+An employee-visible conversation turn within a Session:
+
+- `id`, `session_id`, monotonic Session sequence, author kind, and author
+  identity or Trigger reference
 - message kind, redacted content or structured payload reference, and
   classification
+- optional initiating or resulting Run reference
 - causation/correlation references, visibility, and timestamps
 
-Requester follow-up messages are accepted only in an input-eligible Task state.
-Each accepted follow-up advances the conversation version and creates a new Run
-attempt; it never mutates a prior message, rejected Approval Request, or
-completed Run.
+An accepted human or Trigger instruction advances the conversation revision and
+creates one queued Run. It never mutates a prior message, Approval Request, or
+completed Run. Agent and system-summary messages are appended by the owning
+runtime transitions and never establish a requester identity.
+
+### Run Attachment Input
+
+Each bound Attachment is copied into an immutable Run input snapshot before
+assignment. The snapshot carries the Attachment ID, digest, size, media type,
+classification, generated sandbox-relative path, opaque Run-bound reference,
+and expiry. It contains no object key or secret. The Runner reads this input
+only through the lease-fenced Control Plane broker described in
+[Runner Attachment Contracts](runner-attachment-contracts.md).
+
+Materialization attempts record the Run, Attachment, Runner session, lease
+epoch, byte count, result digest, and terminal outcome. A stale lease, revoked
+scan state, Policy change, missing object, or digest mismatch prevents the
+input from becoming visible in the sandbox; historical evidence remains.
 
 ### Run
 
-One attempt:
+One execution of an accepted Session instruction, or a retry of a prior Run:
 
-- `id`, `task_id`, `attempt_number`
+- `id`, `session_id`, Session sequence, initiating message, `requester_id`
+- optional `retry_of_run_id` and Trigger occurrence reference
 - immutable agent and policy snapshot references
 - execution status, status reason, and terminal outcome such as
   `requester_input_required`
@@ -443,10 +524,24 @@ One attempt:
 - start, completion, cancellation, and expiry timestamps
 - usage and cost projections
 
-`awaiting_requester_input` is a Task workflow state, not an approval outcome or
-Run execution state. After the Agent consumes a rejection or expiry result and
-reaches a safe boundary, the current Run completes with
-`requester_input_required`; the follow-up command then creates the next Run.
+The principal or Trigger owner responsible for the initiating instruction is
+the immutable Run requester and the only person who can decide an Agent-action
+approval proposed by that Run. Session ownership, membership, Admin roles, and
+business-approver roles do not replace the Run requester.
+
+The Run requester and current Session owner may cancel the Run. Owner
+cancellation is a restrictive Session-management command and never grants the
+owner approval authority. A queued cancellation removes the Run from scheduling
+order; an executing cancellation follows the action permit and reconciliation
+rules below.
+
+A Session has at most one executing Run across provisioning, running, approval,
+external-wait, and cancellation states. Additional accepted instructions may
+create queued Runs, ordered by Session sequence. The next queued Run starts only
+after the current Run reaches a safe terminal boundary. A rejected or expired
+action is delivered to the Agent as a structured result; the Run may finish
+with `requester_input_required`, while the active Session remains open for any
+authorized contributor to submit a new instruction.
 
 ### Run Manifest
 
@@ -454,29 +549,56 @@ A signed, expiring document delivered to a runner. It contains only the
 configuration needed for one run, resource limits, gateway endpoints, scoped
 workload identity, and immutable digests. It contains no durable secret values.
 
-### Task and Run Event Ordering
+### Session and Run Event Ordering
 
 Each Run retains its own strictly increasing event sequence for operational
-diagnostics. A multi-Run Task stream additionally requires a Task-level sequence
+diagnostics. A multi-Run Session stream additionally requires a Session-level sequence
 for requester messages and Run summaries; that sequence is the authority for a
-Task-bound browser cursor. Until that aggregate stream exists, a cursor is
+Session-bound browser cursor. Until that aggregate stream exists, a cursor is
 run-bound and a Run change requires snapshot replacement and reconnect.
 
 ### Artifact
 
 Metadata for a generated or uploaded object:
 
-- `id`, task/run, producer and owner
+- `id`, session/run, producer and owner
 - object key, digest, size, media type
 - classification, scan status, retention class
 - visibility and download-policy fields
 
-### Webhook Endpoint and Delivery
+### Owner-Bound Automation Trigger and Occurrence
 
-An endpoint is bound to one integration client and environment and stores an
-approved destination, authentication mode, subscribed event types, status, and
-rotation metadata. Each delivery records event sequence, attempt, signature-key
-reference, response class, next attempt, and terminal delivery status.
+An owner-bound Trigger records its employee-visible name, kind (`webhook` or
+`schedule`), human owner, Agent, server-resolved Production Deployment, fixed
+Service Principal execution identity, state, expiry, and Session mode.
+`new_session` creates a Session for each occurrence;
+`bound_session` stores one exact Session ID and is valid only while the Trigger
+owner owns that active Session and can execute the same Agent.
+
+A Webhook configuration owns a read-only snapshot of the Agent's published input
+contract, one active monotonically versioned secret/key reference, and rate
+limits; the owner never supplies a JSON Schema. Rotation atomically activates a
+new key version and retires the previous version without an overlap window. A
+scheduled configuration owns a validated five-field cron expression,
+canonical IANA time zone, fixed input validated by the same published contract,
+`skip` misfire policy, first-instant daylight-saving overlap policy,
+monotonically increasing schedule revision, and the next planned UTC instant.
+Changing its expression, time zone, fixed input, Deployment, or Session target
+increments the schedule revision and recomputes the next instant without
+changing prior occurrences.
+
+Each Webhook occurrence records `(trigger_id, event_id)`, canonical request
+digest, signature-key version, source metadata, authorization result, Session
+and Run IDs, canonical receipt, and timestamps. A scheduled occurrence uses the
+same record with a stable occurrence ID derived from Trigger ID, schedule
+revision, and planned UTC instant. The occurrence record, Session Message,
+queued Run, canonical receipt, Audit evidence, advanced next-planned instant,
+and outbox entry commit together.
+
+After restart, re-enable, or outage recovery, planned instants that passed
+without a committed occurrence are skipped. A committed occurrence continues
+through ordinary outbox retry. A nonexistent daylight-saving local time is
+skipped; a repeated local time maps only to its first UTC instant.
 
 ## 6. Approval Entities
 
@@ -491,7 +613,7 @@ reference, response class, next attempt, and terminal delivery status.
 The approval request is for one concrete agent action. It is not a general
 business-workflow approval record: leave, expense, purchase, and similar
 decisions remain in the tool or enterprise system that owns that process. The
-authenticated task requester is the only eligible human approver. A published
+authenticated Run requester is the only eligible human approver. A published
 policy may allow or deny the action without human confirmation, but it cannot
 route the request to a different person, group, or administrator.
 
@@ -511,7 +633,7 @@ revision ensures exactly one terminal decision takes effect.
 
 Rejection and expiry are approval outcomes, not run statuses. Both resume the
 Agent loop with a schema-valid `action_denied` or `approval_expired` result and
-leave the task conversation open for additional requester input. The requester
+leave the Session conversation open for additional contributor input. The Run requester
 may direct the Agent to revise the action or continue differently; any new
 consequential action receives a new digest. Applying either outcome uses the
 same action revision transaction and emits the corresponding run transition.
@@ -529,7 +651,9 @@ The state machine is:
 proposed -> denied
 proposed -> awaiting_approval -> ready
                          \-----> rejected/expired/superseded
-proposed -> ready -> executing -> succeeded/failed/unknown_outcome
+proposed -> ready -> executing -> awaiting_external_approval
+                              \-> succeeded/failed/unknown_outcome
+awaiting_external_approval -> succeeded/failed/external_rejected/external_expired
 ```
 
 State changes use compare-and-swap on the expected revision. At most one action
@@ -545,6 +669,34 @@ rather than being represented as safely canceled. Reconciliation has an owner
 and deadline. If still unresolved at that deadline, the run becomes `Failed`
 with reason `action_outcome_unknown`; later evidence is appended without
 rewriting the original action result.
+
+### External Business Approval Wait
+
+After the Run requester approves the exact Gantry action, the business Tool
+may submit that action into its own approval workflow and return a typed
+`external_approval_pending` result. Gantry then records an external wait with:
+
+- Session, Run, action ID, action digest, and consumed execution-permit reference;
+- external system, opaque approval reference, callback authentication profile,
+  and external correlation ID;
+- state (`pending`, `approved`, `rejected`, `expired`, or `canceled`), revision,
+  expected expiry, callback event ID, and result digest;
+- requester, Tool Binding, Policy Version, and audit correlation.
+
+The Run remains `suspended` with
+`suspension_reason=external_business_approval`; this is not another Gantry
+Approval Request. A signed, idempotent callback may resolve only the matching
+external reference and action digest. Resolution appends the structured Tool
+result and resumes the same Run through the outbox for the next Agent loop. It
+never replays the original Tool call or creates a new execution permit.
+
+An approved callback may report that the business effect is complete or that
+additional work is required. The resumed Agent may finish or propose another
+action; every new consequential action receives a new digest and requester
+approval when Policy requires it. Rejection or expiry is also returned to the
+Agent as structured Tool evidence so it can finish, revise the plan, or request
+new user direction. If the Run was canceled, the callback is retained as late
+evidence but does not resume execution.
 
 ## 7. Evaluation Entities
 
@@ -578,7 +730,7 @@ Every run event uses a common envelope:
   "event_id": "evt_...",
   "organization_id": "org_...",
   "workspace_id": "wsp_...",
-  "task_id": "tsk_...",
+  "session_id": "ses_...",
   "run_id": "run_...",
   "sequence": 42,
   "type": "tool.call.requested",
@@ -605,8 +757,12 @@ unknown event types are retained but not projected until supported.
 
 ### Lifecycle
 
-- `task.accepted`
-- `task.message.submitted`
+- `session.created`
+- `session.message.submitted`
+- `session.member.added`
+- `session.member.updated`
+- `session.member.removed`
+- `session.archived`
 - `run.queued`
 - `run.provisioning_started`
 - `run.started`
@@ -639,7 +795,7 @@ range, and optional token-count metadata.
 - `agent.plan_updated`
 - `agent.rationale_recorded`
 - `agent.user_input_requested`
-- `task.requester_input_required`
+- `run.requester_input_required`
 
 These contain concise, user-facing summaries. They are not raw hidden reasoning.
 
@@ -665,6 +821,22 @@ These contain concise, user-facing summaries. They are not raw hidden reasoning.
 - `approval.expired`
 - `approval.superseded`
 - `approval.outcome_applied`
+- `business_approval.wait_started`
+- `business_approval.callback_recorded`
+- `business_approval.wait_resolved`
+- `business_approval.callback_ignored`
+
+### Catalog and Preferences
+
+- `agent.catalog_metadata_committed`
+- `agent.publication_availability_changed`
+- `copilot.agent_favorite_changed`
+- `copilot.agent_recent_use_recorded`
+
+Catalog metadata and availability events carry only immutable Revision or
+Deployment identifiers plus bounded employee-safe summaries. Preference events
+carry the requester, Workspace, Agent, and resulting favorite/recent timestamp;
+they never contain prompts, Tool payloads, or ACL grants.
 
 ### Artifacts and Operations
 
@@ -690,16 +862,21 @@ These contain concise, user-facing summaries. They are not raw hidden reasoning.
 
 ## 10. Ordering and Idempotency
 
-- The database allocates one strictly increasing sequence per run. The target
-  multi-Run Task projection also allocates a Task-level sequence for conversation
-  turns and cross-Run summaries; it is distinct from each Run's diagnostic
-  sequence.
+- The database allocates one strictly increasing sequence per Run. The target
+  multi-Run Session projection also allocates a Session-level sequence for
+  conversation turns and cross-Run summaries; it is distinct from each Run's
+  diagnostic sequence.
 - Runner messages include runner-session ID and client sequence for
   deduplication.
 - Commands from clients require an idempotency key scoped to actor and route.
-  The request digest and original resource ID remain as a tombstone at least
-  through the resource's terminal state plus the published maximum retry
-  interval; content deletion does not make the key reusable.
+  The request digest and original resource ID remain as a tombstone through the
+  published maximum retry interval and applicable resource retention; content
+  deletion does not make the key reusable.
+- Inbound Webhook occurrences use a uniqueness constraint on
+  `(trigger_id, event_id)`. Scheduled occurrences derive a stable ID from the
+  Trigger, schedule revision, and planned UTC instant. The occurrence claim,
+  request digest, Session Message, queued Run, canonical receipt, and outbox row
+  commit atomically, so no retry path can enqueue the same occurrence twice.
 - Tool calls have stable call IDs and effect classification.
 - Approval decisions have a uniqueness constraint per request.
 - Outbox consumers are idempotent and track their last processed event.
@@ -758,8 +935,8 @@ projections updated transactionally where possible. Projection rebuilding from
 events is supported for repair and verification, but events are not used as an
 excuse to make common queries scan an entire run history.
 
-The same immutable Task and Run identities support separate authorized
-projections. Copilot projections are requester-scoped and conversation-first,
+The same immutable Session and Run identities support separate authorized
+projections. Copilot projections are member-scoped and conversation-first,
 with compact Run attempts, user-visible events, approvals, and artifacts.
 Admin projections are organization or Workspace-scoped and operational, with
 cross-actor filtering, runner and lease diagnostics, policy and Tool evidence,
@@ -767,7 +944,7 @@ resource usage, and authorized commands. Enterprise projections are limited to
 the published Integration contract. A projection never grants access to a
 different projection or to fields omitted by its audience policy.
 
-The exact Copilot projection schemas, Task/Run relationship, and command
+The exact Copilot projection schemas, Session/Run relationship, and command
 preconditions are defined in
 [Copilot Resource Contracts](copilot-resource-contracts.md). Control-plane
 ownership and atomic projection updates are defined in
@@ -784,10 +961,10 @@ canonical Audit evidence.
 ## 14. Cursor Retention, Compaction, and Deletion
 
 The no-loss reconnect guarantee applies within the declared content-retention
-window. A durable cursor identifies its projection, Task or Run scope,
+window. A durable cursor identifies its projection, Session or Run scope,
 canonical sequence, and content offsets. If a cursor predates available
 history, the API returns
-`cursor_expired` with the earliest available cursor and a current task/run
+`cursor_expired` with the earliest available cursor and a current Session/Run
 snapshot; it never silently resumes from a newer position. The client replaces
 its projection from that snapshot and then continues from the supplied cursor.
 

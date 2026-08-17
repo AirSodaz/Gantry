@@ -65,9 +65,15 @@ Current and planned resources:
   complete artifact inspection; Plugin contained-asset inspection; Tool Server
   discovery/health; descriptor authoring; and CLI Command Profiles. Gantry still
   does not mint Skill versions or release pointers.
-- Planned: per-Agent access-grant resources that independently authorize safe
-  metadata, configuration read, Draft edit, Review, deployment, run inspection,
-  execution, and ACL management.
+- Designed target: per-Agent access-grant resources that independently
+  authorize safe metadata, configuration read, Draft edit, Review, deployment,
+  run inspection, execution, and ACL management. The typed grant, owner
+  transfer, and recovery contract is in [Agent Access Contracts](agent-access-contracts.md);
+  Admin routes and persistence are not yet implemented.
+- Designed target: Runner Attachment materialization through a Control Plane
+  brokered stream bound to Run, lease epoch, digest, classification, and
+  Policy. Runners never receive object-store credentials or URLs; the target
+  private protocol is in [Runner Attachment Contracts](runner-attachment-contracts.md).
 - Planned Run mutations and richer diagnostic projections remain separate from
   the implemented read-only Run workbench. Evaluation Suite/Case/Version and
   exact Run request routes are implemented as a partial slice. Remaining
@@ -105,35 +111,47 @@ approval list/detail/decision, requester-scoped artifact browsing, and artifact
 metadata/download, plus requester attachment creation, short-lived content
 upload, completion, and scan-state reads.
 
+Those `/tasks` routes describe the implemented pre-ADR-037 API. The target
+contract replaces the Task conversation aggregate with `/sessions`, fixed
+Session membership, Session-level event cursors, and requester-bound Runs. It is
+not callable until the OpenAPI source, persistence, generated clients, handlers,
+and authorization tests migrate together; compatibility aliases are not part of
+the target design.
+
 The complete target schemas, command preconditions, route semantics, event
-frames, and requester-only authorization matrix are defined in
-[Copilot Resource Contracts](copilot-resource-contracts.md). Task-level
+frames, and member/requester authorization matrix are defined in
+[Copilot Resource Contracts](copilot-resource-contracts.md). The currently
+implemented Task-level
 cursors, conversation ETags, and the explicit audited Artifact download command
 are callable through the OpenAPI document, generated client, owning handler,
 and focused tests. Approval idempotency remains a separate command-shape delta
 because that request still carries the key in its body.
 
-The Copilot API uses employee-oriented response types. It does not return raw
-agent specs and rely on the frontend to hide privileged fields. Task and Run
-responses are requester-scoped and conversation-first: they include the
-employee-visible Task, compact Run attempts, approvals, events, and artifacts,
-but not Admin runner, lease, credential, raw prompt, or cross-user diagnostic
-fields.
+The target contract also includes Revision-frozen employee catalog metadata,
+Deployment-bound temporary availability, `collection=favorites|recent` catalog
+filters, and the idempotent favorite command. Preference persistence and the
+successful-Session recent-use update are not yet present in the checked-in
+OpenAPI or handler.
 
-Copilot Task Detail is conversation-first. The messages route appends a requester
-message only when the Task is in the `awaiting_requester_input` state after an
-action approval is rejected or expires and the Agent has reached a safe input
-boundary. The command uses an idempotency key and creates a new Run attempt under
-the same Task; it never replays or mutates the denied action. A pending approval
-keeps the composer read-only by default until the decision is resolved.
+The target Copilot API uses employee-oriented response types. It does not return
+raw Agent specs and rely on the frontend to hide privileged fields. Session
+responses are member-scoped and conversation-first; Run approvals remain visible
+and decidable only as permitted by the immutable Run requester. Responses omit
+Admin runner, lease, credential, raw prompt, and unrestricted diagnostic fields.
+
+Copilot Session Detail remains open across Run outcomes. Its messages route
+accepts instructions from the owner or a contributor with current Agent
+`execute` authority. Each idempotent command appends one Message and creates one
+queued Run; it never replays or mutates a denied action. One Run executes per
+Session while later instructions wait in Session order.
 The control plane runs a durable background expiry reconciliation loop. Requester
 reads also reconcile elapsed requests before projecting them, so a just-expired
 approval never remains actionable because a worker tick has not yet occurred.
 
 `GET /api/copilot/v1/approvals/{id}` returns one immutable action preview,
-redacted technical details, expiry state, linked Task context, and the latest
+redacted technical details, expiry state, linked Session/Run context, and the latest
 decision evidence. `POST /api/copilot/v1/approvals/{id}:decide`
-requires the authenticated Task requester, action digest, decision, and
+requires the authenticated Run requester, action digest, decision, and
 idempotency key. A duplicate or stale decision returns the server's winning
 state and never implies that approval resulted in execution.
 
@@ -142,27 +160,35 @@ state and never implies that approval resulted in execution.
 Audience: `gantry-agent-api`.
 
 This API allows registered enterprise systems such as HR management to invoke
-agents explicitly published to them. It supports application identity and
-verified delegated-user identity. It creates the same task/run resources but
-returns a stable integration projection and never exposes Admin internals.
+agents explicitly published to them on behalf of a verified delegated user.
+The integration client authenticates transport but never becomes requester or
+approver. Owner-bound Webhook or scheduled triggers cover unattended work. The
+API creates the same Session/Run resources but returns a stable integration
+projection and never exposes Admin internals.
 
 Representative resources:
 
 - `/api/agent/v1/agents`
-- `/api/agent/v1/tasks`
-- `/api/agent/v1/tasks/{id}`
-- `/api/agent/v1/tasks/{id}/events`
+- `/api/agent/v1/sessions`
+- `/api/agent/v1/sessions/{id}`
+- `/api/agent/v1/sessions/{id}/events`
 - `/api/agent/v1/artifacts/{id}`
-- `/api/agent/v1/webhook-endpoints`
 
 The full authentication, publication, request, result, webhook, approval, and
 idempotency contract is defined in
-[Enterprise Agent Invocation API](enterprise-integration-api.md).
+[Enterprise Agent Invocation API](enterprise-integration-api.md). The typed
+target schemas and route matrix are in
+[Enterprise Agent API Contracts](enterprise-agent-api-contracts.md).
 
-Admin, Copilot, and Enterprise APIs may refer to the same opaque Task and Run
+Tool-owned business approvals use a separate authenticated callback surface,
+not the Agent Invocation or Copilot Approval API. Its pending-result, signed
+callback, `suspended` wait, and same-Run resume contract is defined in
+[External Business Approval Callback Contracts](external-business-approval-contracts.md).
+
+Admin, Copilot, and Enterprise APIs may refer to the same opaque Session and Run
 identities, but each response is a separately authorized projection. An Admin
 Run record is not a permission shortcut into the Copilot conversation, and a
-Copilot Task record is not a way to enumerate global Runs.
+Copilot Session record is not a way to enumerate global Runs.
 
 ## 3. HTTP Conventions
 
@@ -202,28 +228,29 @@ Example error:
 
 ## 4. Key Commands
 
-### Submit a Task
+### Create a Session and first Run
 
-`POST /api/copilot/v1/tasks`
+`POST /api/copilot/v1/sessions`
 
 The request includes the agent ID, structured input or message, attachment IDs,
-and client-generated idempotency key. The response binds the task to the exact
-Agent Revision selected by the effective Deployment and returns the first run.
+and client-generated idempotency key. The response creates a personal Session,
+binds its first Run to the exact Agent Revision selected by the effective
+Deployment, and records the authenticated principal as owner and Run requester.
 
-Enterprise applications submit through `POST /api/agent/v1/tasks`. That route
+Enterprise applications submit through `POST /api/agent/v1/sessions`. That route
 requires an integration publication and a separate API audience; it is not a
 service-account shortcut into the employee Copilot endpoint.
 
 ### Cancel a Run
 
-`POST /api/copilot/v1/tasks/{task_id}/runs/{run_id}:cancel`
+`POST /api/copilot/v1/sessions/{session_id}/runs/{run_id}:cancel`
 
 Cancellation is an idempotent command. The response reports `canceling` or the
 already terminal state.
 
-### Retry a Task
+### Retry a Run
 
-`POST /api/copilot/v1/tasks/{task_id}:retry`
+`POST /api/copilot/v1/sessions/{session_id}/runs/{run_id}:retry`
 
 The server determines whether to reuse the original Agent Revision or the
 current Production Revision according to an explicit request field and
@@ -234,11 +261,11 @@ permission.
 `POST /api/copilot/v1/approvals/{id}:decide`
 
 The request includes decision, reason, action digest, and idempotency key. A
-stale action digest is rejected. The authenticated principal must be the task
+stale action digest is rejected. The authenticated principal must be the Run
 requester; Admin visibility, roles, or workspace ownership do not grant decision
 authority. This route is only for a concrete Agent action; it is not a general
 enterprise business-approval endpoint. Rejection returns a structured
-action-denied outcome to the Agent and leaves the task conversation available
+action-denied outcome to the Agent and leaves the Session conversation available
 for later requester input. If the request has expired, the decision command
 returns `approval_expired`; the Agent receives the corresponding structured
 expiry outcome and the conversation remains available.
@@ -391,10 +418,11 @@ destruction eligibility at the linearization point.
 
 ## 5. Browser Event Stream
 
-Clients first create a 60-second, task-bound event ticket with
-`POST /api/copilot/v1/tasks/{task_id}/events:ticket`, then connect to a task or run stream:
+Target clients first create a 60-second, Session-bound event ticket with
+`POST /api/copilot/v1/sessions/{session_id}/events:ticket`, then connect to the
+Session stream:
 
-`WSS /api/copilot/v1/tasks/{task_id}/events?ticket={ticket}&after={cursor}`
+`WSS /api/copilot/v1/sessions/{session_id}/events?ticket={ticket}&after={cursor}`
 
 Admin has a corresponding run endpoint with richer event types.
 
@@ -430,9 +458,11 @@ Protocol requirements:
 - The stream sends an initial resource snapshot and 20-second heartbeats. A
   ticket expiry closes the stream; clients request a new ticket before reconnecting.
 
-The checked-in multi-Run Task stream uses a Task-level sequence that orders
-committed Run projections. Its opaque cursor stays valid when the current Run
-changes; each event also retains its diagnostic `run_sequence`.
+The checked-in pre-ADR-037 stream still uses Task routes. The target multi-Run
+Session stream uses a Session-level sequence that orders Messages, member
+changes, Run projections, approvals, and Artifacts. Its opaque cursor stays
+valid when the executing Run changes; each Run event also retains its diagnostic
+`run_sequence`.
 
 ## 6. Runner gRPC Protocol
 
@@ -574,7 +604,7 @@ credential or a reusable download URL.
 
 ## 11. Limits
 
-Organization and workspace policy define task input size, attachment count and
+Organization and workspace policy define Session instruction size, attachment count and
 size, event payload size, terminal throughput, artifact quotas, concurrent runs,
 approval lifetime, model budgets, tool timeouts, and stream connections.
 

@@ -42,7 +42,7 @@ side-effect free: it cannot execute a Tool, resolve a secret, create an Approval
 Request, change a Binding, or produce an execution permit.
 
 Approval Policy is one Policy type. It configures whether a concrete Agent
-action is allowed, denied, or requires approval from the authenticated task
+action is allowed, denied, or requires approval from the authenticated Run
 requester. Pending Agent action approvals remain in Copilot. Admin exposes only
 configuration and read-only approval evidence, and business workflow approvals
 remain in the owning tool or enterprise system.

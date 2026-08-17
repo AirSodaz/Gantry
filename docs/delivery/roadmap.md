@@ -10,7 +10,7 @@ built early to retire cross-process risk. Current evidence is tracked in
 Build Gantry through vertical slices. Each milestone must produce a usable flow
 across identity, APIs, persistence, runner execution, events, and the relevant
 frontend. Avoid completing all control-plane services before proving a real
-employee task.
+employee Session and Run.
 
 The roadmap separates platform foundations, the employee Copilot path, the
 administrator design path, governance, and evaluation while preserving one
@@ -86,7 +86,7 @@ does not change the phase dependency rules below.
 - Contract-generation pipeline for OpenAPI/JSON Schema and protobuf.
 - OIDC development provider and separate Admin/Copilot clients.
 - Contract spike for a confidential HR integration client, application token,
-  delegated token exchange, asynchronous task, and signed webhook.
+  delegated token exchange, asynchronous Session/Run, and signed webhook.
 - OpenTelemetry trace from browser request through control plane to runner.
 - Spike: outbound runner gRPC stream with heartbeat, assignment, event
   acknowledgement, and cancellation.
@@ -104,7 +104,7 @@ does not change the phase dependency rules below.
 ### Exit Gate
 
 - CI runs on a clean machine and produces signed development artifacts.
-- A task can be assigned to a runner, emit ordered events, and be canceled.
+- A Run can be assigned to a runner, emit ordered events, and be canceled.
 - A stale runner cannot call any effect-capable gateway after reassignment, even
   while its previous workload credential remains unexpired.
 - Sustained stream load meets an explicit throughput target without unbounded
@@ -122,18 +122,18 @@ does not change the phase dependency rules below.
 
 ### Objectives
 
-Deliver the smallest employee-facing task flow with durable execution and no
+Deliver the smallest employee-facing Session flow with durable execution and no
 administrative agent editor yet.
 
 ### Deliverables
 
 - Organization, workspace, principal, role-binding, Agent Revision, Deployment,
-  task, run, and event schemas.
+  Session, membership, Run, and event schemas.
 - Seeded immutable Agent Revisions managed through migration fixtures or an
   internal bootstrap command.
-- Copilot agent catalog, new-task composer, task view, history, cancellation,
+- Copilot Agent catalog, new-Session composer, Session view, history, cancellation,
   and artifact download.
-- Task submission idempotency and immutable version binding.
+- Session instruction idempotency and immutable Run version binding.
 - Scheduler, runner leases, sandbox provisioning, heartbeats, and cleanup.
 - Rust runner agent loop with one model adapter, PTY, and at least one read-only
   built-in tool.
@@ -143,22 +143,22 @@ administrative agent editor yet.
   provisional offsets, reconnect, expired-cursor snapshot, and backpressure
   tests.
 - Basic policy intersection for user, workspace, agent, tool, and destination.
-- Enterprise Agent Invocation API with one registered HR client, application-
-  identity task submission, polling, versioned result schema, idempotency, and
-  signed terminal webhooks.
+- Enterprise Agent Invocation API with one registered HR client, verified
+  delegated-user Session invocation, polling, versioned Run result schema,
+  idempotency, and signed terminal webhooks.
 - Structured plans and rationale summaries; no raw chain-of-thought.
 - Operational dashboard for queue, active runs, failures, and cleanup.
 
 ### Exit Gate
 
-- An authorized employee can discover an agent, run a task, disconnect,
+- An authorized employee can discover an Agent, create/use a Session, disconnect,
   reconnect, receive an artifact, and inspect history.
-- An unauthorized employee cannot discover or access the agent or task.
-- Duplicate task submissions do not create duplicate tasks.
+- An unauthorized employee cannot discover the Agent or access the Session.
+- Duplicate Session instructions do not create duplicate Messages or Runs.
 - Control-plane restart does not lose accepted tasks.
 - Runner loss reaches a clear failed state and triggers sandbox cleanup.
-- Duplicate task submissions remain suppressed through terminal completion and
-  the documented retry interval, including after task content deletion.
+- Duplicate Session instructions remain suppressed through Run completion and
+  the documented retry interval, including after Session content deletion.
 - End-to-end tests cover success, provider failure, cancellation, reconnect, and
   unauthorized access.
 - An HR backend can invoke only its published HR agent, receive a validated
@@ -386,7 +386,10 @@ by customer evidence:
 - Policy-as-code integration if typed policy modules become insufficient.
 - Cross-organization hosted control plane with proven isolation.
 - Agent templates and curated internal marketplace.
-- Scheduled and event-triggered tasks.
+- Owner-bound Webhook and scheduled-Trigger execution, plus later shared event
+  subscriptions. Trigger authority, Session targeting, five-field cron,
+  time-zone, misfire, and occurrence-idempotency contracts are already designed;
+  implementation remains post-GA.
 - Approved agent routing and recommendation in Copilot.
 - Advanced cost allocation, forecasting, and provider optimization.
 
@@ -426,9 +429,9 @@ The first engineering backlog should begin in this order:
 2. Development environment and observability spine.
 3. Runner session, lease, ordered events, cancellation, and cleanup.
 4. Identity audiences and resource authorization skeleton.
-5. Immutable Agent Revision bootstrap and task persistence.
+5. Immutable Agent Revision bootstrap and Session/Run persistence.
 6. LLM gateway and one read-only tool.
-7. Copilot catalog and end-to-end task view.
+7. Copilot catalog and end-to-end Session view.
 8. Admin agent lifecycle.
 9. Action-time policy, credentials, and approvals.
 10. Evaluation vertical slice.

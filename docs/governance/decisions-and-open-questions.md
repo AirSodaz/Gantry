@@ -11,7 +11,7 @@ clients over shared governed platform services. They have distinct navigation,
 API audiences, response models, and deployment origins.
 
 **Reason:** Administrator capabilities, information density, and risk differ
-materially from employee task use. A hidden-menu approach creates avoidable
+materially from employee Session use. A hidden-menu approach creates avoidable
 authorization and usability risk.
 
 ### ADR-002: Single Organization per Initial Installation
@@ -91,7 +91,7 @@ evaluation require observable control points.
 
 **Status:** Accepted
 
-The first release supports independent agent task runs. Multi-agent delegation
+The first release supports independent Agent Runs. Multi-agent delegation
 and workflow graphs are deferred.
 
 **Reason:** Reliable single-run lifecycle, authority, and evaluation are
@@ -182,23 +182,24 @@ without embedding the Gantry Copilot application or bypassing platform policy.
 
 ### ADR-018: Application and Delegated-User Authority Modes
 
-**Status:** Accepted
+**Status:** Superseded by ADR-036
 
-Enterprise calls use either confidential application identity or a verifiable
-delegated-user token exchange. Request fields cannot assert an employee
-identity.
+The earlier design allowed confidential application identity or a verifiable
+delegated-user token exchange. Direct application authority is no longer part
+of the target contract.
 
-**Reason:** System-owned automation and employee-initiated work have different
-authority and audit semantics. Supporting both explicitly prevents accidental
-impersonation.
+**Reason:** A machine identity cannot receive requester-bound Agent-action
+approval. Unattended work now uses a human-owner-bound Webhook or scheduled
+trigger, while direct Enterprise invocation requires a verified delegated user.
 
 ### ADR-019: Asynchronous Canonical Invocation
 
 **Status:** Accepted
 
-Enterprise invocation creates a durable task and returns `202 Accepted`, with
+Enterprise invocation creates a durable personal Session and first Run and
+returns `202 Accepted`, with
 polling or signed webhooks for progress and results. A bounded wait preference
-may return a quick result from the same task.
+may return a quick result from the same Run.
 
 **Reason:** Agent execution may include tools, queueing, suspension, and human
 approval and cannot rely on one request lifetime.
@@ -232,10 +233,12 @@ second effect and provides a defined unknown-outcome state.
 ### ADR-022: Separate Agent Action Approval from Business Workflow Approval
 
 **Status:** Accepted. Gantry owns action-time authorization for effect-bearing
-Agent operations; only the authenticated Task requester decides an exact action
+Agent operations; only the authenticated Run requester decides an exact action
 digest. Business workflow approvals remain in the owning tool or enterprise
-system. Rejection or expiry leaves the Copilot conversation available for a new
-instruction. See [ADR-022](adr/adr-022-agent-action-approval-boundary.md).
+system. A pending Tool result suspends the same Run; a signed callback resumes
+the next Agent loop without replaying the Tool call. Rejection or expiry leaves
+the Copilot conversation available for a new instruction. See
+[ADR-022](adr/adr-022-agent-action-approval-boundary.md).
 
 ### ADR-023: Development Runner Model Routing
 
@@ -302,6 +305,76 @@ Audit ownership. See [ADR-030](adr/adr-030-platform-settings-scope-and-compositi
 and Connect are private to the mutually authenticated runner session, and the
 control plane accesses object storage through an adapter port. See
 [ADR-031](adr/adr-031-protocol-and-storage-boundaries.md).
+
+### ADR-032: Historical Inbound Webhook Task Contract
+
+**Status:** Superseded by ADR-037. Its human-owner, Service Principal,
+transport-authentication, and occurrence-idempotency boundaries remain valid,
+but occurrences now create Runs in new or bound Sessions. See
+[ADR-032](adr/adr-032-inbound-webhook-task-contract.md).
+
+### ADR-033: Agent ACL Grants and Explicit Owner Transfer
+
+**Status:** Accepted. Agent access is a collection of explicit Allow-only
+`AgentAccessGrant` resources over principal, group, or registered service-
+identity subjects. Capabilities never inherit from one another. Agent owner
+identity is stored separately from grants; owner transfer is atomic, gives the
+new principal an explicit `access.manage` grant, and leaves the old owner's
+other grants unchanged. The last recovery path is protected by transaction-
+time validation. See [ADR-033](adr/adr-033-agent-acl-grants-and-owner-transfer.md).
+
+### ADR-034: Brokered Runner Attachment Materialization
+
+**Status:** Accepted. Runners read bound requester Attachments through a Control
+Plane brokered stream over the mTLS Runner session. Materialization is bound to
+the exact Run, lease epoch, opaque reference, digest, classification, and
+current Policy; object-store credentials, keys, URLs, and unrestricted paths
+never cross the Runner boundary. See
+[ADR-034](adr/adr-034-brokered-runner-attachment-materialization.md).
+
+### ADR-035: Copilot Published Metadata and Workspace-Scoped Preferences
+
+**Status:** Accepted. Employee-facing input/output metadata and disclosures
+are authored in Drafts and frozen with immutable Revisions. Deployment owns
+only publication-specific temporary availability. Favorites and recent use are
+requester-owned by `(principal_id, workspace_id)`, with recent use recorded
+only after successful Session creation and limited to eight Agents. See
+[ADR-035](adr/adr-035-copilot-published-metadata-and-preferences.md) and the
+[Copilot Resource Contracts](../architecture/copilot-resource-contracts.md).
+
+### ADR-036: Human Requesters and Owner-Bound Automation
+
+**Status:** Accepted. Direct Enterprise invocation requires a verified
+delegated user; the integration client authenticates transport but never
+becomes Run requester. Unattended Webhook and scheduled Triggers have a human
+owner, create ordinary Runs in new or bound Sessions, and use an execution-only
+Service Principal. They do not bypass requester approval or create another Run
+model. See
+[ADR-036](adr/adr-036-human-requester-and-owner-bound-automation.md).
+
+### ADR-037: Agent Sessions and Run Requesters
+
+**Status:** Accepted. The existing Agent remains the company-governed
+definition; Gantry does not add Template or per-user Instance resources in the
+initial model. Personal, shared, and channel-bound Sessions own conversation and
+membership. Each instruction creates a Run whose human initiator is the only
+eligible Agent-action approver. Sessions serialize execution while permitting
+ordered queued Runs. The Run requester or current Session owner may cancel a
+Run, but Session ownership never grants approval or Agent execution authority.
+Webhook and scheduled Triggers choose a new or bound Session at configuration
+time, and stable occurrence IDs prevent the same delivery from entering the
+queue twice. See
+[ADR-037](adr/adr-037-agent-sessions-and-run-requesters.md).
+
+### ADR-038: Scheduled Trigger Time Semantics
+
+**Status:** Accepted. Scheduled Triggers use five-field POSIX-style cron with
+minute granularity and an explicit IANA time zone. Missed, uncommitted instants
+are skipped rather than replayed after recovery. A nonexistent daylight-saving
+local time is skipped, while a repeated local time runs once at its first UTC
+instant. Configuration changes increment `schedule_revision`; stable occurrence
+IDs and atomic creation prevent duplicate Runs. See
+[ADR-038](adr/adr-038-scheduled-trigger-time-semantics.md).
 
 ## 2. Deferred Questions
 
@@ -381,17 +454,6 @@ decision tests.
 
 **Decision gate:** When rule ownership, cross-resource expressions, or external
 policy authoring cannot be maintained cleanly.
-
-### DQ-008: Scheduled and Event-Triggered Tasks
-
-Define service-account ownership, source-event authentication, deduplication,
-budgets, and approval routing for non-interactive tasks.
-
-**Default:** Use the accepted Agent Invocation API for explicit application-
-identity calls first. Scheduling and inbound event subscriptions remain later
-trigger mechanisms over the same task contract.
-
-**Decision gate:** Post-GA prioritization.
 
 ### DQ-009: Multi-Agent Orchestration Semantics
 

@@ -199,6 +199,11 @@ merge, or rebase semantics.
 An Agent Draft working copy contains:
 
 - identity and employee-facing catalog metadata;
+- typical input examples, expected output kind/schema, capability summary,
+  data disclosure, and action disclosure are part of that metadata. They are
+  validated as employee-safe, bounded fields and freeze with the Revision;
+- publication-specific temporary availability is Deployment metadata, not
+  Draft metadata, and cannot widen the Revision's data or action scope;
 - an Agent-owned system prompt and declared variables;
 - ordered Skill artifact bindings;
 - selected Plugin Version references, Tool Bindings, and CLI Command Profiles;
@@ -236,7 +241,7 @@ profile, update a Skill, or absorb newly added Plugin assets.
 
 ## 6. Run-Manifest Materialization
 
-At task assignment, the control plane materializes a signed, expiring manifest
+At Run assignment, the control plane materializes a signed, expiring manifest
 from the immutable Agent Revision selected by a Deployment and the current
 authorized runtime context.
 
@@ -268,7 +273,7 @@ message, and remediation. Required checks include:
 - write or non-repeatable actions without an applicable approval policy;
 - credential capability incompatible with the Tool Server or destination;
 - CLI executable, argument, filesystem, environment, or image-policy mismatch;
-- classification flow from task input through tool output and artifacts;
+- classification flow from Session/Run input through Tool output and Artifacts;
 - unsupported runner or protocol capability;
 - permission broadening relative to the current Production Revision.
 

@@ -263,9 +263,8 @@ server-to-server API. It includes:
 
 - Registered clients, owners, environment, status, credential metadata, and
   recent activity.
-- Agent publications with input/output contract versions, application or
-  delegated-user authority, scopes, quotas, artifacts, event projection, and
-  retention.
+- Agent publications with input/output contract versions, delegated-subject
+  requirements, scopes, quotas, artifacts, event projection, and retention.
 - Webhook endpoints, signature-key rotation, subscribed events, delivery
   attempts, response classes, and explicit redelivery.
 - Access revocation, publication expiry, and audit history.
@@ -320,20 +319,23 @@ destructive changes, and all mutation outcomes link to the global Audit explorer
 
 Primary navigation:
 
-1. New task
+1. New session
 2. Agents
-3. My tasks
-4. Approvals
-5. Artifacts
+3. Sessions
+4. Triggers
+5. Approvals
+6. Artifacts
 
 Administration concepts are absent. The employee chooses an approved capability
 and states an intent; they do not configure model providers, MCP servers,
 runners, or credentials.
 
-### New Task
+### New Session
 
 The default screen provides a focused composer plus recently used and favorite
-agents. An employee can choose an agent explicitly or, if enabled later, allow
+agents. These collections are scoped to the current employee and Workspace;
+recent use means a successfully created Session and is limited to eight Agents.
+An employee can choose an agent explicitly or, if enabled later, allow
 an approved routing policy to recommend one. The first release should not use
 an opaque autonomous router.
 
@@ -347,43 +349,61 @@ Catalog items show name, description, owner, category, typical inputs,
 capability summary, and relevant data/action disclosure. Catalog cards do not
 show system prompts, internal tools, model names, or raw permission rules.
 
-### Active Task
+### Active Session
 
-The task screen prioritizes outcome and current status:
+The Session screen prioritizes conversation, collaboration, and current Run:
 
 - Conversation or structured result in the main region.
 - Compact activity stream for plans, tool activity summaries, and waiting
   states.
 - Generated files and links in an artifact region.
 - Cancel, retry, and feedback actions when permitted.
+- A compact member list, queued Run count, and fixed owner/contributor/viewer
+  role controls for the Session owner.
 
 Terminal output is not exposed by default. Agents designed for developer use
 may expose a sanitized command-log component, but never an interactive shell.
 
-### My Tasks and History
+### Sessions and History
 
-`My tasks` is the Copilot history projection for tasks initiated by the current
-employee or otherwise visible through an explicit delegated context. It is
+`Sessions` is the Copilot history projection for personal, shared, and
+channel-bound Sessions where the employee is a current member. It is
 organized around user intent rather than infrastructure attempts. Rows show
-agent, task title or first message, current outcome, last activity, pending
-requester action, and artifact availability. Filters cover status, agent,
-time, and whether the task needs requester input; they never expose another
-employee's operational runs.
+Agent, Session title, mode, members, current Run, queued count, last activity,
+the employee's pending action, and Artifact availability. Filters cover
+Session lifecycle, mode, Agent, time, and `my action`; they never expose
+unrestricted operational Runs.
 
-Task detail may expand a compact `Run attempts` section showing attempt number,
+Session detail expands a compact Run history showing requester, sequence,
 status, start and completion time, and a user-facing failure or retry reason.
-Selecting an attempt keeps the user in the task conversation and activity
+Selecting a Run keeps the user in the Session conversation and activity
 stream. It does not open Admin runner, lease, credential, raw prompt, or
-cross-user diagnostic data. Retry is a Task command that creates a new Run and
+unrestricted diagnostic data. Retry is a Run command that creates a new queued Run and
 returns to the same conversation.
 
-The history view and active task view share the same reconnectable event cursor
-and artifact authorization rules. A task may remain open after an action is
-rejected or expires, so the composer remains available for requester guidance.
+The history and active views share the same reconnectable Session cursor and
+Artifact authorization rules. A Session remains active after a Run completes,
+fails, or consumes a rejection/expiry result, so the composer remains available
+to authorized contributors. At most one Run executes; later instructions are
+shown in a stable Session-order queue.
+
+### Triggers
+
+`Triggers` is an owner-only Copilot page for Webhook and scheduled entry points,
+not an Admin integration console or workflow designer. Creation selects an
+employee-visible Agent and a new or exact owner-bound Session target. Webhook
+payload shape and scheduled fixed-input controls come from the Agent's published
+input contract; employees do not select Deployments or author JSON Schema.
+
+Webhook endpoint and secret are revealed together only after creation, with the
+secret never displayed again outside an explicit rotation result. Scheduled
+Triggers show cron, IANA time zone, and the next planned instant. Detail shows
+only committed occurrence links to authorized Sessions and Runs; security
+telemetry and canonical Audit remain on their owning surfaces.
 
 ### Approval Queue
 
-The Copilot queue contains only Agent action approvals from tasks initiated by
+The Copilot queue contains only Agent action approvals from Runs initiated by
 the current employee. Each row shows age, agent, action class, risk, target, and
 expiry. Business workflow approvals remain in the owning tool or enterprise
 system. Bulk approval is prohibited.
@@ -392,11 +412,10 @@ system. Bulk approval is prohibited.
 
 The employee-facing approval page uses plain business language and includes an
 expandable technical payload for qualified users. Approve and reject actions
-require a reason when policy specifies one. Only the authenticated task
+require a reason when policy specifies one. Only the authenticated Run
 requester can decide. Expired or superseded requests are read-only. After
-rejection or expiry, the task returns to the conversation with a visible denial
-or expiry event and an enabled composer so the requester can tell the Agent how
-to revise the action or continue differently.
+rejection or expiry, the Session shows the outcome and keeps its contributor
+composer enabled for a new instruction.
 
 Copilot approval pages are the only decision surface for Agent action approvals.
 Admin Run and Audit pages may show the same approval request, decision, expiry,
@@ -412,7 +431,7 @@ command.
 - Frames beyond the last durable cursor are provisional. The client tracks
   stream byte offsets, discards uncommitted provisional output on reconnect,
   and replaces it with committed segment content without duplication.
-- On `cursor_expired`, the client replaces local task/run state from the server
+- On `cursor_expired`, the client replaces local Session/Run state from the server
   snapshot, clearly indicates that older content has expired, and resumes from
   the earliest available cursor.
 - Streaming text is batched into short render intervals to avoid excessive DOM
@@ -420,7 +439,7 @@ command.
 - A disconnected banner shows whether the run continues server-side.
 - User commands are idempotent and disable only after the server acknowledges
   them, not merely after a click.
-- Browser refresh never creates a second task submission.
+- Browser refresh never creates a second Session instruction.
 
 ## 7. Empty, Loading, and Error States
 
@@ -475,7 +494,10 @@ mobile widths where relevant:
 - Approval races with cancellation, expiry, duplicate decisions, policy
   revocation, and runner recovery, proving that the UI renders the server's
   winning state and never implies that a stale approval executed an action.
-- Copilot agent discovery, task submission, streaming, artifacts, and retry.
+- Copilot Agent discovery, Session creation/instructions, streaming, Artifacts,
+  and Run retry.
+- Copilot Trigger creation, one-time Webhook secret handling, schedule
+  validation, bound-Session selection, lifecycle commands, and occurrence links.
 - Permission boundaries proving Copilot cannot access administrator resources.
 - Long names, long commands, large payload summaries, localization expansion,
   and reduced-motion behavior.

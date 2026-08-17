@@ -8,6 +8,11 @@ approval state and durable semantic events.
 This document describes the checked-in Runner V1 development boundary. The
 target production configuration model is defined in
 [Agent Configuration, Skills, and Tools](../product/agent-configuration-and-tooling.md).
+The target requester-input materialization boundary is defined in
+[Runner Attachment Contracts](runner-attachment-contracts.md).
+The target typed Tool result and durable suspension boundary for Tool-owned
+business approvals is defined in
+[External Business Approval Callback Contracts](external-business-approval-contracts.md).
 
 ## Manifest compilation
 

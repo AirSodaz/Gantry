@@ -16,3 +16,10 @@ document provides the full decision index and deferred questions.
 | [ADR-029](adr-029-retention-and-legal-hold.md) | Retention, Legal Holds, and deletion |
 | [ADR-030](adr-030-platform-settings-scope-and-composition.md) | Platform Settings composition |
 | [ADR-031](adr-031-protocol-and-storage-boundaries.md) | Protocol and object-storage boundaries |
+| [ADR-032](adr-032-inbound-webhook-task-contract.md) | Historical inbound Webhook Task contract; superseded by ADR-037 |
+| [ADR-033](adr-033-agent-acl-grants-and-owner-transfer.md) | Agent ACL grants and explicit owner transfer |
+| [ADR-034](adr-034-brokered-runner-attachment-materialization.md) | Brokered Runner Attachment materialization |
+| [ADR-035](adr-035-copilot-published-metadata-and-preferences.md) | Copilot published metadata and Workspace-scoped preferences |
+| [ADR-036](adr-036-human-requester-and-owner-bound-automation.md) | Human requesters and owner-bound automation |
+| [ADR-037](adr-037-agent-sessions-and-run-requesters.md) | Agent Sessions, collaboration, Run requesters, and Trigger idempotency |
+| [ADR-038](adr-038-scheduled-trigger-time-semantics.md) | Scheduled Trigger cron, time-zone, daylight-saving, and misfire semantics |

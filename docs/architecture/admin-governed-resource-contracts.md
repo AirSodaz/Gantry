@@ -283,7 +283,7 @@ PolicySimulation:
 The `document` field is typed by `Policy.type` and `schema_version`; arbitrary
 JSON is rejected unless the selected type schema explicitly allows it. Approval
 Policies describe one concrete Agent action and can only select `allow`, `deny`,
-or the authenticated Task requester's approval. They cannot nominate an Admin
+or the authenticated Run requester's approval. They cannot nominate an Admin
 approver or represent a business workflow.
 
 ### 3.2 OpenAPI target routes
@@ -465,14 +465,25 @@ Integration:
     owner_principal_id: {type: string}
     environments: {type: array, items: {type: string}}
 
+DelegatedSubjectPolicy:
+  type: object
+  required: [token_exchange_required, allowed_issuers, required_claims]
+  properties:
+    token_exchange_required: {type: boolean, enum: [true]}
+    allowed_issuers: {type: array, minItems: 1, items: {type: string}}
+    required_claims: {type: array, items: {type: string}, uniqueItems: true}
+    minimum_authentication_strength: {type: string, nullable: true}
+    maximum_token_age_seconds: {type: integer, minimum: 1}
+
 IntegrationClient:
   type: object
-  required: [id, integration_id, environment, auth_modes, status, credential_fingerprint]
+  required: [id, integration_id, environment, token_exchange_policy, status,
+             credential_fingerprint]
   properties:
     id: {type: string}
     integration_id: {type: string}
     environment: {type: string, enum: [development, staging, production]}
-    auth_modes: {type: array, items: {type: string, enum: [application, delegated_user]}}
+    token_exchange_policy: {$ref: '#/components/schemas/DelegatedSubjectPolicy'}
     audience: {type: string}
     status: {type: string, enum: [active, disabled, expired, revoked]}
     credential_fingerprint: {type: string}
@@ -480,7 +491,8 @@ IntegrationClient:
 
 AgentPublication:
   type: object
-  required: [id, integration_id, revision_hash, input_contract_digest, output_contract_digest, state]
+  required: [id, integration_id, revision_hash, input_contract_digest,
+             output_contract_digest, delegated_subject_policy, state]
   properties:
     id: {type: string}
     integration_id: {type: string}
@@ -490,7 +502,7 @@ AgentPublication:
     revision_hash: {type: string}
     input_contract_digest: {type: string}
     output_contract_digest: {type: string}
-    authority_modes: {type: array, items: {type: string}}
+    delegated_subject_policy: {$ref: '#/components/schemas/DelegatedSubjectPolicy'}
     state: {type: string, enum: [draft, active, expired, revoked]}
     effective_until: {type: string, format: date-time, nullable: true}
 
@@ -523,9 +535,12 @@ WebhookDelivery:
 
 An Integration identity does not issue credentials or grant Agent authority.
 Every invocation resolves one active Client, one active Publication, one exact
-Revision, and one input/output contract pair. Application identity cannot claim
-a delegated user. Delegated-user calls preserve application and subject
-identities independently in policy and audit context.
+Revision, one input/output contract pair, and one verified delegated subject.
+The client identity and subject are preserved independently in policy and Audit
+context, but only the subject becomes Session owner, Run requester, or
+Agent-action approver.
+A client without a subject must use a pre-configured owner-bound Webhook or
+scheduled trigger instead of direct invocation.
 
 ### 5.2 OpenAPI target routes
 
@@ -541,16 +556,16 @@ identities independently in policy and audit context.
 | `POST /api/admin/v1/integration-clients/{id}:disable` | Blocks new calls; preserves history |
 | `GET /api/admin/v1/integrations/{id}/publications` | Exact Agent Publication list |
 | `POST /api/admin/v1/integrations/{id}/publications` | Publishes exact Revision after compatibility/security checks |
-| `POST /api/admin/v1/integration-publications/{id}:revoke` | Blocks new invocations; preserves Tasks/Runs |
+| `POST /api/admin/v1/integration-publications/{id}:revoke` | Blocks new invocations; preserves Sessions/Runs |
 | `GET /api/admin/v1/integrations/{id}/webhooks` | Endpoint metadata and health |
 | `POST /api/admin/v1/integrations/{id}/webhooks` | Registers validated HTTPS endpoint metadata |
 | `POST /api/admin/v1/webhook-endpoints/{id}:redeliver` | Reuses event ID, creates new delivery attempt |
 | `GET /api/admin/v1/integrations/{id}/usage` | Aggregated usage linked to Runs and deliveries |
 
 Publication changes require a semantic diff, exact Revision hash, contract
-digests, environment, authority modes, quotas, and idempotency key. Destination
+digests, environment, delegated-subject policy, quotas, and idempotency key. Destination
 validation rejects private-network/SSRF targets. Webhook redelivery never
-changes the Task result.
+changes the Run result.
 
 Integration endpoint capability mapping is explicit: directory and usage reads
 use `integrations.read` and `integrations.usage.read`; identity and client

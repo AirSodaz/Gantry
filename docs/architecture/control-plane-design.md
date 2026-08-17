@@ -62,17 +62,17 @@ root and never become fallback production behavior.
 | Module | Owns | May depend on | Must not own |
 | --- | --- | --- | --- |
 | Identity | Principal mapping and normalized authentication context | OIDC verifier, identity repository | Resource authorization, external IdP sessions/passwords |
-| Authorization | Role bindings, Agent ACL grants, scope/capability decisions | Identity context, resource authorization facts, Policy decision interface | Domain state transitions, browser-side filtering |
-| Agent Registry | Agents, Drafts, immutable Revisions, reviews, Deployments, Agent access grants | Configuration resolver, Evaluation gate query, Policy validation | Tasks, runner leases, provider credentials |
+| Authorization | Role bindings, Agent ACL evaluation, scope/capability decisions | Identity context, Agent access facts, Policy decision interface | Grant persistence, domain state transitions, browser-side filtering |
+| Agent Registry | Agents, Drafts, immutable Revisions, reviews, Deployments, Agent access grants | Configuration resolver, Evaluation gate query, Policy validation | Sessions, runner leases, provider credentials |
 | Configuration Assets | Skill Artifacts, Plugin Versions, Tool Servers/Descriptors, CLI profiles, Tool Bindings, manifest compilation | Object metadata, health adapters, Policy validation | External package version authority, Agent prompt editing, runtime effects |
 | Policies | Policy Drafts, immutable Versions, Bindings, typed evaluation and simulation | Scope facts and typed input snapshots | Approvals, Tool invocation, secrets, generic script execution |
-| Tasks | Tasks, Messages, Runs, requester commands, content projections | Agent deployment resolver, Attachment binder, scheduler port, event appender | Approval decisions, runner connection lifecycle, object bytes |
-| Actions and Approvals | Durable actions, Policy decision binding, approval requests/decisions, execution permits | Tasks' Run facts, Policy evaluator, credential/tool gateway ports | Business workflow approvals, generic Admin approval inbox |
-| Execution Events | Canonical Run and Task sequence allocation, semantic event append, content-segment index, cursor snapshots | Transaction manager, object metadata | Domain transition authority, raw token/PTY row-per-chunk storage |
-| Scheduler and Runner Sessions | Queue claims, runner registration, assignment, lease epoch, heartbeat, suspension/resume orchestration | Task transition port, manifest compiler, runner RPC adapter | Task requester commands, Tool effects, Agent authoring |
-| Attachments and Artifacts | Upload declarations/grants, quarantine, scans, Artifact metadata, retention/tombstones | Object store, scanner, Tasks authorization facts | Task state, unrestricted object-store credentials |
-| Evaluations | Suites, Cases, immutable Suite Versions, Evaluation Runs, fixtures, scores, gates | Agent snapshots, scheduler, VCR/object adapters | Production Deployment mutation, normal requester Tasks |
-| Integrations | Clients, Publications, endpoint metadata, webhook deliveries, quotas and external invocation contracts | Task submission port, signing/secret broker, delivery transport | Copilot impersonation, task outcomes, business approval decisions |
+| Sessions | Sessions, fixed membership, Messages, Runs, requester commands, sequential Run queue, content projections | Agent deployment resolver, Attachment binder, scheduler port, event appender | Approval decisions, runner connection lifecycle, object bytes |
+| Actions and Approvals | Durable actions, Policy decision binding, approval requests/decisions, execution permits, external business-approval wait references and callback transitions | Sessions' Run facts, Policy evaluator, credential/tool gateway ports, callback authentication adapter | Business workflow decisions, generic Admin approval inbox |
+| Execution Events | Canonical Run and Session sequence allocation, semantic event append, content-segment index, cursor snapshots | Transaction manager, object metadata | Domain transition authority, raw token/PTY row-per-chunk storage |
+| Scheduler and Runner Sessions | Queue claims, runner registration, assignment, lease epoch, heartbeat, suspension/resume orchestration | Session/Run transition port, manifest compiler, runner RPC adapter | Run requester commands, Tool effects, Agent authoring |
+| Attachments and Artifacts | Upload declarations/grants, quarantine, scans, Attachment materialization broker, Artifact metadata, retention/tombstones | Object store, scanner, Session authorization facts, Runner Session transport | Session lifecycle, unrestricted object-store credentials |
+| Evaluations | Suites, Cases, immutable Suite Versions, Evaluation Runs, fixtures, scores, gates | Agent snapshots, scheduler, VCR/object adapters | Production Deployment mutation, normal employee Sessions |
+| Integrations | Clients, Publications, outbound endpoints, inbound owner-bound Triggers, occurrence receipts, quotas and external invocation contracts | Session submission port, signing/secret broker, delivery transport | Copilot impersonation, Run outcomes, business approval decisions |
 | Platform | Provider/route metadata, Runner Pools, credential references, classifications, limits, environment profiles, composed Settings | Health and secret-store adapters, Policy validation | Secret values, domain-specific Policy/Integration mutation |
 | Audit | Canonical immutable Audit projection, integrity checkpoints and exports | Committed domain/audit envelopes, object storage, signing | Alternate resource timelines, mutation authorization |
 | Retention | Retention plans, Legal Holds, deletion jobs and tombstones | Resource ownership registry, object storage, Audit | Immediate blind deletes, ownership of source resources |
@@ -139,7 +139,7 @@ Every durable command runs through one transaction envelope:
 1. Claim or load the idempotency record.
 2. Load the authorized aggregate and expected revision.
 3. Evaluate domain transition rules using immutable input snapshots.
-4. Persist state and append semantic Task/Run and Audit envelopes.
+4. Persist state and append semantic Session/Run and Audit envelopes.
 5. Insert outbox work needed after commit.
 6. Store the canonical command result and commit.
 
@@ -152,15 +152,25 @@ Audit path, not a resource transaction.
 
 | Command | One transaction contains |
 | --- | --- |
-| Submit Copilot Task | Idempotency, Deployment snapshot, Attachment bindings, Task, initial Message, Run 1, Task/Run events, Audit, scheduling outbox |
-| Append requester Message | Idempotency, Task conversation CAS, input-required outcome check, Message, new Run, Task/Run events, Audit, scheduling outbox |
+| Create Copilot Session | Idempotency, Deployment snapshot, Attachment bindings, Session and owner membership, initial Message, first queued Run/requester, principal/Workspace recent-use update, Session/Run events, Audit, scheduling outbox |
+| Create Enterprise Session | Idempotency, client/Publication/verified-subject checks, owner/requester binding, input contract, Session, first queued Run, events, Audit, scheduling outbox |
+| Append Session instruction | Idempotency, Session conversation CAS, membership and Agent `execute` checks, Message, requester-bound queued Run, Session/Run events, Audit, scheduling outbox |
+| Change Session membership | Idempotency, Session ETag, owner command, Workspace/data-policy checks, membership row, Session event, Audit |
 | Cancel Run | Idempotency, Run/action/permit CAS, cancel state, lease fencing when required, events, Audit, cancellation outbox |
-| Retry Task | Idempotency, eligibility check, selected immutable Revision snapshot, new Run, Task state, events, Audit, scheduling outbox |
-| Decide approval | Idempotency, approval revision CAS, decision append, exact action transition, Task/Run events, Audit, resume outbox |
+| Retry Run | Idempotency, eligibility and contributor checks, selected immutable Revision snapshot, new queued Run/requester, Session/Run events, Audit, scheduling outbox |
+| Decide approval | Idempotency, Run requester and approval revision CAS, decision append, exact action transition, Session/Run events, Audit, resume outbox |
 | Claim action execution | Action CAS from `ready` to `executing`, current Run and lease checks, single-use permit, event, Audit |
-| Commit semantic runner event | Runner-session/client-sequence dedupe, canonical Run sequence, state transition if applicable, Task sequence/projection, outbox |
+| Start external business-approval wait | Consumed action permit, typed pending Tool result, external wait, action/Run suspension CAS, events, Audit, expiry outbox |
+| Resolve external business-approval wait | Callback idempotency, signature profile and digest binding, wait CAS, structured Tool result, events, Audit, same-Run resume outbox |
+| Commit semantic runner event | Runner-session/client-sequence dedupe, canonical Run sequence, state transition if applicable, Session sequence/projection, outbox |
+| Create owner-bound Trigger | Idempotency, owner/Agent execute and active Production Deployment checks, optional bound-Session validation, published input-contract snapshot, Trigger and secret reference or schedule state, Audit |
+| Update Trigger | Owner and ETag checks, immutable Agent/kind validation, bound-Session validation, schedule-revision/next-planned update when applicable, Audit |
+| Rotate Webhook Trigger secret | Idempotency, owner/kind checks, atomic new key-version activation and previous-version retirement, redacted replay result, Audit; raw secret is returned once and never persisted in the command result or Audit |
+| Accept Trigger occurrence | Current-key transport authentication, existing occurrence/digest resolution, or when absent Trigger/schema/owner/quota checks followed by occurrence claim, new or bound Session resolution, Message, queued Run/requester, canonical receipt, Session/Run events, Audit, outbox |
+| Materialize scheduled occurrence | Trigger/schedule-revision and next-planned CAS, owner/current-authority checks, stable occurrence ID, new or bound Session resolution, Message, queued Run/requester, canonical receipt, advanced next-planned instant, events, Audit, outbox |
 | Publish immutable config | Draft ETag check, immutable Version/Revision, validation evidence, message, Audit; activation is separate |
 | Bind/activate config | Exact immutable identity/digest, scope compatibility, binding CAS, Audit, invalidation outbox |
+| Set Copilot favorite | Idempotency, authorized Agent/Workspace check, requester preference row, Audit |
 
 No external network or object-store call occurs inside these transactions.
 Where an external side effect is required, the transaction records intent and
@@ -170,13 +180,13 @@ an outbox/job performs it after commit.
 
 The domain owner decides whether a transition is legal. The Execution Events
 module supplies a transaction-scoped appender that allocates canonical
-sequences and writes typed envelopes. Current Task/Run state, requester-facing
+sequences and writes typed envelopes. Current Session/Run state, member-facing
 projection revision, semantic event, Audit envelope, and outbox entry commit
 together when they describe the same transition.
 
-Run sequence is strictly increasing per Run. Task sequence is strictly
+Run sequence is strictly increasing per Run. Session sequence is strictly
 increasing across employee-visible Messages, Run summaries, approvals, and
-Artifacts for one Task. Neither is a global ordering guarantee. Runner client
+Artifacts for one Session. Neither is a global ordering guarantee. Runner client
 sequence deduplicates delivery but is never exposed as canonical history.
 
 High-frequency output crosses an object-store boundary and therefore uses a
@@ -204,10 +214,21 @@ and expiry. Concurrent claims serialize on the unique namespace:
 - Deterministic validation or authorization failures may be retained for the
   retry window. Transient pre-transaction failures are not cached as success.
 
+Secret-bearing Trigger creation and rotation are the deliberate exception to
+byte-for-byte response replay. Their durable idempotency result contains only
+Trigger identity, key version, and command outcome. The first successful
+transport response receives the newly generated plaintext secret exactly once;
+later replay returns the same redacted result and cannot recover the secret.
+
 Browser command records survive normal client retry and deployment restart.
 Runner commands additionally key on runner session, Run ID, lease epoch, and
-client sequence. Webhook delivery idempotency is owned by Integrations and is
-separate from Task command idempotency.
+client sequence. Inbound Trigger occurrence idempotency is owned by Integrations
+and committed with Session Message and Run creation. Current-key transport
+authentication happens first. The transaction then returns an existing matching
+occurrence before evaluating current acceptance rules; only an absent occurrence
+performs Trigger-state, schema, owner-authority, and quota checks before the
+claim. A rejected new occurrence cannot reserve an event ID. Outbound webhook
+delivery idempotency remains a separate delivery concern.
 
 ## 8. Action Execution and Approval Linearization
 
@@ -219,9 +240,10 @@ and `action_digest`.
 proposed -> denied
 proposed -> awaiting_approval -> ready
 proposed ---------------------> ready
-ready -> executing -> succeeded | failed | unknown_outcome
+ready -> executing -> succeeded | failed | unknown_outcome | awaiting_external_approval
+awaiting_external_approval -> succeeded | failed | external_rejected | external_expired
 awaiting_approval -> rejected | expired | revoked | superseded
-ready | awaiting_approval -> canceled
+ready | awaiting_approval | awaiting_external_approval -> canceled
 ```
 
 Consuming the single-use execution permit is the linearization point. The
@@ -231,9 +253,12 @@ owner may report the outcome. Permit expiry after invocation creates
 `unknown_outcome`; it does not make a non-repeatable action eligible for replay.
 
 Approval decision only moves the exact action toward `ready`. Business workflow
-approval stays external and is represented, if needed, by a signed Tool result
-or external reference bound to the action digest. It does not use the Gantry
-approval request table or Copilot decision route.
+approval stays external. After the approved Tool call is claimed, a typed
+pending result may atomically create an external wait and suspend the same Run.
+A signed callback resolves the wait and enqueues the next Agent loop without
+replaying the call or restoring the consumed permit. It does not use the Gantry
+approval request table or Copilot decision route. See
+[External Business Approval Callback Contracts](external-business-approval-contracts.md).
 
 ## 9. Scheduler and Lease Fencing
 
@@ -281,9 +306,11 @@ Domain owners define retry policy:
 
 | Work | Owner | Completion effect |
 | --- | --- | --- |
-| Runner provisioning/cleanup | Scheduler | Run/lease transition through Tasks port |
-| Attachment/Artifact scan | Attachments and Artifacts | Scan state and Task event |
-| Webhook delivery/redelivery | Integrations | Delivery attempt only; never Task outcome |
+| Runner provisioning/cleanup | Scheduler | Run/lease transition through Sessions port |
+| Attachment/Artifact scan | Attachments and Artifacts | Scan state and Session event |
+| Outbound Webhook delivery/redelivery | Integrations | Delivery attempt only; never Run outcome |
+| Inbound Trigger occurrence recovery | Integrations | Resume the already committed occurrence outbox; never create a second Message or Run |
+| Scheduled Trigger due scan | Integrations | Materialize one due occurrence and advance the next planned instant; skip uncommitted past instants after recovery |
 | Evaluation execution/scoring | Evaluations | Evaluation Run and Gate projection |
 | Audit export/signing | Audit | Immutable export package and expiry |
 | Retention deletion/key destruction | Retention | Tombstone after hold and policy recheck |
@@ -312,7 +339,7 @@ keys, and finally writes a digest-preserving tombstone.
 
 Evaluation Runs use the same immutable Agent and Tool contracts but a distinct
 execution purpose and environment profile. They cannot silently route to
-Production credentials, live Tool endpoints, Copilot requester Tasks, or
+Production credentials, live Tool endpoints, employee Sessions/Runs, or
 Production Deployment state.
 
 An Evaluation manifest pins Suite Version, Case, Agent Revision, Policy
@@ -336,7 +363,7 @@ Webhook delivery uses an immutable event ID and signed payload. Each attempt
 records endpoint Version, payload digest, signature key reference, status,
 timing, and safe response summary. Delivery is at least once; receivers dedupe
 by event ID. Redelivery creates a new attempt for the same event and payload
-digest, not a new Task event. Delivery failure never changes a completed Task
+digest, not a new Session event. Delivery failure never changes a completed Run
 to failed.
 
 Secret rotation changes a reference/version and affects new signing or client
@@ -374,6 +401,9 @@ resume from durable checkpoints.
 - Outbox records remain until every required consumer checkpoint is durable.
 - Attachment/Artifact state is reconciled with object existence and digest.
 - Webhook attempts resume according to endpoint retry policy and deadline.
+- Scheduled Trigger recovery resumes committed occurrence outboxes but does not
+  backfill uncommitted planned instants that passed during downtime. The next
+  instant is recomputed from validated cron and IANA time-zone data.
 - Evaluation jobs resume from case/scorer checkpoints or fail explicitly when
   the environment is not reproducible.
 - Expired approvals are transitioned durably by a worker; read-time expiry may

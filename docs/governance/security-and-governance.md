@@ -17,7 +17,7 @@ fixtures, and production systems reachable through tools.
 | --- | --- |
 | Browser to public APIs | Browser input is untrusted; OAuth identity is verified server-side |
 | Copilot API to Admin API | Separate audiences and permissions; Copilot cannot call Admin resources |
-| Enterprise system to Agent Invocation API | Confidential client and optional delegated subject are independently verified |
+| Enterprise system to Agent Invocation API | Confidential client and required delegated subject are independently verified; only the subject becomes requester |
 | Control plane to runner | Runner is potentially compromised and receives least privilege |
 | Runner to LLM/API gateway | All requests are authenticated, authorized, limited, and audited |
 | Sandbox to network | Egress is denied unless explicitly mediated or allowed |
@@ -38,9 +38,9 @@ fixtures, and production systems reachable through tools.
   high-risk administrative and approval actions when the identity provider can
   express it.
 - Service accounts use scoped workload credentials, not shared user tokens.
-- Enterprise clients use OAuth client credentials for application authority or
-  token exchange for verified delegated-user authority. A user ID in request
-  JSON never establishes identity.
+- Enterprise clients use OAuth client credentials to authenticate transport and
+  token exchange for required delegated-user authority. A client credential or
+  user ID in request JSON never establishes Run requester identity.
 - Runner workloads use short-lived workload identity and mutual TLS.
 
 ## 4. Authorization Model
@@ -67,7 +67,8 @@ The matrix is additive to these baseline roles: a role preset never bypasses
 organization/Workspace scope, resource state, ETag checks, or action-time
 Policy.
 
-Copilot does not reuse this Admin matrix. Its requester-bound Task, Approval,
+Copilot does not reuse this Admin matrix. Its member-bound Session and
+requester-bound Run/Approval
 Attachment, Artifact, and event authorization rules are defined in
 [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md),
 including non-leaking direct reads and authorization inside list queries.
@@ -210,6 +211,9 @@ and emergency revocations are attributable audit events. An access manager
 cannot remove the last organization-authorized recovery path without a
 break-glass or owner-transfer procedure.
 
+The typed grant, owner-transfer, recovery, and persistence contract is defined
+in [Agent Access Contracts](../architecture/agent-access-contracts.md).
+
 ## 6. Credentials
 
 The runner and model never store durable enterprise or provider secrets.
@@ -334,7 +338,7 @@ approval. An agent action approval binds to an immutable action digest containin
 operation, canonical arguments, target, credential mode, policy version, and
 expiry. Changing any bound field invalidates the approval.
 
-When a human confirmation is required, the authenticated task requester is the
+When a human confirmation is required, the authenticated Run requester is the
 only eligible approver. Gantry does not route Agent action approvals to generic
 approver roles, groups, thresholds, or administrators. A published policy may
 allow or deny an action without human confirmation, but it cannot nominate a
@@ -346,9 +350,18 @@ the business process. Gantry stores an external approval reference and accepts
 only a signed, idempotent callback that is bound to the same action digest; the
 Gantry Admin application is not a universal business-approval inbox.
 
+The external wait begins only after the requester's exact Gantry action has
+been approved and its single-use execution permit has been consumed by the Tool
+gateway. A pending Tool result suspends the same Run with
+`external_business_approval`; a valid callback records the business outcome and
+resumes the next Agent loop. The callback never approves a Gantry action,
+replays the original Tool invocation, or reuses its permit. New effects require
+new action digests and current authorization. The full contract is in
+[External Business Approval Callback Contracts](../architecture/external-business-approval-contracts.md).
+
 Before executing an approved action, Gantry verifies that the run is still at
 the same pending action, the approval is unused and unexpired, the deciding
-identity is still the authenticated task requester, and current policy still
+identity is still the authenticated Run requester, and current policy still
 permits execution.
 
 An approval decision changes only the durable action state; it never calls the
@@ -366,7 +379,7 @@ reject it.
 
 Rejecting an Agent action or allowing its approval to expire denies only that
 immutable action digest. The Agent loop resumes with a structured
-`action_denied` or `approval_expired` result, and the task conversation remains
+`action_denied` or `approval_expired` result, and the Session conversation remains
 available for new requester input. The requester may tell the Agent how to
 revise the action or what to do next. Any later consequential action has a new
 digest and requires its own authorization and, when required, approval.
@@ -387,10 +400,15 @@ Audit and UI language must not label that action safely canceled without proof.
 Unknown outcomes have a bounded reconciliation deadline and fail the run with a
 distinct reason if proof cannot be obtained.
 
+Within Copilot, either the immutable Run requester or the current Session owner
+may issue cancellation. Session-owner cancellation is a restrictive control: it
+does not grant approval, Agent `execute`, retry, or Tool authority. Only the Run
+requester may approve the exact action digest.
+
 ## 11. Audit and Event Integrity
 
 Audit records cover authentication, authorization decisions, configuration
-changes, publication, task commands, model routes, tool calls, approvals,
+changes, publication, Session/Run commands, model routes, tool calls, approvals,
 operator terminal attachment, artifact access, exports, and emergency controls.
 
 The canonical Audit projection is cross-resource and append-only. Resource
@@ -463,7 +481,7 @@ fallback order.
 - Revoke workload identities and rotate signing keys.
 - Set global and workspace concurrency and budget limits.
 - Detect anomalous tool denial, egress denial, credential failure, output size,
-  approval, and task-volume patterns.
+  approval, and Run-volume patterns.
 - Run dependency, container, secret, and infrastructure-as-code scans in CI.
 - Produce an SBOM and sign release images and binaries.
 - Require tested backup restoration and key-recovery procedures before general
@@ -476,10 +494,20 @@ Before production pilot:
 - Prove Copilot tokens cannot call Admin APIs.
 - Prove enterprise client tokens cannot call Admin or browser Copilot APIs and
   cannot invoke agents not published to that client.
-- Prove an enterprise client cannot impersonate an employee through task input
+- Prove an enterprise client cannot impersonate an employee through Session input
   or switch a delegated token's subject.
 - Verify webhook signature, replay, destination, redelivery, and payload-
   minimization controls.
+- Verify scheduled Trigger cron and IANA time-zone validation, daylight-saving
+  gap/overlap behavior, skip-only misfire recovery, schedule-revision fencing,
+  and duplicate occurrence suppression.
+- Verify Webhook Trigger creation and rotation reveal each plaintext secret only
+  once, command replay returns no secret, rotation immediately invalidates the
+  previous key version, and no browser storage, logs, Audit, Session, Run, or
+  event payload retains it.
+- Prove invalid signatures, retired keys, schema failures, and other rejected
+  Webhook requests cannot claim or poison a `(trigger_id, event_id)` occurrence;
+  the same unaccepted event may succeed after correction with a current key.
 - Prove runner compromise cannot resolve stored credentials directly.
 - Prove default-deny egress blocks unauthorized destinations and redirects.
 - Exercise command-policy bypass attempts and filesystem escape attempts.

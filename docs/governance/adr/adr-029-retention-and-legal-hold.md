@@ -23,7 +23,7 @@ deletion and key destruction for matching content and evidence. Hold creation,
 release, and blocked deletion are attributable Audit events.
 
 Hold selectors are bounded typed expressions over scope, resource identifiers,
-Task/Run/Artifact identifiers, classification, and time range. They are frozen
+Session/Run/Artifact identifiers, classification, and time range. They are frozen
 when activated. A match preview is an evidence snapshot, while active Holds are
 re-evaluated for newly matching data and again at deletion execution; arbitrary
 SQL selectors are not supported.

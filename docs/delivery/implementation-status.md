@@ -100,7 +100,10 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   only for development. The production LLM gateway, credential mediation,
   budgets, route policy, and provider governance are not complete.
 - **Authorization:** Workspace membership and initial Admin roles exist. The
-  full resource-role model, group assignment, policy intersection, and
+  Agent ACL typed resource, subject model, owner transfer, collection/grant
+  concurrency, recovery invariant, and policy intersection are now documented
+  in [Agent Access Contracts](../architecture/agent-access-contracts.md); the
+  Admin routes, persistence, group/service-identity resolution, and complete
   revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
   Requester-visible reads expire elapsed approvals and open Task follow-up input;
@@ -110,16 +113,19 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   revocation, and general tool-gateway execution remain incomplete.
 - **Artifacts, attachments, and streams:** Output upload, storage, download,
   requester attachment quarantine/binding, live events, and content segments
-  exist. The private Runner contract does not yet define a scoped attachment
-  materialization/read path, so bound input files are not consumable by an Agent
-  until that contract exists. Production malware scanning, preview isolation,
+  exist. The target Runner Attachment contract now defines a scoped brokered
+  materialization/read path, but its protobuf extension, broker, persistence,
+  and sandbox implementation are not complete, so bound input files remain
+  unavailable to an Agent. Production malware scanning, preview isolation,
   retention, compaction, backpressure evidence, and object-store failure
   handling remain.
 - **Copilot Agent projection:** Search/category filters and published owner
-  projection exist. Typical input/output, data classification, action
-  disclosure, publication-specific availability restriction, favorites, and
-  recent-use persistence remain unimplemented because their Revision,
-  Deployment, and requester-owned data contracts have not yet been defined.
+  projection exist. The target contract now defines Revision-frozen typical
+  input/output metadata and disclosures, Deployment-bound availability, and
+  Workspace-scoped principal favorites/recent use (eight successful Session
+  creations). The projection fields, preference persistence, and favorite
+  route are not implemented yet.
+
 - **Scheduling and isolation:** Runner registration, assignment, leases,
   cancellation, and runner-loss handling exist. Production runner pools,
   Kubernetes Jobs, gVisor, network enforcement, resource accounting, and
@@ -159,6 +165,16 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 
 ### Designed, Not Yet Implemented
 
+- **Session collaboration and Run requester model:** ADR-037 replaces the target
+  Task-as-conversation aggregate with personal, shared, and channel-bound
+  Sessions; fixed owner/contributor/viewer membership; one executing Run with an
+  ordered queue; and Run-scoped requester approvals. Trigger configuration may
+  create a new Session or bind one exact owner-owned Session, with occurrence
+  idempotency committed before queueing. None of this Session API, membership,
+  channel binding, Trigger binding, or queue migration is implemented. The
+  checked-in `/tasks` OpenAPI, handlers, persistence, generated clients, and UI
+  remain the current pre-ADR-037 product slice and must migrate together without
+  a permanent compatibility layer.
 - Package-content ingestion and inspection, Plugin asset expansion, Tool Server
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
@@ -181,18 +197,37 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   production authorization/health projections. Model Provider/Route, Runner Pool/Runner, Limit Policy,
   Environment Profile, and composed Settings management are implemented only as
   a partial Admin metadata slice.
-- A scoped Runner attachment-read/materialization contract, including what
-  immutable metadata and short-lived reference a Runner receives after the
-  requester-bound attachment lifecycle completes.
-- Published Copilot Agent metadata and personal-use preferences: revision-bound
-  input/output and disclosures, deployment-bound availability restriction, and
-  requester-bound favorites/recent use. The product design names these fields,
-  but does not yet define their Admin authoring, publication, or persistence
-  contract.
+- The scoped Runner attachment-read/materialization contract is documented in
+  [Runner Attachment Contracts](../architecture/runner-attachment-contracts.md):
+  immutable Run input snapshots, opaque lease-bound references, brokered
+  streaming, digest verification, failure semantics, and recovery. The target
+  protobuf extension, broker implementation, persistence, and sandbox
+  materialization remain unimplemented.
+- Published Copilot Agent metadata and personal-use preferences are now defined
+  in [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md):
+  Admin Draft authoring, immutable Revision projection, Deployment-bound
+  availability, Workspace-scoped favorite/recent-use persistence, route
+  semantics, and acceptance tests. OpenAPI implementation, generated clients,
+  preference storage, and Admin authoring UI remain incomplete.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
-  usage projections, and delegated-user authority. Integration registration,
-  client metadata, publication, and endpoint metadata are implemented as a
-  partial Admin management slice.
+  usage projections, required delegated-user token exchange, and owner-bound
+  scheduled/Webhook triggers. Integration registration, client metadata,
+  publication, and endpoint metadata are implemented as a partial Admin
+  management slice; the current stored auth-mode model still permits the
+  superseded `application` value and is not evidence of target authority.
+- The typed target contract for the Enterprise Agent API and user-owned inbound
+  automation triggers is documented in
+  [Enterprise Agent API Contracts](../architecture/enterprise-agent-api-contracts.md).
+  Direct invocation now requires a verified delegated subject; unattended work
+  uses a human-owner-bound trigger. The OpenAPI source, generated client,
+  invocation handlers, trigger storage, schedule contract, and signed hook
+  worker are not yet implemented.
+- Tool-owned external business approval waits and callbacks are defined in
+  [External Business Approval Callback Contracts](../architecture/external-business-approval-contracts.md):
+  post-requester-approval Tool invocation, `suspended` same-Run wait, signed
+  callback, idempotency, expiry/cancellation races, and next-loop resume. The
+  Tool result schema, callback route, persistence, outbox worker, and runner
+  resume behavior are not implemented.
 - VCR replay, filesystem/database assertions, publication gates, trajectory
   export, and the durable evaluator worker. Evaluation Suite authoring and
   exact Run request persistence are implemented as a partial slice.
@@ -219,7 +254,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 ### Deferred
 
 - Multi-agent orchestration and visual DAG authoring.
-- General scheduled or event-triggered tasks.
+- Shared/multi-owner event subscriptions and arbitrary trigger delegation.
+  Owner-bound Webhook and scheduled Trigger contracts are designed, including
+  cron, time-zone, misfire, Session targeting, and idempotency semantics, but
+  neither Trigger execution path nor the Copilot `/triggers` management pages
+  are implemented.
 - SaaS multi-tenancy, SCIM, microVM runner pools, and a public marketplace.
 - Arbitrary process-memory restoration and unrestricted interactive remote
   shell access.
