@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Bot,
   FileCheck2,
@@ -11,24 +11,25 @@ import {
   PanelLeftOpen,
   Plus,
   X,
-} from 'lucide-react';
-import { IconButton, ThemeToggle } from '@gantry/design-system';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../auth/AuthProvider';
-import { useCopilotApi } from '../api/ApiProvider';
+} from "lucide-react";
+import { IconButton, ThemeToggle } from "@gantry/design-system";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "../auth/AuthProvider";
+import { useCopilotApi } from "../api/ApiProvider";
 
-const SIDEBAR_STORAGE_KEY = 'gantry_sidebar_collapsed';
+const SIDEBAR_STORAGE_KEY = "gantry_sidebar_collapsed";
 
 export function AppShell() {
   const { user, signOut } = useAuth();
   const api = useCopilotApi();
   const navigate = useNavigate();
   const location = useLocation();
-  const displayName = user?.profile.preferred_username ?? user?.profile.name ?? 'Copilot user';
+  const displayName =
+    user?.profile.preferred_username ?? user?.profile.name ?? "Copilot user";
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
     } catch {
       return false;
     }
@@ -46,14 +47,18 @@ export function AppShell() {
 
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
-  const isNewTaskActive = location.pathname === '/' || location.pathname === '';
-  const approvals = useQuery({ queryKey: ['approvals', 'shell'], queryFn: () => api.listApprovals(), refetchInterval: 30_000 });
+  const isNewTaskActive = location.pathname === "/" || location.pathname === "";
+  const approvals = useQuery({
+    queryKey: ["approvals", "shell"],
+    queryFn: () => api.listApprovals(),
+    refetchInterval: 30_000,
+  });
   const pendingApprovals = approvals.data?.items.length ?? 0;
 
   return (
     <div
-      className={`app-shell ${isCollapsed ? 'app-shell-collapsed' : ''} ${
-        isMobileOpen ? 'app-shell-mobile-open' : ''
+      className={`app-shell ${isCollapsed ? "app-shell-collapsed" : ""} ${
+        isMobileOpen ? "app-shell-mobile-open" : ""
       }`}
     >
       {/* Mobile Backdrop Overlay */}
@@ -65,20 +70,28 @@ export function AppShell() {
         />
       ) : null}
 
-      <aside className={`app-sidebar ${isCollapsed ? 'app-sidebar-collapsed' : ''}`}>
+      <aside
+        className={`app-sidebar ${isCollapsed ? "app-sidebar-collapsed" : ""}`}
+      >
         <div className="sidebar-header">
           <div className="brand-lockup">
             <div className="brand-mark" aria-hidden="true">
               <Bot size={18} strokeWidth={2.2} />
             </div>
-            {!isCollapsed ? <span className="brand-title">Gantry Copilot</span> : null}
+            {!isCollapsed ? (
+              <span className="brand-title">Gantry Copilot</span>
+            ) : null}
           </div>
           <IconButton
-            label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={toggleCollapse}
             className="sidebar-toggle-btn"
           >
-            {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {isCollapsed ? (
+              <PanelLeftOpen size={16} />
+            ) : (
+              <PanelLeftClose size={16} />
+            )}
           </IconButton>
         </div>
 
@@ -88,10 +101,10 @@ export function AppShell() {
             <button
               type="button"
               onClick={() => {
-                navigate('/');
+                navigate("/");
                 closeMobile();
               }}
-              className={`chatgpt-new-task-btn ${isNewTaskActive ? 'chatgpt-new-task-btn-active' : ''}`}
+              className={`chatgpt-new-task-btn ${isNewTaskActive ? "chatgpt-new-task-btn-active" : ""}`}
             >
               <div className="chatgpt-new-task-icon">
                 <Plus size={15} strokeWidth={2.5} />
@@ -102,11 +115,11 @@ export function AppShell() {
             <IconButton
               label="New task"
               onClick={() => {
-                navigate('/');
+                navigate("/");
                 closeMobile();
               }}
               className={`chatgpt-new-task-btn-collapsed ${
-                isNewTaskActive ? 'chatgpt-new-task-collapsed-active' : ''
+                isNewTaskActive ? "chatgpt-new-task-collapsed-active" : ""
               }`}
             >
               <Plus size={18} strokeWidth={2.5} />
@@ -124,10 +137,10 @@ export function AppShell() {
           <NavLink
             to="/agents"
             onClick={closeMobile}
-            title={isCollapsed ? 'Agents' : undefined}
+            title={isCollapsed ? "Agents" : undefined}
             className={({ isActive }) =>
-              `nav-link ${isActive ? 'nav-link-active' : ''} ${
-                isCollapsed ? 'nav-link-collapsed' : ''
+              `nav-link ${isActive ? "nav-link-active" : ""} ${
+                isCollapsed ? "nav-link-collapsed" : ""
               }`
             }
           >
@@ -138,10 +151,10 @@ export function AppShell() {
           <NavLink
             to="/tasks"
             onClick={closeMobile}
-            title={isCollapsed ? 'My tasks' : undefined}
+            title={isCollapsed ? "My tasks" : undefined}
             className={({ isActive }) =>
-              `nav-link ${isActive ? 'nav-link-active' : ''} ${
-                isCollapsed ? 'nav-link-collapsed' : ''
+              `nav-link ${isActive ? "nav-link-active" : ""} ${
+                isCollapsed ? "nav-link-collapsed" : ""
               }`
             }
           >
@@ -150,7 +163,9 @@ export function AppShell() {
           </NavLink>
 
           {!isCollapsed ? (
-            <span className="nav-section-label nav-section-spaced">Governance</span>
+            <span className="nav-section-label nav-section-spaced">
+              Governance
+            </span>
           ) : (
             <div className="nav-section-divider nav-section-spaced" />
           )}
@@ -158,29 +173,44 @@ export function AppShell() {
           <NavLink
             to="/approvals"
             onClick={closeMobile}
-            title={isCollapsed ? 'Approvals' : undefined}
+            title={isCollapsed ? "Approvals" : undefined}
             className={({ isActive }) =>
-              `nav-link ${isActive ? 'nav-link-active' : ''} ${
-                isCollapsed ? 'nav-link-collapsed' : ''
+              `nav-link ${isActive ? "nav-link-active" : ""} ${
+                isCollapsed ? "nav-link-collapsed" : ""
               }`
             }
           >
-            <FileCheck2 size={17} aria-hidden="true" className="nav-link-icon" />
+            <FileCheck2
+              size={17}
+              aria-hidden="true"
+              className="nav-link-icon"
+            />
             {!isCollapsed ? <span>Approvals</span> : null}
-            {pendingApprovals > 0 ? <span className="nav-count" aria-label={`${pendingApprovals} pending approvals`}>{pendingApprovals > 99 ? '99+' : pendingApprovals}</span> : null}
+            {pendingApprovals > 0 ? (
+              <span
+                className="nav-count"
+                aria-label={`${pendingApprovals} pending approvals`}
+              >
+                {pendingApprovals > 99 ? "99+" : pendingApprovals}
+              </span>
+            ) : null}
           </NavLink>
 
           <NavLink
             to="/artifacts"
             onClick={closeMobile}
-            title={isCollapsed ? 'Artifacts' : undefined}
+            title={isCollapsed ? "Artifacts" : undefined}
             className={({ isActive }) =>
-              `nav-link ${isActive ? 'nav-link-active' : ''} ${
-                isCollapsed ? 'nav-link-collapsed' : ''
+              `nav-link ${isActive ? "nav-link-active" : ""} ${
+                isCollapsed ? "nav-link-collapsed" : ""
               }`
             }
           >
-            <PackageOpen size={17} aria-hidden="true" className="nav-link-icon" />
+            <PackageOpen
+              size={17}
+              aria-hidden="true"
+              className="nav-link-icon"
+            />
             {!isCollapsed ? <span>Artifacts</span> : null}
           </NavLink>
         </nav>
@@ -202,7 +232,9 @@ export function AppShell() {
               <span className="profile-avatar" aria-hidden="true">
                 {displayName.slice(0, 1).toUpperCase()}
               </span>
-              {!isCollapsed ? <span className="profile-name">{displayName}</span> : null}
+              {!isCollapsed ? (
+                <span className="profile-name">{displayName}</span>
+              ) : null}
             </div>
             <IconButton
               label="Sign out"
@@ -229,7 +261,7 @@ export function AppShell() {
             </div>
             <span className="brand-title">Gantry</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <ThemeToggle variant="icon" size="sm" />
             <IconButton label="Sign out" onClick={() => void signOut()}>
               <LogOut size={16} />

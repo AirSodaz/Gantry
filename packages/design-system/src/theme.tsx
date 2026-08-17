@@ -6,10 +6,10 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
+} from "react";
 
-export type ThemeMode = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
+export type ThemeMode = "light" | "dark" | "system";
+export type ResolvedTheme = "light" | "dark";
 
 export interface ThemeContextValue {
   mode: ThemeMode;
@@ -18,20 +18,23 @@ export interface ThemeContextValue {
   toggleTheme: () => void;
 }
 
-const STORAGE_KEY = 'gantry_theme_mode';
+const STORAGE_KEY = "gantry_theme_mode";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function getStoredMode(defaultMode: ThemeMode, key: string): ThemeMode {
-  if (typeof window === 'undefined') return defaultMode;
+  if (typeof window === "undefined") return defaultMode;
   try {
     const saved = window.localStorage.getItem(key);
-    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+    if (saved === "light" || saved === "dark" || saved === "system") {
       return saved;
     }
   } catch {
@@ -48,29 +51,35 @@ export interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultMode = 'system',
+  defaultMode = "system",
   storageKey = STORAGE_KEY,
 }: ThemeProviderProps) {
-  const [mode, setModeState] = useState<ThemeMode>(() => getStoredMode(defaultMode, storageKey));
+  const [mode, setModeState] = useState<ThemeMode>(() =>
+    getStoredMode(defaultMode, storageKey),
+  );
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    )
+      return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
+      setSystemTheme(e.matches ? "dark" : "light");
     };
 
     if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
+      mediaQuery.addEventListener("change", handler);
+      return () => mediaQuery.removeEventListener("change", handler);
     } else {
       mediaQuery.addListener(handler);
       return () => mediaQuery.removeListener(handler);
     }
   }, []);
 
-  const resolvedTheme: ResolvedTheme = mode === 'system' ? systemTheme : mode;
+  const resolvedTheme: ResolvedTheme = mode === "system" ? systemTheme : mode;
 
   const setMode = useCallback(
     (newMode: ThemeMode) => {
@@ -81,12 +90,12 @@ export function ThemeProvider({
         // Ignore localStorage error
       }
     },
-    [storageKey]
+    [storageKey],
   );
 
   const toggleTheme = useCallback(() => {
     setModeState((current) => {
-      const next = current === 'dark' ? 'light' : 'dark';
+      const next = current === "dark" ? "light" : "dark";
       try {
         window.localStorage.setItem(storageKey, next);
       } catch {
@@ -98,16 +107,16 @@ export function ThemeProvider({
 
   // Apply data-theme attribute and CSS classes to html/root
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === "undefined") return;
     const root = document.documentElement;
-    root.setAttribute('data-theme', resolvedTheme);
+    root.setAttribute("data-theme", resolvedTheme);
     root.style.colorScheme = resolvedTheme;
-    if (resolvedTheme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
+    if (resolvedTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
     } else {
-      root.classList.add('light');
-      root.classList.remove('dark');
+      root.classList.add("light");
+      root.classList.remove("dark");
     }
   }, [resolvedTheme]);
 
@@ -118,10 +127,12 @@ export function ThemeProvider({
       setMode,
       toggleTheme,
     }),
-    [mode, resolvedTheme, setMode, toggleTheme]
+    [mode, resolvedTheme, setMode, toggleTheme],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme(): ThemeContextValue {
@@ -129,8 +140,8 @@ export function useTheme(): ThemeContextValue {
   if (!context) {
     // Fallback if rendered outside ThemeProvider
     return {
-      mode: 'dark',
-      theme: 'dark',
+      mode: "dark",
+      theme: "dark",
       setMode: () => undefined,
       toggleTheme: () => undefined,
     };
@@ -140,71 +151,71 @@ export function useTheme(): ThemeContextValue {
 
 export interface ThemeToggleProps {
   className?: string;
-  variant?: 'icon' | 'segmented' | 'button';
-  size?: 'sm' | 'md';
+  variant?: "icon" | "segmented" | "button";
+  size?: "sm" | "md";
 }
 
 export function ThemeToggle({
-  className = '',
-  variant = 'icon',
-  size = 'md',
+  className = "",
+  variant = "icon",
+  size = "md",
 }: ThemeToggleProps) {
   const { mode, theme, setMode, toggleTheme } = useTheme();
 
-  if (variant === 'segmented') {
+  if (variant === "segmented") {
     return (
       <div
         role="radiogroup"
         aria-label="Theme selector"
-        className={`ds-theme-segmented ${size === 'sm' ? 'ds-theme-segmented-sm' : ''} ${className}`.trim()}
+        className={`ds-theme-segmented ${size === "sm" ? "ds-theme-segmented-sm" : ""} ${className}`.trim()}
       >
         <button
           type="button"
           role="radio"
-          aria-checked={mode === 'light'}
+          aria-checked={mode === "light"}
           title="Light theme"
-          onClick={() => setMode('light')}
-          className={`ds-theme-seg-btn ${mode === 'light' ? 'ds-theme-seg-active' : ''}`}
+          onClick={() => setMode("light")}
+          className={`ds-theme-seg-btn ${mode === "light" ? "ds-theme-seg-active" : ""}`}
         >
-          <SunIcon size={size === 'sm' ? 14 : 16} />
+          <SunIcon size={size === "sm" ? 14 : 16} />
           <span>Light</span>
         </button>
         <button
           type="button"
           role="radio"
-          aria-checked={mode === 'dark'}
+          aria-checked={mode === "dark"}
           title="Dark theme"
-          onClick={() => setMode('dark')}
-          className={`ds-theme-seg-btn ${mode === 'dark' ? 'ds-theme-seg-active' : ''}`}
+          onClick={() => setMode("dark")}
+          className={`ds-theme-seg-btn ${mode === "dark" ? "ds-theme-seg-active" : ""}`}
         >
-          <MoonIcon size={size === 'sm' ? 14 : 16} />
+          <MoonIcon size={size === "sm" ? 14 : 16} />
           <span>Dark</span>
         </button>
         <button
           type="button"
           role="radio"
-          aria-checked={mode === 'system'}
+          aria-checked={mode === "system"}
           title="System theme"
-          onClick={() => setMode('system')}
-          className={`ds-theme-seg-btn ${mode === 'system' ? 'ds-theme-seg-active' : ''}`}
+          onClick={() => setMode("system")}
+          className={`ds-theme-seg-btn ${mode === "system" ? "ds-theme-seg-active" : ""}`}
         >
-          <LaptopIcon size={size === 'sm' ? 14 : 16} />
+          <LaptopIcon size={size === "sm" ? 14 : 16} />
           <span>Auto</span>
         </button>
       </div>
     );
   }
 
-  if (variant === 'button') {
+  if (variant === "button") {
     return (
       <button
         type="button"
         onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        className={`ds-theme-toggle-btn ${size === 'sm' ? 'ds-theme-toggle-sm' : ''} ${className}`.trim()}
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        className={`ds-theme-toggle-btn ${size === "sm" ? "ds-theme-toggle-sm" : ""} ${className}`.trim()}
       >
-        {theme === 'dark' ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-        <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+        {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+        <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
       </button>
     );
   }
@@ -213,14 +224,14 @@ export function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (current: ${mode})`}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      className={`ds-icon-button ds-theme-icon-btn ${size === 'sm' ? 'ds-icon-button-sm' : ''} ${className}`.trim()}
+      title={`Switch to ${theme === "dark" ? "light" : "dark"} mode (current: ${mode})`}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      className={`ds-icon-button ds-theme-icon-btn ${size === "sm" ? "ds-icon-button-sm" : ""} ${className}`.trim()}
     >
-      {theme === 'dark' ? (
-        <SunIcon size={size === 'sm' ? 16 : 18} />
+      {theme === "dark" ? (
+        <SunIcon size={size === "sm" ? 16 : 18} />
       ) : (
-        <MoonIcon size={size === 'sm' ? 16 : 18} />
+        <MoonIcon size={size === "sm" ? 16 : 18} />
       )}
     </button>
   );

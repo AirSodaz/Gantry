@@ -1,57 +1,102 @@
-import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CheckCircle2, Clock, Filter, ListTodo, XCircle } from 'lucide-react';
-import { Button, Select, type SelectOption, StatusMark } from '@gantry/design-system';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCopilotApi } from '../../api/ApiProvider';
-import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
+import { useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+  Filter,
+  ListTodo,
+  XCircle,
+} from "lucide-react";
+import {
+  Button,
+  Select,
+  type SelectOption,
+  StatusMark,
+} from "@gantry/design-system";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useCopilotApi } from "../../api/ApiProvider";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "../../components/AsyncState";
 
 const STATUS_OPTIONS: SelectOption[] = [
-  { value: '', label: 'All statuses', icon: <Filter size={13} /> },
-  { value: 'queued', label: 'Queued', icon: <Clock size={13} /> },
-  { value: 'running', label: 'Running', icon: <Clock size={13} /> },
-  { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={13} /> },
-  { value: 'failed', label: 'Failed', icon: <XCircle size={13} /> },
-  { value: 'canceled', label: 'Canceled', icon: <XCircle size={13} /> },
-  { value: 'awaiting_approval', label: 'Awaiting approval', icon: <Clock size={13} /> },
-  { value: 'awaiting_requester_input', label: 'Needs input', icon: <Clock size={13} /> },
+  { value: "", label: "All statuses", icon: <Filter size={13} /> },
+  { value: "queued", label: "Queued", icon: <Clock size={13} /> },
+  { value: "running", label: "Running", icon: <Clock size={13} /> },
+  { value: "completed", label: "Completed", icon: <CheckCircle2 size={13} /> },
+  { value: "failed", label: "Failed", icon: <XCircle size={13} /> },
+  { value: "canceled", label: "Canceled", icon: <XCircle size={13} /> },
+  {
+    value: "awaiting_approval",
+    label: "Awaiting approval",
+    icon: <Clock size={13} />,
+  },
+  {
+    value: "awaiting_requester_input",
+    label: "Needs input",
+    icon: <Clock size={13} />,
+  },
 ];
 
 const ACTION_OPTIONS: SelectOption[] = [
-  { value: '', label: 'All requester actions' },
-  { value: 'approval', label: 'Approval needed' },
-  { value: 'input', label: 'Input needed' },
+  { value: "", label: "All requester actions" },
+  { value: "approval", label: "Approval needed" },
+  { value: "input", label: "Input needed" },
 ];
 
 const TIME_OPTIONS: SelectOption[] = [
-  { value: '', label: 'Any time' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
+  { value: "", label: "Any time" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
 ];
 
 export function MyTasksPage() {
   const api = useCopilotApi();
   const [params, setParams] = useSearchParams();
-  const status = params.get('status') ?? '';
-  const agentId = params.get('agent_id') ?? '';
-  const requesterAction = params.get('requester_action') ?? '';
-  const timeRange = params.get('time_range') ?? '';
+  const status = params.get("status") ?? "";
+  const agentId = params.get("agent_id") ?? "";
+  const requesterAction = params.get("requester_action") ?? "";
+  const timeRange = params.get("time_range") ?? "";
   const createdAfter = useMemo(() => rangeStart(timeRange), [timeRange]);
-  const agentsQuery = useQuery({ queryKey: ['agents', 'task-history'], queryFn: () => api.listAgents() });
-  const agentOptions = useMemo<SelectOption[]>(() => [
-    { value: '', label: 'All agents' },
-    ...(agentsQuery.data?.items ?? []).map((agent) => ({ value: agent.id, label: agent.display_name })),
-  ], [agentsQuery.data]);
-  const query = useInfiniteQuery({
-    queryKey: ['tasks', status, agentId, requesterAction, timeRange],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => api.listTasks({ status, agentId, requesterAction, createdAfter, cursor: pageParam }),
-		getNextPageParam: (page) => page.page_info?.has_more ? page.page_info.next_cursor : undefined,
+  const agentsQuery = useQuery({
+    queryKey: ["agents", "task-history"],
+    queryFn: () => api.listAgents(),
   });
-	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const setFilter = (key: 'status' | 'agent_id' | 'requester_action' | 'time_range', value: string) => {
+  const agentOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "All agents" },
+      ...(agentsQuery.data?.items ?? []).map((agent) => ({
+        value: agent.id,
+        label: agent.display_name,
+      })),
+    ],
+    [agentsQuery.data],
+  );
+  const query = useInfiniteQuery({
+    queryKey: ["tasks", status, agentId, requesterAction, timeRange],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      api.listTasks({
+        status,
+        agentId,
+        requesterAction,
+        createdAfter,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (page) =>
+      page.page_info?.has_more ? page.page_info.next_cursor : undefined,
+  });
+  const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const setFilter = (
+    key: "status" | "agent_id" | "requester_action" | "time_range",
+    value: string,
+  ) => {
     const next = new URLSearchParams(params);
-    if (value) next.set(key, value); else next.delete(key);
+    if (value) next.set(key, value);
+    else next.delete(key);
     setParams(next, { replace: true });
   };
 
@@ -69,12 +114,40 @@ export function MyTasksPage() {
             label="Status"
             options={STATUS_OPTIONS}
             value={status}
-            onChange={(value) => setFilter('status', value)}
+            onChange={(value) => setFilter("status", value)}
             placeholder="All statuses"
           />
-          <Select label="Agent" options={agentOptions} value={agentId} onChange={(value) => setFilter('agent_id', value)} placeholder="All agents" />
-          <Select label="Requester action" options={ACTION_OPTIONS} value={requesterAction} onChange={(value) => setFilter('requester_action', value)} placeholder="All requester actions" />
-          <Select label="Time" options={TIME_OPTIONS} value={timeRange} onChange={(value) => setFilter('time_range', value)} placeholder="Any time" />
+          <Select
+            label="Agent"
+            options={agentOptions}
+            value={agentId}
+            onChange={(value) => setFilter("agent_id", value)}
+            placeholder="All agents"
+          />
+          <Select
+            label="Requester action"
+            options={ACTION_OPTIONS}
+            value={requesterAction}
+            onChange={(value) => setFilter("requester_action", value)}
+            placeholder="All requester actions"
+          />
+          <Select
+            label="Time"
+            options={TIME_OPTIONS}
+            value={timeRange}
+            onChange={(value) => setFilter("time_range", value)}
+            placeholder="Any time"
+          />
+          {status || agentId || requesterAction || timeRange ? (
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={() => setParams({}, { replace: true })}
+              className="history-filter-clear"
+            >
+              Clear filters
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -82,7 +155,9 @@ export function MyTasksPage() {
       {query.isError ? (
         <ErrorState
           message={
-            query.error instanceof Error ? query.error.message : 'Your tasks could not be loaded.'
+            query.error instanceof Error
+              ? query.error.message
+              : "Your tasks could not be loaded."
           }
           onRetry={() => void query.refetch()}
         />
@@ -90,10 +165,28 @@ export function MyTasksPage() {
       {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
           title="No tasks yet"
-          detail={status || agentId || requesterAction || timeRange ? 'No tasks match the selected filters.' : 'Start with a new task when you are ready.'}
+          detail={
+            status || agentId || requesterAction || timeRange
+              ? "No tasks match the selected filters."
+              : "Start with a new task when you are ready."
+          }
+          action={
+            status || agentId || requesterAction || timeRange ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setParams({}, { replace: true })}
+              >
+                Reset filters
+              </Button>
+            ) : (
+              <Link className="ds-button ds-button-primary ds-button-sm" to="/">
+                Start a task
+              </Link>
+            )
+          }
         />
       ) : null}
-
       <div className="task-list" aria-label="My tasks">
         {items.map((task) => (
           <Link to={`/tasks/${task.id}`} className="task-row" key={task.id}>
@@ -102,40 +195,68 @@ export function MyTasksPage() {
             </span>
             <span className="task-row-copy">
               <strong>{task.agent_display_name ?? task.agent_id}</strong>
-					<span className="task-row-title">{task.title || 'Untitled request'}</span>
-					<span className="task-row-meta">{formatDate(task.updated_at ?? task.created_at)} · {requesterActionLabel(task.requester_action)} · {artifactAvailability(task.artifacts)}</span>
+              <span className="task-row-title">
+                {task.title || "Untitled request"}
+              </span>
+              <span className="task-row-meta">
+                {formatDate(task.updated_at ?? task.created_at)} ·{" "}
+                {requesterActionLabel(task.requester_action)} ·{" "}
+                {artifactAvailability(task.artifacts)}
+              </span>
             </span>
             <StatusMark status={task.status} />
-            <ArrowUpRight size={16} className="task-row-arrow" aria-hidden="true" />
+            <ArrowUpRight
+              size={16}
+              className="task-row-arrow"
+              aria-hidden="true"
+            />
           </Link>
         ))}
       </div>
-		{query.hasNextPage ? <div className="list-more"><Button variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading...' : 'Load more'}</Button></div> : null}
+      {query.hasNextPage ? (
+        <div className="list-more">
+          <Button
+            variant="secondary"
+            onClick={() => void query.fetchNextPage()}
+            disabled={query.isFetchingNextPage}
+          >
+            {query.isFetchingNextPage ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function rangeStart(range: string) {
-  if (range !== '7d' && range !== '30d') return undefined;
+  if (range !== "7d" && range !== "30d") return undefined;
   const date = new Date();
-  date.setDate(date.getDate() - (range === '7d' ? 7 : 30));
+  date.setDate(date.getDate() - (range === "7d" ? 7 : 30));
   return date.toISOString();
 }
 
 function formatDate(value?: string) {
-  if (!value) return 'Recently submitted';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(value)
-  );
+  if (!value) return "Recently submitted";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function requesterActionLabel(action?: string) {
-	if (action === 'approval') return 'Approval needed';
-	if (action === 'input') return 'Input needed';
-	return 'No action needed';
+  if (action === "approval") return "Approval needed";
+  if (action === "input") return "Input needed";
+  return "No action needed";
 }
 
-function artifactAvailability(artifacts?: Array<{ state?: string; scan_status?: string }>) {
-	if (!artifacts?.length) return 'No artifacts';
-	return artifacts.every((artifact) => artifact.state === 'available' && artifact.scan_status === 'passed') ? 'Artifacts ready' : 'Artifacts processing';
+function artifactAvailability(
+  artifacts?: Array<{ state?: string; scan_status?: string }>,
+) {
+  if (!artifacts?.length) return "No artifacts";
+  return artifacts.every(
+    (artifact) =>
+      artifact.state === "available" && artifact.scan_status === "passed",
+  )
+    ? "Artifacts ready"
+    : "Artifacts processing";
 }

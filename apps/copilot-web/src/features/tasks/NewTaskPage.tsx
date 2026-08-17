@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowUp,
   Bot,
@@ -10,34 +10,41 @@ import {
   ShieldAlert,
   Sparkles,
   Zap,
-} from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
-import { useCopilotApi } from '../../api/ApiProvider';
-import { AgentPicker } from '../catalog/AgentPicker';
-import type { Agent, SubmitTaskInput } from '../../api/types';
-import { AttachmentUploadControl, type AttachmentUploadState } from './AttachmentUploadControl';
-import { getSubmissionKey } from './submission';
+} from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useCopilotApi } from "../../api/ApiProvider";
+import { AgentPicker } from "../catalog/AgentPicker";
+import type { Agent, SubmitTaskInput } from "../../api/types";
+import {
+  AttachmentUploadControl,
+  type AttachmentUploadState,
+} from "./AttachmentUploadControl";
+import { getSubmissionKey } from "./submission";
 
 const STARTER_PROMPTS = [
   {
     icon: Sparkles,
-    title: 'Summarize feedback',
-    prompt: 'Summarize the latest customer feedback into three actionable themes.',
+    title: "Summarize feedback",
+    prompt:
+      "Summarize the latest customer feedback into three actionable themes.",
   },
   {
     icon: Zap,
-    title: 'Optimize performance',
-    prompt: 'Audit the execution pipeline and suggest optimizations to reduce latency.',
+    title: "Optimize performance",
+    prompt:
+      "Audit the execution pipeline and suggest optimizations to reduce latency.",
   },
   {
     icon: FileCode2,
-    title: 'Generate test matrix',
-    prompt: 'Generate an end-to-end test matrix covering edge cases and failover recovery.',
+    title: "Generate test matrix",
+    prompt:
+      "Generate an end-to-end test matrix covering edge cases and failover recovery.",
   },
   {
     icon: ShieldAlert,
-    title: 'Security review',
-    prompt: 'Review API boundaries and access controls for potential privilege escalation paths.',
+    title: "Security review",
+    prompt:
+      "Review API boundaries and access controls for potential privilege escalation paths.",
   },
 ];
 
@@ -46,20 +53,32 @@ export function NewTaskPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [holdOpen, setHoldOpen] = useState(false);
-  const [attachmentState, setAttachmentState] = useState<AttachmentUploadState>({ attachmentIDs: [], hasPending: false });
-  const pendingSubmission = useRef<{ key: string; signature: string } | null>(null);
-  const queryAgentId = new URLSearchParams(location.search).get('agent');
-  const onAttachmentsChange = useCallback((state: AttachmentUploadState) => setAttachmentState(state), []);
-
+  const [attachmentState, setAttachmentState] = useState<AttachmentUploadState>(
+    { attachmentIDs: [], hasPending: false },
+  );
+  const pendingSubmission = useRef<{ key: string; signature: string } | null>(
+    null,
+  );
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const queryAgentId = new URLSearchParams(location.search).get("agent");
+  const onAttachmentsChange = useCallback(
+    (state: AttachmentUploadState) => setAttachmentState(state),
+    [],
+  );
   const input = useMemo<SubmitTaskInput | null>(() => {
-    if (!selectedAgent || !message.trim() || attachmentState.hasPending) return null;
+    if (!selectedAgent || !message.trim() || attachmentState.hasPending)
+      return null;
     return {
       agent_id: selectedAgent.id,
       message: message.trim(),
-      ...(attachmentState.attachmentIDs.length ? { attachment_ids: attachmentState.attachmentIDs } : {}),
-      ...(import.meta.env.DEV && holdOpen ? { structured_input: { mode: 'await_cancel' } } : {}),
+      ...(attachmentState.attachmentIDs.length
+        ? { attachment_ids: attachmentState.attachmentIDs }
+        : {}),
+      ...(import.meta.env.DEV && holdOpen
+        ? { structured_input: { mode: "await_cancel" } }
+        : {}),
     };
   }, [attachmentState, holdOpen, message, selectedAgent]);
 
@@ -86,7 +105,7 @@ export function NewTaskPage() {
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       if (input && !mutation.isPending) {
         const nextKey = getSubmissionKey(input, pendingSubmission.current);
@@ -103,8 +122,8 @@ export function NewTaskPage() {
           <span className="eyebrow">Workspace</span>
           <h1>What would you like to accomplish?</h1>
           <p>
-            Choose an approved agent, describe the outcome, and Gantry will keep the run state
-            visible.
+            Choose an approved agent, describe the outcome, and Gantry will keep
+            the run state visible.
           </p>
         </div>
       </div>
@@ -112,7 +131,7 @@ export function NewTaskPage() {
       <div className="workbench-grid">
         <div className="composer-column">
           <AgentPicker
-            selectedId={selectedAgent?.id ?? queryAgentId ?? ''}
+            selectedId={selectedAgent?.id ?? queryAgentId ?? ""}
             onSelect={setSelectedAgent}
           />
 
@@ -124,6 +143,7 @@ export function NewTaskPage() {
               </label>
 
               <textarea
+                ref={textareaRef}
                 id="task-message"
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
@@ -131,7 +151,7 @@ export function NewTaskPage() {
                 placeholder={
                   selectedAgent
                     ? `Message ${selectedAgent.display_name}… (Ctrl+Enter to send)`
-                    : 'Select an agent above, then describe your task here…'
+                    : "Select an agent above, then describe your task here…"
                 }
                 rows={3}
                 className="chatgpt-prompt-textarea"
@@ -140,7 +160,10 @@ export function NewTaskPage() {
               {/* Bottom Action Bar inside Capsule */}
               <div className="chatgpt-prompt-toolbar">
                 <div className="chatgpt-prompt-meta">
-                  <AttachmentUploadControl disabled={mutation.isPending} onChange={onAttachmentsChange} />
+                  <AttachmentUploadControl
+                    disabled={mutation.isPending}
+                    onChange={onAttachmentsChange}
+                  />
                   {selectedAgent ? (
                     <div className="chatgpt-agent-chip">
                       <Bot size={13} strokeWidth={2.2} />
@@ -171,20 +194,22 @@ export function NewTaskPage() {
                     disabled={!input || mutation.isPending}
                     aria-label={
                       mutation.isPending
-                        ? 'Submitting task'
+                        ? "Submitting task"
                         : mutation.isError
-                        ? 'Retry submission'
-                        : 'Start task'
+                          ? "Retry submission"
+                          : "Start task"
                     }
                     title={
                       !selectedAgent
-                        ? 'Please select an agent first'
+                        ? "Please select an agent first"
                         : !message.trim()
-                        ? 'Please type a task message'
-                        : 'Start task (Ctrl+Enter)'
+                          ? "Please type a task message"
+                          : "Start task (Ctrl+Enter)"
                     }
                     className={`chatgpt-send-button ${
-                      input && !mutation.isPending ? 'chatgpt-send-button-active' : ''
+                      input && !mutation.isPending
+                        ? "chatgpt-send-button-active"
+                        : ""
                     }`}
                   >
                     {mutation.isPending ? (
@@ -198,10 +223,14 @@ export function NewTaskPage() {
             </div>
 
             {mutation.isError ? (
-              <p className="inline-error" role="alert" style={{ marginTop: '12px' }}>
+              <p
+                className="inline-error"
+                role="alert"
+                style={{ marginTop: "12px" }}
+              >
                 {mutation.error instanceof Error
                   ? mutation.error.message
-                  : 'The task could not be submitted.'}{' '}
+                  : "The task could not be submitted."}{" "}
                 Submit again to retry with the same idempotency key.
               </p>
             ) : null}
@@ -227,7 +256,10 @@ export function NewTaskPage() {
                     type="button"
                     key={`starter-${idx}`}
                     className="starter-prompt-card"
-                    onClick={() => setMessage(item.prompt)}
+                    onClick={() => {
+                      setMessage(item.prompt);
+                      textareaRef.current?.focus();
+                    }}
                   >
                     <div className="starter-prompt-icon">
                       <Icon size={16} />

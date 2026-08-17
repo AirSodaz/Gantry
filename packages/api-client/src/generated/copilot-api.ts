@@ -4,1172 +4,1204 @@
  */
 
 export interface paths {
-    "/agents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List agents published to the current user */
-        get: operations["listPublishedAgents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/agents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/attachments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a requester-owned attachment upload grant */
-        post: operations["createAttachment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List agents published to the current user */
+    get: operations["listPublishedAgents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/attachments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/attachments/{attachment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get requester-authorized attachment metadata and scan state */
-        get: operations["getAttachment"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Create a requester-owned attachment upload grant */
+    post: operations["createAttachment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/attachments/{attachment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/attachments/{attachment_id}/content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Upload attachment bytes with a short-lived grant */
-        put: operations["uploadAttachmentContent"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get requester-authorized attachment metadata and scan state */
+    get: operations["getAttachment"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/attachments/{attachment_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/attachments/{attachment_id}:complete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Validate and complete a quarantined attachment upload */
-        post: operations["completeAttachment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    /** Upload attachment bytes with a short-lived grant */
+    put: operations["uploadAttachmentContent"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/attachments/{attachment_id}:complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List tasks for the current user */
-        get: operations["listMyTasks"];
-        put?: never;
-        /** Submit a new task */
-        post: operations["submitTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Validate and complete a quarantined attachment upload */
+    post: operations["completeAttachment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get task details */
-        get: operations["getTask"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List tasks for the current user */
+    get: operations["listMyTasks"];
+    put?: never;
+    /** Submit a new task */
+    post: operations["submitTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}/messages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add requester input and start the next task run */
-        post: operations["appendTaskMessage"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get task details */
+    get: operations["getTask"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List compact run attempts for one task */
-        get: operations["listTaskRuns"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Add requester input and start the next task run */
+    post: operations["appendTaskMessage"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}/events:ticket": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a short-lived WebSocket event ticket */
-        post: operations["createTaskEventsTicket"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List compact run attempts for one task */
+    get: operations["listTaskRuns"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}/events:ticket": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}/runs/{run_id}:cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel a run */
-        post: operations["cancelRun"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Create a short-lived WebSocket event ticket */
+    post: operations["createTaskEventsTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}/runs/{run_id}:cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{task_id}:retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Retry a task */
-        post: operations["retryTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Cancel a run */
+    post: operations["cancelRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/tasks/{task_id}:retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/approvals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List approvals assigned to the current user */
-        get: operations["listMyApprovals"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Retry a task */
+    post: operations["retryTask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/approvals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/approvals/{approval_id}:decide": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Approve or reject an action */
-        post: operations["decideApproval"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List approvals assigned to the current user */
+    get: operations["listMyApprovals"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/approvals/{approval_id}:decide": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/approvals/{approval_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get requester-authorized approval detail and decision evidence */
-        get: operations["getApproval"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Approve or reject an action */
+    post: operations["decideApproval"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/approvals/{approval_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/artifacts/{artifact_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get artifact metadata */
-        get: operations["getArtifact"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get requester-authorized approval detail and decision evidence */
+    get: operations["getApproval"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/artifacts/{artifact_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/artifacts/{artifact_id}:download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Authorize and issue a short-lived artifact download reference */
-        post: operations["createArtifactDownloadGrant"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get artifact metadata */
+    get: operations["getArtifact"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/artifacts/{artifact_id}:download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/artifacts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List requester-scoped artifacts across tasks */
-        get: operations["listMyArtifacts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Authorize and issue a short-lived artifact download reference */
+    post: operations["createArtifactDownloadGrant"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/artifacts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** List requester-scoped artifacts across tasks */
+    get: operations["listMyArtifacts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        PageInfo: {
-            next_cursor?: string;
-            has_more: boolean;
-        };
-        /** Format: date-time */
-        Timestamp: string;
-        CopilotAgent: {
-            id: string;
-            display_name: string;
-            description: string;
-            category?: string;
-            owner_name?: string;
-            capability_summary?: string;
-            data_scope?: string;
-            is_favorite?: boolean;
-        };
-        CopilotAgentList: {
-            items: components["schemas"]["CopilotAgent"][];
-            page_info: components["schemas"]["PageInfo"];
-        };
-        SubmitTaskRequest: {
-            agent_id: string;
-            message?: string;
-            structured_input?: Record<string, never>;
-            attachment_ids?: string[];
-        };
-        TaskResponse: {
-            id: string;
-            requester_id: string;
-            agent_id: string;
-            agent_display_name?: string;
-            title?: string;
-            /** @enum {string} */
-            status: "queued" | "provisioning" | "running" | "awaiting_approval" | "awaiting_requester_input" | "suspended" | "canceling" | "completed" | "failed" | "canceled";
-            /** @enum {string} */
-            requester_action: "none" | "approval" | "input";
-            /** Format: int64 */
-            conversation_revision: number;
-            current_run?: components["schemas"]["RunStatus"];
-            artifacts?: components["schemas"]["ArtifactResponse"][];
-            messages?: components["schemas"]["TaskMessage"][];
-            created_at: components["schemas"]["Timestamp"];
-            updated_at: components["schemas"]["Timestamp"];
-        };
-        TaskMessage: {
-            id: string;
-            run_id?: string;
-            /** Format: int64 */
-            task_sequence: number;
-            /** @enum {string} */
-            role: "requester" | "agent" | "system_summary";
-            parts: (components["schemas"]["TextPart"] | components["schemas"]["ArtifactPart"] | components["schemas"]["ActionSummaryPart"] | components["schemas"]["StatusPart"])[];
-            created_at: components["schemas"]["Timestamp"];
-        };
-        TextPart: {
-            /** @enum {string} */
-            type: "text";
-            text: string;
-        };
-        ArtifactPart: {
-            /** @enum {string} */
-            type: "artifact";
-            artifact_id: string;
-            label: string;
-        };
-        ActionSummaryPart: {
-            /** @enum {string} */
-            type: "action_summary";
-            action_id: string;
-            summary: string;
-            state: string;
-        };
-        StatusPart: {
-            /** @enum {string} */
-            type: "status";
-            code: string;
-            message: string;
-        };
-        AppendTaskMessageRequest: {
-            message: string;
-            attachment_ids?: string[];
-        };
-        RunAttempt: {
-            id: string;
-            attempt_number: number;
-            status: string;
-            status_reason?: string;
-            created_at: components["schemas"]["Timestamp"];
-            started_at?: components["schemas"]["Timestamp"];
-            completed_at?: components["schemas"]["Timestamp"];
-        };
-        RunAttemptList: {
-            items: components["schemas"]["RunAttempt"][];
-            page_info: components["schemas"]["PageInfo"];
-        };
-        TaskList: {
-            items: components["schemas"]["TaskResponse"][];
-            page_info: components["schemas"]["PageInfo"];
-        };
-        RunStatus: {
-            id: string;
-            status: string;
-            status_reason?: string;
-        };
-        RetryTaskRequest: {
-            /** @enum {string} */
-            revision_selection: "original_revision" | "current_production_revision";
-        };
-        CopilotApproval: {
-            id: string;
-            run_id: string;
-            action_id: string;
-            action_digest: string;
-            /** Format: int64 */
-            approval_revision: number;
-            tool_name: string;
-            operation: string;
-            target?: string;
-            agent_display_name: string;
-            /** @description Human-readable action summary */
-            action_preview: {
-                tool_name?: string;
-                operation?: string;
-                target?: string;
-                effect?: string;
-                credential_mode?: string;
-            };
-            risk_class?: string;
-            /** @enum {string} */
-            status: "pending" | "satisfied" | "rejected" | "expired";
-            expires_at?: components["schemas"]["Timestamp"];
-            created_at?: components["schemas"]["Timestamp"];
-            task_id?: string;
-            effect?: string;
-            policy_version?: string;
-            latest_decision?: components["schemas"]["ApprovalDecisionEvidence"];
-        };
-        CopilotApprovalList: {
-            items: components["schemas"]["CopilotApproval"][];
-            page_info: components["schemas"]["PageInfo"];
-        };
-        ApprovalDecisionRequest: {
-            /** @enum {string} */
-            decision: "approve" | "reject";
-            reason?: string;
-            action_digest: string;
-            /** Format: int64 */
-            approval_revision: number;
-        };
-        ApprovalDecisionConflict: {
-            error: {
-                /** @enum {string} */
-                code: "action_changed" | "already_decided" | "approval_changed" | "approval_expired" | "idempotency_key_reused";
-                message: string;
-                current_resource: components["schemas"]["CopilotApproval"];
-            };
-        };
-        ApprovalDecisionEvidence: {
-            /** @enum {string} */
-            decision: "approve" | "reject";
-            reason?: string;
-            decided_by: string;
-            created_at: components["schemas"]["Timestamp"];
-        };
-        ArtifactResponse: {
-            id: string;
-            task_id: string;
-            run_id: string;
-            filename: string;
-            media_type: string;
-            /** Format: int64 */
-            size_bytes: number;
-            digest: string;
-            classification?: string;
-            /** @enum {string} */
-            state: "declared" | "uploaded" | "available" | "rejected";
-            /** @enum {string} */
-            scan_status: "pending" | "passed" | "failed";
-        };
-        ArtifactDownloadGrant: {
-            artifact_id: string;
-            /** Format: uri */
-            download_url: string;
-            expires_at: components["schemas"]["Timestamp"];
-        };
-        ArtifactList: {
-            items: components["schemas"]["ArtifactResponse"][];
-            page_info: components["schemas"]["PageInfo"];
-        };
-        CreateAttachmentRequest: {
-            filename: string;
-            media_type: string;
-            /** Format: int64 */
-            size_bytes: number;
-            /** @description SHA-256 digest in sha256:<hex> form */
-            digest: string;
-            classification?: string;
-        };
-        AttachmentResponse: {
-            id: string;
-            filename: string;
-            media_type: string;
-            /** Format: int64 */
-            size_bytes: number;
-            digest: string;
-            classification: string;
-            /** @enum {string} */
-            state: "declared" | "uploaded" | "available" | "rejected";
-            /** @enum {string} */
-            scan_status: "pending" | "passed" | "failed";
-            /** @description Short-lived request path for the content upload */
-            upload_url?: string;
-            /** @description Short-lived upload credential, returned only on creation */
-            upload_token?: string;
-            upload_expires_at?: components["schemas"]["Timestamp"];
-        };
-        TaskEventsTicket: {
-            ticket: string;
-            task_id: string;
-            /** Format: uri */
-            websocket_url: string;
-            expires_at: components["schemas"]["Timestamp"];
-        };
-        TaskEventsTicketRequest: {
-            last_cursor?: string;
-        };
-        TaskEventSnapshot: {
-            /** @enum {string} */
-            schema_version: "gantry.copilot.snapshot/v1";
-            task: components["schemas"]["TaskResponse"];
-            runs: components["schemas"]["RunAttempt"][];
-            approvals: components["schemas"]["CopilotApproval"][];
-            cursor: string;
-        };
-        TaskEventFrame: {
-            /** @enum {string} */
-            schema_version: "gantry.copilot.event/v1";
-            task_id: string;
-            run_id?: string | null;
-            /** Format: int64 */
-            task_sequence: number;
-            /** Format: int64 */
-            run_sequence?: number | null;
-            cursor: string;
-            event: components["schemas"]["MessageCommittedEvent"] | components["schemas"]["ContentSegmentEvent"] | components["schemas"]["RunStateChangedEvent"] | components["schemas"]["ApprovalChangedEvent"] | components["schemas"]["ArtifactChangedEvent"];
-        };
-        MessageCommittedEvent: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "message_committed";
-            message: components["schemas"]["TaskMessage"];
-        };
-        ContentSegmentEvent: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "content_segment";
-            message_id: string;
-            segment_index: number;
-            text: string;
-            final?: boolean;
-        };
-        RunStateChangedEvent: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "run_state_changed";
-            run: components["schemas"]["RunAttempt"];
-        };
-        ApprovalChangedEvent: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "approval_changed";
-            approval: components["schemas"]["CopilotApproval"];
-        };
-        ArtifactChangedEvent: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "artifact_changed";
-            artifact: components["schemas"]["ArtifactResponse"];
-        };
+  schemas: {
+    PageInfo: {
+      next_cursor?: string;
+      has_more: boolean;
     };
-    responses: never;
-    parameters: {
-        CursorParam: string;
-        LimitParam: number;
-        TaskIdParam: string;
-        AttachmentIdParam: string;
+    /** Format: date-time */
+    Timestamp: string;
+    CopilotAgent: {
+      id: string;
+      display_name: string;
+      description: string;
+      category?: string;
+      owner_name?: string;
+      capability_summary?: string;
+      data_scope?: string;
+      is_favorite?: boolean;
     };
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    CopilotAgentList: {
+      items: components["schemas"]["CopilotAgent"][];
+      page_info: components["schemas"]["PageInfo"];
+    };
+    SubmitTaskRequest: {
+      agent_id: string;
+      message?: string;
+      structured_input?: Record<string, never>;
+      attachment_ids?: string[];
+    };
+    TaskResponse: {
+      id: string;
+      requester_id: string;
+      agent_id: string;
+      agent_display_name?: string;
+      title?: string;
+      /** @enum {string} */
+      status:
+        | "queued"
+        | "provisioning"
+        | "running"
+        | "awaiting_approval"
+        | "awaiting_requester_input"
+        | "suspended"
+        | "canceling"
+        | "completed"
+        | "failed"
+        | "canceled";
+      /** @enum {string} */
+      requester_action: "none" | "approval" | "input";
+      /** Format: int64 */
+      conversation_revision: number;
+      current_run?: components["schemas"]["RunStatus"];
+      artifacts?: components["schemas"]["ArtifactResponse"][];
+      messages?: components["schemas"]["TaskMessage"][];
+      created_at: components["schemas"]["Timestamp"];
+      updated_at: components["schemas"]["Timestamp"];
+    };
+    TaskMessage: {
+      id: string;
+      run_id?: string;
+      /** Format: int64 */
+      task_sequence: number;
+      /** @enum {string} */
+      role: "requester" | "agent" | "system_summary";
+      parts: (
+        | components["schemas"]["TextPart"]
+        | components["schemas"]["ArtifactPart"]
+        | components["schemas"]["ActionSummaryPart"]
+        | components["schemas"]["StatusPart"]
+      )[];
+      created_at: components["schemas"]["Timestamp"];
+    };
+    TextPart: {
+      /** @enum {string} */
+      type: "text";
+      text: string;
+    };
+    ArtifactPart: {
+      /** @enum {string} */
+      type: "artifact";
+      artifact_id: string;
+      label: string;
+    };
+    ActionSummaryPart: {
+      /** @enum {string} */
+      type: "action_summary";
+      action_id: string;
+      summary: string;
+      state: string;
+    };
+    StatusPart: {
+      /** @enum {string} */
+      type: "status";
+      code: string;
+      message: string;
+    };
+    AppendTaskMessageRequest: {
+      message: string;
+      attachment_ids?: string[];
+    };
+    RunAttempt: {
+      id: string;
+      attempt_number: number;
+      status: string;
+      status_reason?: string;
+      created_at: components["schemas"]["Timestamp"];
+      started_at?: components["schemas"]["Timestamp"];
+      completed_at?: components["schemas"]["Timestamp"];
+    };
+    RunAttemptList: {
+      items: components["schemas"]["RunAttempt"][];
+      page_info: components["schemas"]["PageInfo"];
+    };
+    TaskList: {
+      items: components["schemas"]["TaskResponse"][];
+      page_info: components["schemas"]["PageInfo"];
+    };
+    RunStatus: {
+      id: string;
+      status: string;
+      status_reason?: string;
+    };
+    RetryTaskRequest: {
+      /** @enum {string} */
+      revision_selection: "original_revision" | "current_production_revision";
+    };
+    CopilotApproval: {
+      id: string;
+      run_id: string;
+      action_id: string;
+      action_digest: string;
+      /** Format: int64 */
+      approval_revision: number;
+      tool_name: string;
+      operation: string;
+      target?: string;
+      agent_display_name: string;
+      /** @description Human-readable action summary */
+      action_preview: {
+        tool_name?: string;
+        operation?: string;
+        target?: string;
+        effect?: string;
+        credential_mode?: string;
+      };
+      risk_class?: string;
+      /** @enum {string} */
+      status: "pending" | "satisfied" | "rejected" | "expired";
+      expires_at?: components["schemas"]["Timestamp"];
+      created_at?: components["schemas"]["Timestamp"];
+      task_id?: string;
+      effect?: string;
+      policy_version?: string;
+      latest_decision?: components["schemas"]["ApprovalDecisionEvidence"];
+    };
+    CopilotApprovalList: {
+      items: components["schemas"]["CopilotApproval"][];
+      page_info: components["schemas"]["PageInfo"];
+    };
+    ApprovalDecisionRequest: {
+      /** @enum {string} */
+      decision: "approve" | "reject";
+      reason?: string;
+      action_digest: string;
+      /** Format: int64 */
+      approval_revision: number;
+    };
+    ApprovalDecisionConflict: {
+      error: {
+        /** @enum {string} */
+        code:
+          | "action_changed"
+          | "already_decided"
+          | "approval_changed"
+          | "approval_expired"
+          | "idempotency_key_reused";
+        message: string;
+        current_resource: components["schemas"]["CopilotApproval"];
+      };
+    };
+    ApprovalDecisionEvidence: {
+      /** @enum {string} */
+      decision: "approve" | "reject";
+      reason?: string;
+      decided_by: string;
+      created_at: components["schemas"]["Timestamp"];
+    };
+    ArtifactResponse: {
+      id: string;
+      task_id: string;
+      run_id: string;
+      filename: string;
+      media_type: string;
+      /** Format: int64 */
+      size_bytes: number;
+      digest: string;
+      classification?: string;
+      /** @enum {string} */
+      state: "declared" | "uploaded" | "available" | "rejected";
+      /** @enum {string} */
+      scan_status: "pending" | "passed" | "failed";
+    };
+    ArtifactDownloadGrant: {
+      artifact_id: string;
+      /** Format: uri */
+      download_url: string;
+      expires_at: components["schemas"]["Timestamp"];
+    };
+    ArtifactList: {
+      items: components["schemas"]["ArtifactResponse"][];
+      page_info: components["schemas"]["PageInfo"];
+    };
+    CreateAttachmentRequest: {
+      filename: string;
+      media_type: string;
+      /** Format: int64 */
+      size_bytes: number;
+      /** @description SHA-256 digest in sha256:<hex> form */
+      digest: string;
+      classification?: string;
+    };
+    AttachmentResponse: {
+      id: string;
+      filename: string;
+      media_type: string;
+      /** Format: int64 */
+      size_bytes: number;
+      digest: string;
+      classification: string;
+      /** @enum {string} */
+      state: "declared" | "uploaded" | "available" | "rejected";
+      /** @enum {string} */
+      scan_status: "pending" | "passed" | "failed";
+      /** @description Short-lived request path for the content upload */
+      upload_url?: string;
+      /** @description Short-lived upload credential, returned only on creation */
+      upload_token?: string;
+      upload_expires_at?: components["schemas"]["Timestamp"];
+    };
+    TaskEventsTicket: {
+      ticket: string;
+      task_id: string;
+      /** Format: uri */
+      websocket_url: string;
+      expires_at: components["schemas"]["Timestamp"];
+    };
+    TaskEventsTicketRequest: {
+      last_cursor?: string;
+    };
+    TaskEventSnapshot: {
+      /** @enum {string} */
+      schema_version: "gantry.copilot.snapshot/v1";
+      task: components["schemas"]["TaskResponse"];
+      runs: components["schemas"]["RunAttempt"][];
+      approvals: components["schemas"]["CopilotApproval"][];
+      cursor: string;
+    };
+    TaskEventFrame: {
+      /** @enum {string} */
+      schema_version: "gantry.copilot.event/v1";
+      task_id: string;
+      run_id?: string | null;
+      /** Format: int64 */
+      task_sequence: number;
+      /** Format: int64 */
+      run_sequence?: number | null;
+      cursor: string;
+      event:
+        | components["schemas"]["MessageCommittedEvent"]
+        | components["schemas"]["ContentSegmentEvent"]
+        | components["schemas"]["RunStateChangedEvent"]
+        | components["schemas"]["ApprovalChangedEvent"]
+        | components["schemas"]["ArtifactChangedEvent"];
+    };
+    MessageCommittedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "message_committed";
+      message: components["schemas"]["TaskMessage"];
+    };
+    ContentSegmentEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "content_segment";
+      message_id: string;
+      segment_index: number;
+      text: string;
+      final?: boolean;
+    };
+    RunStateChangedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "run_state_changed";
+      run: components["schemas"]["RunAttempt"];
+    };
+    ApprovalChangedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "approval_changed";
+      approval: components["schemas"]["CopilotApproval"];
+    };
+    ArtifactChangedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      type: "artifact_changed";
+      artifact: components["schemas"]["ArtifactResponse"];
+    };
+  };
+  responses: never;
+  parameters: {
+    CursorParam: string;
+    LimitParam: number;
+    TaskIdParam: string;
+    AttachmentIdParam: string;
+  };
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    listPublishedAgents: {
-        parameters: {
-            query?: {
-                cursor?: components["parameters"]["CursorParam"];
-                limit?: components["parameters"]["LimitParam"];
-                category?: string;
-                search?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Published agents visible to the employee */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CopilotAgentList"];
-                };
-            };
-        };
+  listPublishedAgents: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+        category?: string;
+        search?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    createAttachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Published agents visible to the employee */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAttachmentRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["CopilotAgentList"];
         };
-        responses: {
-            /** @description Quarantined attachment with a short-lived upload grant */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttachmentResponse"];
-                };
-            };
-        };
+      };
     };
-    getAttachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                attachment_id: components["parameters"]["AttachmentIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Attachment metadata */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttachmentResponse"];
-                };
-            };
-        };
+  };
+  createAttachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    uploadAttachmentContent: {
-        parameters: {
-            query?: never;
-            header: {
-                "X-Gantry-Upload-Token": string;
-            };
-            path: {
-                attachment_id: components["parameters"]["AttachmentIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/octet-stream": string;
-            };
-        };
-        responses: {
-            /** @description Bytes stored in quarantine */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAttachmentRequest"];
+      };
     };
-    completeAttachment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                attachment_id: components["parameters"]["AttachmentIdParam"];
-            };
-            cookie?: never;
+    responses: {
+      /** @description Quarantined attachment with a short-lived upload grant */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Attachment state after validation */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttachmentResponse"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["AttachmentResponse"];
         };
+      };
     };
-    listMyTasks: {
-        parameters: {
-            query?: {
-                cursor?: components["parameters"]["CursorParam"];
-                limit?: components["parameters"]["LimitParam"];
-                status?: string;
-                agent_id?: string;
-                requester_action?: "approval" | "input";
-                created_after?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of user's tasks */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskList"];
-                };
-            };
-        };
+  };
+  getAttachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: components["parameters"]["AttachmentIdParam"];
+      };
+      cookie?: never;
     };
-    submitTask: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string;
-            };
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Attachment metadata */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubmitTaskRequest"];
-            };
+        content: {
+          "application/json": components["schemas"]["AttachmentResponse"];
         };
-        responses: {
-            /** @description Original task returned for an idempotent retry */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-            /** @description Task accepted */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-        };
+      };
     };
-    getTask: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Task details */
-            200: {
-                headers: {
-                    ETag: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-        };
+  };
+  uploadAttachmentContent: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Gantry-Upload-Token": string;
+      };
+      path: {
+        attachment_id: components["parameters"]["AttachmentIdParam"];
+      };
+      cookie?: never;
     };
-    appendTaskMessage: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string;
-                "If-Match": string;
-            };
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AppendTaskMessageRequest"];
-            };
-        };
-        responses: {
-            /** @description Original task returned for an idempotent retry */
-            200: {
-                headers: {
-                    ETag: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-            /** @description Follow-up accepted and next run queued */
-            201: {
-                headers: {
-                    ETag: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/octet-stream": string;
+      };
     };
-    listTaskRuns: {
-        parameters: {
-            query?: {
-                cursor?: components["parameters"]["CursorParam"];
-                limit?: components["parameters"]["LimitParam"];
-            };
-            header?: never;
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-            };
-            cookie?: never;
+    responses: {
+      /** @description Bytes stored in quarantine */
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Requester-authorized run attempt history */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RunAttemptList"];
-                };
-            };
-        };
+        content?: never;
+      };
     };
-    createTaskEventsTicket: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TaskEventsTicketRequest"];
-            };
-        };
-        responses: {
-            /** @description Short-lived ticket for the task event stream */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskEventsTicket"];
-                };
-            };
-            /** @description Task was not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
+  };
+  completeAttachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: components["parameters"]["AttachmentIdParam"];
+      };
+      cookie?: never;
     };
-    cancelRun: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string;
-            };
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-                run_id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Attachment state after validation */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Cancellation accepted or already terminal */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RunStatus"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["AttachmentResponse"];
         };
+      };
     };
-    retryTask: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string;
-                "If-Match": string;
-            };
-            path: {
-                task_id: components["parameters"]["TaskIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["RetryTaskRequest"];
-            };
-        };
-        responses: {
-            /** @description New run created */
-            201: {
-                headers: {
-                    ETag: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponse"];
-                };
-            };
-        };
+  };
+  listMyTasks: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+        status?: string;
+        agent_id?: string;
+        requester_action?: "approval" | "input";
+        created_after?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    listMyApprovals: {
-        parameters: {
-            query?: {
-                cursor?: components["parameters"]["CursorParam"];
-                limit?: components["parameters"]["LimitParam"];
-                state?: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description List of user's tasks */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Pending approvals */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CopilotApprovalList"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["TaskList"];
         };
+      };
     };
-    decideApproval: {
-        parameters: {
-            query?: never;
-            header: {
-                "Idempotency-Key": string;
-            };
-            path: {
-                approval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApprovalDecisionRequest"];
-            };
-        };
-        responses: {
-            /** @description Requester-authorized approval projection after the decision */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CopilotApproval"];
-                };
-            };
-            /** @description The current principal cannot decide this action */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Approval request was not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The approval is expired or already decided */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalDecisionConflict"];
-                };
-            };
-            /** @description The action digest is stale */
-            412: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalDecisionConflict"];
-                };
-            };
-        };
+  };
+  submitTask: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
     };
-    getApproval: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                approval_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Approval detail */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CopilotApproval"];
-                };
-            };
-            /** @description Approval request was not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubmitTaskRequest"];
+      };
     };
-    getArtifact: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                artifact_id: string;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Original task returned for an idempotent retry */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Artifact metadata */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ArtifactResponse"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
         };
+      };
+      /** @description Task accepted */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
+        };
+      };
     };
-    createArtifactDownloadGrant: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                artifact_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorized short-lived download reference */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ArtifactDownloadGrant"];
-                };
-            };
-            /** @description Artifact was not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Artifact is not available for download */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
+  };
+  getTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+      };
+      cookie?: never;
     };
-    listMyArtifacts: {
-        parameters: {
-            query?: {
-                cursor?: components["parameters"]["CursorParam"];
-                limit?: components["parameters"]["LimitParam"];
-                task_id?: string;
-                classification?: string;
-                state?: "declared" | "uploading" | "quarantined" | "available" | "rejected" | "expired" | "deleted";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Task details */
+      200: {
+        headers: {
+          ETag: string;
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Requester-scoped artifact list */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ArtifactList"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
         };
+      };
     };
+  };
+  appendTaskMessage: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+        "If-Match": string;
+      };
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AppendTaskMessageRequest"];
+      };
+    };
+    responses: {
+      /** @description Original task returned for an idempotent retry */
+      200: {
+        headers: {
+          ETag: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
+        };
+      };
+      /** @description Follow-up accepted and next run queued */
+      201: {
+        headers: {
+          ETag: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
+        };
+      };
+    };
+  };
+  listTaskRuns: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+      };
+      header?: never;
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Requester-authorized run attempt history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RunAttemptList"];
+        };
+      };
+    };
+  };
+  createTaskEventsTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["TaskEventsTicketRequest"];
+      };
+    };
+    responses: {
+      /** @description Short-lived ticket for the task event stream */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskEventsTicket"];
+        };
+      };
+      /** @description Task was not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  cancelRun: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancellation accepted or already terminal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RunStatus"];
+        };
+      };
+    };
+  };
+  retryTask: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+        "If-Match": string;
+      };
+      path: {
+        task_id: components["parameters"]["TaskIdParam"];
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RetryTaskRequest"];
+      };
+    };
+    responses: {
+      /** @description New run created */
+      201: {
+        headers: {
+          ETag: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskResponse"];
+        };
+      };
+    };
+  };
+  listMyApprovals: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+        state?: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pending approvals */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CopilotApprovalList"];
+        };
+      };
+    };
+  };
+  decideApproval: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        approval_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApprovalDecisionRequest"];
+      };
+    };
+    responses: {
+      /** @description Requester-authorized approval projection after the decision */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CopilotApproval"];
+        };
+      };
+      /** @description The current principal cannot decide this action */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Approval request was not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The approval is expired or already decided */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApprovalDecisionConflict"];
+        };
+      };
+      /** @description The action digest is stale */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApprovalDecisionConflict"];
+        };
+      };
+    };
+  };
+  getApproval: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        approval_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Approval detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CopilotApproval"];
+        };
+      };
+      /** @description Approval request was not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getArtifact: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        artifact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Artifact metadata */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ArtifactResponse"];
+        };
+      };
+    };
+  };
+  createArtifactDownloadGrant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        artifact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized short-lived download reference */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ArtifactDownloadGrant"];
+        };
+      };
+      /** @description Artifact was not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Artifact is not available for download */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listMyArtifacts: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+        task_id?: string;
+        classification?: string;
+        state?:
+          | "declared"
+          | "uploading"
+          | "quarantined"
+          | "available"
+          | "rejected"
+          | "expired"
+          | "deleted";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Requester-scoped artifact list */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ArtifactList"];
+        };
+      };
+    };
+  };
 }

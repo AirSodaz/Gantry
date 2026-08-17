@@ -1,11 +1,20 @@
-import { useDeferredValue, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Check, Search, Tag } from 'lucide-react';
-import { Button, Select, type SelectOption, TextInput } from '@gantry/design-system';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCopilotApi } from '../../api/ApiProvider';
-import type { Agent } from '../../api/types';
-import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
+import { useDeferredValue, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Check, Search, Tag } from "lucide-react";
+import {
+  Button,
+  Select,
+  type SelectOption,
+  TextInput,
+} from "@gantry/design-system";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useCopilotApi } from "../../api/ApiProvider";
+import type { Agent } from "../../api/types";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "../../components/AsyncState";
 
 export function AgentPicker({
   selectedId,
@@ -16,25 +25,28 @@ export function AgentPicker({
 }) {
   const api = useCopilotApi();
   const [params, setParams] = useSearchParams();
-  const search = params.get('search') ?? '';
-  const category = params.get('category') ?? '';
+  const search = params.get("search") ?? "";
+  const category = params.get("category") ?? "";
   const deferredSearch = useDeferredValue(search);
-  const setFilter = (key: 'search' | 'category', value: string) => {
+  const setFilter = (key: "search" | "category", value: string) => {
     const next = new URLSearchParams(params);
-    if (value) next.set(key, value); else next.delete(key);
+    if (value) next.set(key, value);
+    else next.delete(key);
     setParams(next, { replace: true });
   };
 
   const query = useInfiniteQuery({
-    queryKey: ['agents', deferredSearch, category],
-    initialPageParam: '',
-    queryFn: ({ pageParam }) => api.listAgents(deferredSearch, category, pageParam),
-		getNextPageParam: (page) => page.page_info?.has_more ? page.page_info.next_cursor : undefined,
+    queryKey: ["agents", deferredSearch, category],
+    initialPageParam: "",
+    queryFn: ({ pageParam }) =>
+      api.listAgents(deferredSearch, category, pageParam),
+    getNextPageParam: (page) =>
+      page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
-	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = query.data?.pages.flatMap((page) => page.items) ?? [];
 
   const categoriesQuery = useQuery({
-    queryKey: ['agent-categories'],
+    queryKey: ["agent-categories"],
     queryFn: () => api.listAgents(),
     staleTime: 60_000,
   });
@@ -49,12 +61,12 @@ export function AgentPicker({
       new Set(
         (categoriesQuery.data?.items ?? [])
           .map((agent) => agent.category)
-          .filter((cat): cat is string => Boolean(cat))
-      )
+          .filter((cat): cat is string => Boolean(cat)),
+      ),
     ).sort();
 
     return [
-      { value: '', label: 'All categories' },
+      { value: "", label: "All categories" },
       ...rawCategories.map((cat) => ({
         value: cat,
         label: cat,
@@ -77,7 +89,7 @@ export function AgentPicker({
         <TextInput
           label="Search agents"
           value={search}
-          onChange={(event) => setFilter('search', event.target.value)}
+          onChange={(event) => setFilter("search", event.target.value)}
           placeholder="Search by name or description"
           icon={<Search size={16} />}
         />
@@ -87,7 +99,7 @@ export function AgentPicker({
             label="Category"
             options={categoryOptions}
             value={category}
-            onChange={(value) => setFilter('category', value)}
+            onChange={(value) => setFilter("category", value)}
             placeholder="All categories"
           />
         </div>
@@ -97,13 +109,18 @@ export function AgentPicker({
       {query.isError ? (
         <ErrorState
           message={
-            query.error instanceof Error ? query.error.message : 'The agent catalog could not be loaded.'
+            query.error instanceof Error
+              ? query.error.message
+              : "The agent catalog could not be loaded."
           }
           onRetry={() => void query.refetch()}
         />
       ) : null}
       {!query.isLoading && !query.isError && items.length === 0 ? (
-        <EmptyState title="No matching agents" detail="Try another search term or clear category filter." />
+        <EmptyState
+          title="No matching agents"
+          detail="Try another search term or clear category filter."
+        />
       ) : null}
 
       <div className="agent-list">
@@ -113,7 +130,7 @@ export function AgentPicker({
             <button
               type="button"
               key={agent.id}
-              className={`agent-option ${isSelected ? 'agent-option-selected' : ''}`}
+              className={`agent-option ${isSelected ? "agent-option-selected" : ""}`}
               onClick={() => onSelect(agent)}
             >
               <span className="agent-symbol" aria-hidden="true">
@@ -122,16 +139,32 @@ export function AgentPicker({
               <span className="agent-option-copy">
                 <strong>{agent.display_name}</strong>
                 <span>{agent.description}</span>
-                {agent.owner_name ? <small>Owner: {agent.owner_name}</small> : null}
+                {agent.owner_name ? (
+                  <small>Owner: {agent.owner_name}</small>
+                ) : null}
               </span>
               {isSelected ? (
-                <Check size={18} className="agent-check-icon" aria-label="Selected" />
+                <Check
+                  size={18}
+                  className="agent-check-icon"
+                  aria-label="Selected"
+                />
               ) : null}
             </button>
           );
         })}
       </div>
-		{query.hasNextPage ? <div className="list-more"><Button variant="secondary" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading...' : 'Load more'}</Button></div> : null}
+      {query.hasNextPage ? (
+        <div className="list-more">
+          <Button
+            variant="secondary"
+            onClick={() => void query.fetchNextPage()}
+            disabled={query.isFetchingNextPage}
+          >
+            {query.isFetchingNextPage ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }
