@@ -202,19 +202,22 @@ export function PoliciesPage() {
                 <tr key={policy.id}>
                   <td>
                     <Link
-                      className="admin-inline-link"
+                      className="admin-table-link"
                       to={`/policies/${policy.id}`}
                     >
                       {policy.name}
                     </Link>
-                    <br />
-                    <span className="admin-muted">{policy.id}</span>
+                    <div className="admin-table-sub">
+                      <code>{policy.id}</code>
+                    </div>
                   </td>
                   <td>{policy.type}</td>
                   <td>{policy.workspace_id ?? "Organization"}</td>
                   <td>{policy.state}</td>
                   <td>{policy.active_binding_count}</td>
-                  <td>{policy.draft_etag}</td>
+                  <td>
+                    <code>{policy.draft_etag}</code>
+                  </td>
                 </tr>
               ))}
             </tbody>

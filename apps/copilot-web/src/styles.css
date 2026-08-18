@@ -29,10 +29,21 @@ select {
 
 button:focus-visible,
 a:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="radio"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-border-focus);
+}
+
 select:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--ds-brand-cyan);
-  outline-offset: 2px;
+input:focus-visible,
+textarea:focus-visible,
+.ds-input:focus,
+.ds-input:focus-visible {
+  outline: none;
+  border-color: var(--ds-border-focus);
+  box-shadow: 0 0 0 3px var(--ds-brand-glow);
 }
 a {
   color: inherit;
@@ -78,7 +89,7 @@ a {
     padding 220ms var(--ds-ease),
     background-color var(--ds-duration) var(--ds-ease),
     border-color var(--ds-duration) var(--ds-ease);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .app-sidebar-collapsed {
@@ -134,11 +145,18 @@ a {
 
 .sidebar-toggle-btn {
   color: var(--ds-text-muted);
+  outline: none;
+  border-radius: var(--ds-radius-pill);
 }
 
 .sidebar-toggle-btn:hover {
   color: var(--ds-text);
   background: var(--ds-surface-muted);
+}
+
+.sidebar-toggle-btn:focus-visible {
+  outline: 2px solid var(--ds-border-focus);
+  outline-offset: 1px;
 }
 
 /* New Session Action */
@@ -168,6 +186,11 @@ a {
 .chatgpt-new-session-btn:hover {
   background: var(--ds-surface-elevated);
   border-color: var(--ds-border-focus);
+}
+
+.chatgpt-new-session-btn:focus-visible {
+  outline: 2px solid var(--ds-border-focus);
+  outline-offset: 1px;
 }
 
 .chatgpt-new-session-btn:active {
@@ -225,6 +248,9 @@ a {
   margin-top: 6px;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 3px 4px;
+  margin-inline: -4px;
 }
 
 .nav-section-label {
@@ -270,13 +296,12 @@ a {
   color: var(--ds-text);
 }
 
-.nav-link-active {
-  background: var(--ds-surface-active);
-  color: var(--ds-text);
-  font-weight: 600;
-  border-color: var(--ds-border-subtle);
+.nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-border-focus);
+  border-radius: var(--ds-radius-sm);
+  z-index: 2;
 }
-
 .nav-link-collapsed {
   justify-content: center;
   padding: 0;
@@ -388,11 +413,18 @@ a {
 
 .signout-btn {
   color: var(--ds-text-muted);
+  outline: none;
+  border-radius: var(--ds-radius-pill);
 }
 
 .signout-btn:hover {
   color: var(--ds-danger);
   background: rgba(225, 29, 72, 0.1);
+}
+
+.signout-btn:focus-visible {
+  outline: 2px solid var(--ds-border-focus);
+  outline-offset: 1px;
 }
 
 /* ==========================================================================
@@ -546,26 +578,34 @@ a {
   border-radius: var(--ds-radius-sm);
   background: var(--ds-surface-muted);
 }
-
 .agent-collection-tabs button {
-  min-height: 30px;
+  min-height: 28px;
   border: 0;
   border-radius: calc(var(--ds-radius-sm) - 2px);
   background: transparent;
   color: var(--ds-text-muted);
   font: inherit;
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  outline: none;
+  transition: all var(--ds-duration) var(--ds-ease);
 }
 
-.agent-collection-tabs button:hover,
+.agent-collection-tabs button:hover {
+  color: var(--ds-text);
+}
+
 .agent-collection-tabs button:focus-visible {
   color: var(--ds-text);
+  box-shadow: 0 0 0 2px var(--ds-border-focus);
+  outline: none;
 }
 
 .agent-collection-tabs .agent-collection-tab-active {
-  background: var(--ds-surface-elevated);
+  background: var(--ds-surface);
   color: var(--ds-text);
+  font-weight: 600;
   box-shadow: var(--ds-shadow-sm);
 }
 
@@ -576,9 +616,10 @@ a {
   width: 100%;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius);
-  background: var(--ds-surface-elevated);
+  background: var(--ds-surface);
   padding-right: 10px;
   color: var(--ds-text);
+  box-shadow: var(--ds-shadow-sm);
   transition: all var(--ds-duration) var(--ds-ease);
 }
 
@@ -586,7 +627,7 @@ a {
   background: var(--ds-surface-muted);
   border-color: var(--ds-border-strong);
   transform: translateY(-1px);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow);
 }
 
 .agent-option:focus-within {
@@ -949,6 +990,12 @@ a {
   box-shadow: var(--ds-shadow-sm);
 }
 
+.starter-prompt-card:focus-visible {
+  outline: 2px solid var(--ds-border-focus);
+  outline-offset: -1px;
+  border-radius: var(--ds-radius);
+}
+
 .starter-prompt-icon {
   display: grid;
   place-items: center;
@@ -1087,7 +1134,7 @@ a {
 }
 
 .session-row:hover {
-  background: var(--ds-surface-elevated);
+  background: var(--ds-surface-muted);
   border-color: var(--ds-border-strong);
   transform: translateY(-1px);
   box-shadow: var(--ds-shadow-sm);
@@ -1150,11 +1197,18 @@ a {
   color: var(--ds-text-muted);
   font-size: 13px;
   font-weight: 600;
+  outline: none;
+  border-radius: 6px;
   transition: color var(--ds-duration) var(--ds-ease);
 }
 
 .back-link:hover {
   color: var(--ds-text);
+}
+
+.back-link:focus-visible {
+  outline: 2px solid var(--ds-border-focus);
+  outline-offset: 2px;
 }
 
 .session-workbench {
@@ -1350,8 +1404,10 @@ a {
 
 .follow-up-composer textarea:focus,
 .decision-form textarea:focus {
-  outline: 2px solid var(--ds-primary);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--ds-border-focus);
+  box-shadow: 0 0 0 3px var(--ds-brand-glow);
+  border-radius: var(--ds-radius-sm);
 }
 
 .run-attempts {
@@ -1626,8 +1682,8 @@ a {
   width: 34px;
   height: 34px;
   color: var(--ds-brand-cyan);
-  background: var(--ds-surface-elevated);
-  border: 1px solid var(--ds-border-subtle);
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border-strong);
   border-radius: var(--ds-radius-sm);
 }
 
@@ -1735,15 +1791,30 @@ a {
 .approval-session-link {
   flex: 0 0 auto;
   margin-right: 16px;
-  color: var(--ds-primary);
-  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-muted);
+  border: 1px solid var(--ds-border);
+  color: var(--ds-text);
+  font-size: 12px;
+  font-weight: 500;
   text-decoration: none;
+  outline: none;
+  transition: all var(--ds-duration) var(--ds-ease);
 }
 
 .approval-session-link:hover {
-  text-decoration: underline;
+  background: var(--ds-surface-active);
+  border-color: var(--ds-border-strong);
+  color: var(--ds-text);
+  text-decoration: none;
 }
 
+.approval-session-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-border-focus);
+  border-radius: var(--ds-radius-pill);
+}
 .approval-copy {
   display: grid;
   min-width: 0;

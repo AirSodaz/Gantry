@@ -376,6 +376,7 @@ export function Select({
   disabled = false,
   className = "",
   id,
+  ...props
 }: SelectProps) {
   const selectId =
     id ??
@@ -422,7 +423,14 @@ export function Select({
         disabled={disabled}
       >
         <RadixSelect.Trigger
-          aria-labelledby={label && selectId ? `${selectId}-label` : undefined}
+          aria-label={props["aria-label"] || (label ? undefined : placeholder)}
+          aria-labelledby={
+            props["aria-label"]
+              ? undefined
+              : label && selectId
+                ? `${selectId}-label`
+                : undefined
+          }
           className="ds-input ds-select-trigger"
         >
           <div className="ds-select-trigger-content">
@@ -804,7 +812,7 @@ export function Tabs({ tabs, activeId, onChange, className = "" }: TabsProps) {
       onValueChange={onChange}
       className={cn("ds-tabs", className)}
     >
-      <RadixTabs.List className="flex items-center gap-1">
+      <RadixTabs.List className="ds-tabs-list">
         {tabs.map((tab) => (
           <RadixTabs.Trigger key={tab.id} value={tab.id} className="ds-tab-btn">
             {tab.icon ? <span aria-hidden="true">{tab.icon}</span> : null}

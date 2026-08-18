@@ -176,21 +176,21 @@ function RunRow({ run }: { run: AdminRun }) {
   return (
     <tr>
       <td>
-        <Link className="admin-inline-link" to={`/runs/${run.id}`}>
-          {run.id}
+        <Link className="admin-table-chip" to={`/runs/${run.id}`}>
+          <code>{run.id}</code>
         </Link>
-        <br />
-        <span className="admin-muted">Session {run.session_id}</span>
+        <div className="admin-table-sub">Session {run.session_id}</div>
       </td>
       <td>
         <strong>{run.agent_name}</strong>
-        <br />
-        <Link
-          className="admin-inline-link"
-          to={`/agents/${run.agent_id}/revisions/${run.revision_hash}`}
-        >
-          {shortHash(run.revision_hash)}
-        </Link>
+        <div className="admin-table-sub">
+          <Link
+            className="admin-table-chip"
+            to={`/agents/${run.agent_id}/revisions/${run.revision_hash}`}
+          >
+            <code>{shortHash(run.revision_hash)}</code>
+          </Link>
+        </div>
       </td>
       <td>
         {run.deployment_name ? (

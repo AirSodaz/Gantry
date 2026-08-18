@@ -197,10 +197,10 @@ export function AgentVersionsPage() {
                   <tr key={item.revision_hash}>
                     <td>
                       <Link
-                        className="admin-inline-link"
+                        className="admin-table-chip"
                         to={`/agents/${agentId}/revisions/${item.revision_hash}`}
                       >
-                        {shortHash(item.revision_hash)}
+                        <code>{shortHash(item.revision_hash)}</code>
                       </Link>
                     </td>
                     <td>

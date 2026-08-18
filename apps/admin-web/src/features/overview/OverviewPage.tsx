@@ -125,12 +125,16 @@ export function OverviewPage() {
                 >
                   <AlertTriangle size={15} />
                 </span>
-                <div>
+                <div className="admin-overview-list-content">
                   <strong>{item.title}</strong>
                   <span>{item.description}</span>
                 </div>
-                <Link to={item.href} aria-label={`Open ${item.title}`}>
-                  <ArrowRight size={15} />
+                <Link
+                  to={item.href}
+                  className="admin-overview-action"
+                  aria-label={`Open ${item.title}`}
+                >
+                  <ArrowRight size={14} />
                 </Link>
               </li>
             ))}
@@ -192,7 +196,9 @@ export function OverviewPage() {
                   >
                     <strong>
                       {publication.agent_name}{" "}
-                      <span>{shortHash(publication.revision_hash)}</span>
+                      <span>
+                        <code>{shortHash(publication.revision_hash)}</code>
+                      </span>
                     </strong>
                     <span>{formatTime(publication.published_at)}</span>
                   </Link>

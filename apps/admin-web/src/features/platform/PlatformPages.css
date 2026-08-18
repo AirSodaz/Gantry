@@ -223,7 +223,7 @@
 
 .settings-studio-header {
   padding: 16px 20px;
-  background: var(--ds-surface-elevated);
+  background: var(--ds-surface-muted);
   border-bottom: 1px solid var(--ds-border-subtle);
   display: flex;
   align-items: center;
@@ -239,7 +239,7 @@
 
 .settings-studio-footer {
   padding: 14px 20px;
-  background: var(--ds-surface-elevated);
+  background: var(--ds-surface-muted);
   border-top: 1px solid var(--ds-border-subtle);
   display: flex;
   align-items: center;

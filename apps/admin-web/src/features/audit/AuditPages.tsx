@@ -244,33 +244,33 @@ function AuditRow({ event }: { event: AdminAuditEvent }) {
   return (
     <tr>
       <td>
-        <Link className="admin-inline-link" to={`/audit/events/${event.id}`}>
+        <Link className="admin-table-link" to={`/audit/events/${event.id}`}>
           {formatTime(event.created_at)}
         </Link>
       </td>
       <td>
         <strong>{event.actor_name}</strong>
-        <br />
-        <span className="admin-muted">{event.actor_id}</span>
+        <div className="admin-table-sub">
+          <code>{event.actor_id}</code>
+        </div>
       </td>
       <td>{event.event_type}</td>
       <td>
         <strong>{event.resource_type}</strong>
-        <br />
-        <span className="admin-muted">{event.resource_id}</span>
+        <div className="admin-table-sub">
+          <code>{event.resource_id}</code>
+        </div>
       </td>
       <td>{event.scope || "Organization"}</td>
       <td>{event.outcome || "Unrecorded"}</td>
       <td>{event.risk || "Unrecorded"}</td>
       <td>
         {event.run_id ? (
-          <Link className="admin-inline-link" to={`/runs/${event.run_id}`}>
-            Run {event.run_id}
+          <Link className="admin-table-chip" to={`/runs/${event.run_id}`}>
+            <code>Run {shortHash(event.run_id)}</code>
           </Link>
         ) : event.revision_hash ? (
-          <span className="admin-muted">
-            Revision {shortHash(event.revision_hash)}
-          </span>
+          <code>Revision {shortHash(event.revision_hash)}</code>
         ) : (
           <span className="admin-muted">Event detail</span>
         )}

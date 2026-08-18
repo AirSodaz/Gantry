@@ -11,7 +11,13 @@ import {
   TestTube2,
   TriangleAlert,
 } from "lucide-react";
-import { Button, shortHash, StatusMark } from "@gantry/design-system";
+import {
+  Button,
+  Select,
+  type SelectOption,
+  shortHash,
+  StatusMark,
+} from "@gantry/design-system";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAdminApi } from "../../api/ApiProvider";
@@ -26,6 +32,13 @@ const defaultSpec: AgentSpec = {
   checkpoint: { enabled: false },
   command_policy: { allow_shell: false },
 };
+
+const modelProviderOptions: SelectOption[] = [
+  { value: "scripted", label: "Scripted" },
+  { value: "openai", label: "OpenAI" },
+  { value: "openai-compatible", label: "OpenAI-compatible" },
+  { value: "anthropic", label: "Anthropic" },
+];
 
 export function AgentDetailPage() {
   const { agentId = "" } = useParams();
@@ -371,29 +384,21 @@ export function AgentDetailPage() {
           </label>
 
           <div className="admin-form-grid admin-model-fields">
-            <label className="admin-field">
-              <span className="admin-field-label">Model provider</span>
-              <select
-                className="ds-input"
-                value={spec.model.provider}
-                onChange={(event) =>
-                  setSpec((current) => ({
-                    ...current,
-                    model: {
-                      ...current.model,
-                      provider: event.target
-                        .value as AgentSpec["model"]["provider"],
-                    },
-                  }))
-                }
-                disabled={busy}
-              >
-                <option value="scripted">Scripted</option>
-                <option value="openai">OpenAI</option>
-                <option value="openai-compatible">OpenAI-compatible</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
-            </label>
+            <Select
+              label="Model provider"
+              options={modelProviderOptions}
+              value={spec.model.provider}
+              onChange={(value) =>
+                setSpec((current) => ({
+                  ...current,
+                  model: {
+                    ...current.model,
+                    provider: value as AgentSpec["model"]["provider"],
+                  },
+                }))
+              }
+              disabled={busy}
+            />
             <label className="admin-field">
               <span className="admin-field-label">Model</span>
               <input
