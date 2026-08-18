@@ -93,30 +93,29 @@ impl AgentExecutor {
     }
 
     pub fn assign(&mut self, assignment: &AssignRun) -> Vec<RunnerMessage> {
-        if self.active.is_some()
-            || assignment.run_id.is_empty()
-            || assignment.lease_epoch == 0
-            || assignment.manifest.is_empty()
-        {
+        if self.active.is_some() || assignment.run_id.is_empty() || assignment.lease_epoch == 0 {
             return Vec::new();
         }
+        if assignment.manifest.is_empty() {
+            return self.reject_assignment(assignment);
+        }
         let Ok(manifest) = serde_json::from_slice::<RunManifest>(&assignment.manifest) else {
-            return Vec::new();
+            return self.reject_assignment(assignment);
         };
         if manifest.kind != RUNNER_MANIFEST_KIND || manifest.validate().is_err() {
-            return Vec::new();
+            return self.reject_assignment(assignment);
         }
         let digest = RunManifest::digest_bytes(&assignment.manifest);
         if !assignment.manifest_digest.is_empty() && digest != assignment.manifest_digest {
-            return Vec::new();
+            return self.reject_assignment(assignment);
         }
         let Ok(tools) =
             WorkspaceTools::new(&manifest.workspace_root, manifest.limits.max_output_bytes)
         else {
-            return Vec::new();
+            return self.reject_assignment(assignment);
         };
         let Ok(model) = from_config(&manifest.model) else {
-            return Vec::new();
+            return self.reject_assignment(assignment);
         };
         let mut context = ContextState {
             branch: assignment.run_id.clone(),
@@ -124,10 +123,10 @@ impl AgentExecutor {
         };
         let checkpoint = if manifest.checkpoint.enabled {
             let Some(path) = manifest.checkpoint.path.clone() else {
-                return Vec::new();
+                return self.reject_assignment(assignment);
             };
             if !checkpoint_path_allowed(&manifest.workspace_root, &path) {
-                return Vec::new();
+                return self.reject_assignment(assignment);
             }
             let checkpoint_path = if std::path::Path::new(&path).is_absolute() {
                 path.clone()
@@ -138,12 +137,12 @@ impl AgentExecutor {
                     .into_owned()
             };
             let Ok(store) = CheckpointStore::from_env(checkpoint_path) else {
-                return Vec::new();
+                return self.reject_assignment(assignment);
             };
             match store.load(&assignment.run_id, assignment.lease_epoch, &manifest) {
                 Ok(Some(restored)) => context = restored,
                 Ok(None) => {}
-                Err(_) => return Vec::new(),
+                Err(_) => return self.reject_assignment(assignment),
             }
             Some(store)
         } else {
@@ -192,6 +191,17 @@ impl AgentExecutor {
             self.message(runner_message::Payload::ArtifactDeclaration(declaration))
         }));
         messages
+    }
+
+    fn reject_assignment(&mut self, assignment: &AssignRun) -> Vec<RunnerMessage> {
+        vec![
+            self.message(runner_message::Payload::RunFinished(RunFinished {
+                run_id: assignment.run_id.clone(),
+                lease_epoch: assignment.lease_epoch,
+                status: RunTerminalStatus::Failed as i32,
+                reason: "Runner could not prepare the assigned execution environment.".into(),
+            })),
+        ]
     }
 
     pub async fn upload_artifact(
@@ -563,6 +573,7 @@ impl AgentExecutor {
             return Vec::new();
         }
         run.waiting_for_approval = false;
+        let explicitly_rejected = resolution.decision == ApprovalDecisionType::Rejected as i32;
         let mut approved = resolution.decision == ApprovalDecisionType::Approved as i32;
         if approved {
             let valid = !resolution.action_id.is_empty()
@@ -605,11 +616,22 @@ impl AgentExecutor {
             self.active = Some(run);
             vec![event]
         } else {
+            let (status, reason) = if explicitly_rejected {
+                let reason = if resolution.reason.trim().is_empty() {
+                    "Action approval was not granted. Provide new instructions to continue."
+                        .to_string()
+                } else {
+                    resolution.reason.clone()
+                };
+                (RunTerminalStatus::Completed, reason)
+            } else {
+                (RunTerminalStatus::Failed, resolution.reason.clone())
+            };
             let finish = self.message(runner_message::Payload::RunFinished(RunFinished {
                 run_id,
                 lease_epoch: epoch,
-                status: RunTerminalStatus::Failed as i32,
-                reason: resolution.reason.clone(),
+                status: status as i32,
+                reason,
             }));
             vec![event, finish]
         }
@@ -1033,6 +1055,32 @@ mod tests {
         }
     }
 
+    fn shell_assignment() -> AssignRun {
+        let manifest = RunManifest {
+            kind: RUNNER_MANIFEST_KIND.into(),
+            model: ModelConfig::default(),
+            system_prompt: String::new(),
+            user_input: "shell echo approved".into(),
+            rules: Vec::new(),
+            tools: vec!["shell".into()],
+            workspace_root: ".".into(),
+            limits: ResourceLimits::default(),
+            checkpoint: CheckpointConfig::default(),
+            command_policy: CommandPolicy {
+                allow_shell: true,
+                ..Default::default()
+            },
+            artifacts: Vec::new(),
+        };
+        AssignRun {
+            run_id: "run-shell".into(),
+            lease_epoch: 1,
+            manifest: serde_json::to_vec(&manifest).unwrap(),
+            manifest_digest: manifest.digest().unwrap(),
+            assignment_expiry: None,
+        }
+    }
+
     #[tokio::test]
     async fn scripted_manifest_emits_model_event_and_finishes() {
         let mut executor = AgentExecutor::new("runner-1");
@@ -1046,6 +1094,27 @@ mod tests {
             message.payload,
             Some(runner_message::Payload::RunFinished(_))
         )));
+    }
+
+    #[test]
+    fn invalid_workspace_assignment_finishes_as_failed() {
+        let mut assignment = assignment("hello");
+        let mut manifest = serde_json::from_slice::<RunManifest>(&assignment.manifest).unwrap();
+        manifest.workspace_root = "gantry-missing-workspace".into();
+        assignment.manifest = serde_json::to_vec(&manifest).unwrap();
+        assignment.manifest_digest = manifest.digest().unwrap();
+
+        let messages = AgentExecutor::new("runner-1").assign(&assignment);
+        let finished = messages
+            .iter()
+            .find_map(|message| match message.payload.as_ref() {
+                Some(runner_message::Payload::RunFinished(finished)) => Some(finished),
+                _ => None,
+            })
+            .expect("invalid assignment must reach a terminal state");
+        assert_eq!(finished.run_id, "run-1");
+        assert_eq!(finished.lease_epoch, 1);
+        assert_eq!(finished.status, RunTerminalStatus::Failed as i32);
     }
 
     #[tokio::test]
@@ -1071,31 +1140,8 @@ mod tests {
 
     #[tokio::test]
     async fn approved_shell_action_is_executed_before_final_response() {
-        let manifest = RunManifest {
-            kind: RUNNER_MANIFEST_KIND.into(),
-            model: ModelConfig::default(),
-            system_prompt: String::new(),
-            user_input: "shell echo approved".into(),
-            rules: Vec::new(),
-            tools: vec!["shell".into()],
-            workspace_root: ".".into(),
-            limits: ResourceLimits::default(),
-            checkpoint: CheckpointConfig::default(),
-            command_policy: CommandPolicy {
-                allow_shell: true,
-                ..Default::default()
-            },
-            artifacts: Vec::new(),
-        };
-        let assignment = AssignRun {
-            run_id: "run-shell".into(),
-            lease_epoch: 1,
-            manifest: serde_json::to_vec(&manifest).unwrap(),
-            manifest_digest: manifest.digest().unwrap(),
-            assignment_expiry: None,
-        };
         let mut executor = AgentExecutor::new("runner-1");
-        assert_eq!(executor.assign(&assignment).len(), 1);
+        assert_eq!(executor.assign(&shell_assignment()).len(), 1);
         let proposed = executor.tick().await;
         assert!(proposed.iter().any(|message| {
             message.payload.as_ref().is_some_and(|payload| {
@@ -1193,6 +1239,76 @@ mod tests {
             message.payload,
             Some(runner_message::Payload::RunFinished(_))
         )));
+    }
+
+    #[tokio::test]
+    async fn rejected_action_completes_at_the_approval_boundary_for_requester_input() {
+        let mut executor = AgentExecutor::new("runner-1");
+        assert_eq!(executor.assign(&shell_assignment()).len(), 1);
+        let proposed = executor.tick().await;
+        assert!(proposed.iter().any(|message| matches!(
+            message.payload.as_ref(),
+            Some(runner_message::Payload::EventBatch(batch))
+                if batch.events.iter().any(|event| event.event_type == "action.proposed")
+        )));
+
+        let resolved = executor.resolve_approval(&ApprovalResolution {
+            run_id: "run-shell".into(),
+            approval_request_id: "approval-1".into(),
+            decision: ApprovalDecisionType::Rejected as i32,
+            reason: "Use a different target".into(),
+            lease_epoch: 1,
+            action_id: "action-1".into(),
+            call_id: "scripted-shell".into(),
+            permit_id: String::new(),
+            permit_expires_at: None,
+        });
+        assert!(resolved.iter().any(|message| matches!(
+            message.payload.as_ref(),
+            Some(runner_message::Payload::EventBatch(batch))
+                if batch.events.iter().any(|event| event.event_type == "action.rejected")
+        )));
+        let finished = resolved
+            .iter()
+            .find_map(|message| match message.payload.as_ref() {
+                Some(runner_message::Payload::RunFinished(finished)) => Some(finished),
+                _ => None,
+            })
+            .expect("rejected action finishes the Run");
+        assert_eq!(
+            finished.status,
+            RunTerminalStatus::Completed as i32,
+            "approval rejection is not a Run failure"
+        );
+        assert_eq!(finished.reason, "Use a different target");
+        assert!(executor.tick().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn invalid_approved_resolution_remains_a_run_failure() {
+        let mut executor = AgentExecutor::new("runner-1");
+        executor.assign(&shell_assignment());
+        executor.tick().await;
+
+        let resolved = executor.resolve_approval(&ApprovalResolution {
+            run_id: "run-shell".into(),
+            approval_request_id: "approval-1".into(),
+            decision: ApprovalDecisionType::Approved as i32,
+            reason: "missing execution permit".into(),
+            lease_epoch: 1,
+            action_id: "action-1".into(),
+            call_id: "scripted-shell".into(),
+            permit_id: String::new(),
+            permit_expires_at: None,
+        });
+        let finished = resolved
+            .iter()
+            .find_map(|message| match message.payload.as_ref() {
+                Some(runner_message::Payload::RunFinished(finished)) => Some(finished),
+                _ => None,
+            })
+            .expect("invalid approved resolution finishes the Run");
+        assert_eq!(finished.status, RunTerminalStatus::Failed as i32);
     }
 
     #[tokio::test]

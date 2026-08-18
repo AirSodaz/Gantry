@@ -48,7 +48,7 @@ const accessibleEvent = `
 					WHEN e.resource_type='agent_revision' THEN (SELECT a.workspace_id FROM gantry.agent_revisions v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 					WHEN e.resource_type='agent_revision_review' THEN (SELECT a.workspace_id FROM gantry.agent_revision_reviews v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 					WHEN e.resource_type='skill' THEN (SELECT s.workspace_id FROM gantry.skills s WHERE s.id=e.resource_id)
-					WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=e.resource_id)
+					WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.sessions t ON t.id=r.session_id WHERE r.id=e.resource_id)
 					WHEN e.resource_type='policy' THEN (SELECT COALESCE(p.workspace_id, '') FROM gantry.policies p WHERE p.id=e.resource_id)
 					WHEN e.resource_type='evaluation_suite' THEN (SELECT s.workspace_id FROM gantry.evaluation_suites s WHERE s.id=e.resource_id)
 					ELSE ''
@@ -66,7 +66,7 @@ const eventProjection = `
 				WHEN e.resource_type='agent_revision' THEN (SELECT a.workspace_id FROM gantry.agent_revisions v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 				WHEN e.resource_type='agent_revision_review' THEN (SELECT a.workspace_id FROM gantry.agent_revision_reviews v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 				WHEN e.resource_type='skill' THEN (SELECT s.workspace_id FROM gantry.skills s WHERE s.id=e.resource_id)
-				WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=e.resource_id)
+				WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.sessions t ON t.id=r.session_id WHERE r.id=e.resource_id)
 				WHEN e.resource_type='policy' THEN (SELECT COALESCE(p.workspace_id, '') FROM gantry.policies p WHERE p.id=e.resource_id)
 				WHEN e.resource_type='evaluation_suite' THEN (SELECT s.workspace_id FROM gantry.evaluation_suites s WHERE s.id=e.resource_id)
 				ELSE ''
@@ -99,7 +99,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, options Li
 		WHEN e.resource_type='agent_revision' THEN (SELECT a.workspace_id FROM gantry.agent_revisions v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 		WHEN e.resource_type='agent_revision_review' THEN (SELECT a.workspace_id FROM gantry.agent_revision_reviews v JOIN gantry.agents a ON a.id=v.agent_id WHERE v.id=e.resource_id)
 		WHEN e.resource_type='skill' THEN (SELECT s.workspace_id FROM gantry.skills s WHERE s.id=e.resource_id)
-		WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.tasks t ON t.id=r.task_id WHERE r.id=e.resource_id)
+		WHEN e.resource_type='run' THEN (SELECT t.workspace_id FROM gantry.runs r JOIN gantry.sessions t ON t.id=r.session_id WHERE r.id=e.resource_id)
 		WHEN e.resource_type='policy' THEN (SELECT COALESCE(p.workspace_id, '') FROM gantry.policies p WHERE p.id=e.resource_id)
 		WHEN e.resource_type='evaluation_suite' THEN (SELECT s.workspace_id FROM gantry.evaluation_suites s WHERE s.id=e.resource_id)
 		ELSE '' END)=$3)

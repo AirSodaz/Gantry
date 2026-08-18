@@ -31,10 +31,12 @@ const statuses: SelectOption[] = [
     "assigned",
     "accepted",
     "awaiting_approval",
+    "suspended",
     "canceling",
     "completed",
     "failed",
     "canceled",
+    "expired",
   ].map((value) => ({
     value,
     label: value.replace(/_/g, " "),
@@ -178,7 +180,7 @@ function RunRow({ run }: { run: AdminRun }) {
           {run.id}
         </Link>
         <br />
-        <span className="admin-muted">Task {run.task_id}</span>
+        <span className="admin-muted">Session {run.session_id}</span>
       </td>
       <td>
         <strong>{run.agent_name}</strong>
@@ -257,7 +259,7 @@ export function RunDetailPage() {
             <StatusMark status={run.status} />
           </div>
           <p>
-            Task {run.task_id} · Attempt {run.attempt_number} ·{" "}
+            Session {run.session_id} · Run #{run.session_sequence} ·{" "}
             {run.workspace_name}
           </p>
         </div>

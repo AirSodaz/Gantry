@@ -41,7 +41,7 @@ export function ApprovalDetailPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["approval", approvalId] }),
         queryClient.invalidateQueries({ queryKey: ["approvals"] }),
-        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["sessions"] }),
       ]);
     },
     onError: async (error) => {
@@ -51,7 +51,7 @@ export function ApprovalDetailPage() {
       queryClient.setQueryData(["approval", approvalId], currentResource);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["approvals"] }),
-        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["sessions"] }),
       ]);
     },
   });
@@ -76,12 +76,12 @@ export function ApprovalDetailPage() {
       </div>
     );
   const approval = detail.data;
-  const preview = approval.action_preview ?? {};
+  const preview = approval.preview;
   const canDecide =
-    approval.status === "pending" &&
+    approval.state === "pending" &&
     Boolean(approval.action_digest) &&
     (approval.approval_revision ?? 0) > 0;
-  const decision = approval.latest_decision;
+  const decision = approval.decision;
 
   return (
     <div className="page-wrap narrow-page approval-detail-page">
@@ -92,29 +92,29 @@ export function ApprovalDetailPage() {
         <div>
           <span className="eyebrow">Action approval</span>
           <h1>
-            {approval.tool_name ?? "Tool action"} ·{" "}
-            {approval.operation ?? "operation"}
+            {preview.tool_display_name ?? "Tool action"} ·{" "}
+            {preview.operation_display_name ?? "operation"}
           </h1>
           <p>Review the exact action before it can continue.</p>
         </div>
-        <StatusMark status={approval.status} />
+        <StatusMark status={approval.state} />
       </div>
       <section className="approval-detail-card">
         <div className="approval-detail-row">
           <span>Target</span>
-          <strong>{approval.target ?? "No external target declared"}</strong>
+          <strong>{preview.target ?? "No external target declared"}</strong>
         </div>
         <div className="approval-detail-row">
           <span>Effect</span>
           <strong>
             {typeof preview.effect === "string"
               ? preview.effect
-              : (approval.effect ?? "write")}
+              : "write"}
           </strong>
         </div>
         <div className="approval-detail-row">
           <span>Risk</span>
-          <StatusMark status={approval.risk_class ?? "write"} />
+          <StatusMark status={preview.risk_class} />
         </div>
         <div className="approval-detail-row">
           <span>Expires</span>
@@ -148,8 +148,8 @@ export function ApprovalDetailPage() {
           <summary>Technical details</summary>
           <dl>
             <div>
-              <dt>Policy version</dt>
-              <dd>{approval.policy_version ?? "Not recorded"}</dd>
+              <dt>Policy reason</dt>
+              <dd>{preview.policy_reason ?? "Not recorded"}</dd>
             </div>
             <div>
               <dt>Action identity</dt>
@@ -170,7 +170,7 @@ export function ApprovalDetailPage() {
               {decision.decision === "approve" ? "Approved" : "Rejected"}
             </strong>
             <p>{decision.reason || "No decision reason was provided."}</p>
-            <span>{formatDate(decision.created_at)}</span>
+            <span>{formatDate(decision.decided_at)}</span>
           </div>
         </section>
       ) : null}
@@ -184,7 +184,7 @@ export function ApprovalDetailPage() {
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             maxLength={2000}
-            placeholder="Add context for the task history"
+            placeholder="Add context for the session history"
           />
           <div className="approval-actions">
             <Button
@@ -211,12 +211,12 @@ export function ApprovalDetailPage() {
             : "The approval decision could not be recorded."}
         </p>
       ) : null}
-      {approval.task_id ? (
+      {approval.session_id ? (
         <Button
           variant="quiet"
-          onClick={() => navigate(`/tasks/${approval.task_id}`)}
+          onClick={() => navigate(`/sessions/${approval.session_id}`)}
         >
-          Open task
+          Open session
         </Button>
       ) : null}
     </div>

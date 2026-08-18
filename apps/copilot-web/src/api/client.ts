@@ -1,22 +1,34 @@
 import type {
+  Agent,
   AgentList,
-  AppendTaskMessageInput,
+  AppendSessionMessageInput,
   Approval,
   ApprovalList,
   Artifact,
   ArtifactDownloadGrant,
   ArtifactList,
   Attachment,
+  AttachmentUploadGrant,
   CreateAttachmentInput,
-  EventsTicket,
-  RunAttemptList,
-  RunStatus,
-  SubmitTaskInput,
-  Task,
-  TaskList,
+  CreateSessionInput,
+  RunSummary,
+  RunSummaryList,
+  Session,
+  SessionEventsTicket,
+  SessionList,
 } from "./types";
 
 const baseUrl = import.meta.env.VITE_COPILOT_API_BASE ?? "/api/copilot/v1";
+
+type CopilotProblem = {
+  code?: string;
+  message?: string;
+  correlation_id?: string;
+  retryable?: boolean;
+  current_resource?: unknown;
+};
+
+type TokenProvider = () => string | null;
 
 export class CopilotApiError extends Error {
   constructor(
@@ -24,264 +36,242 @@ export class CopilotApiError extends Error {
     message: string,
     public readonly code?: string,
     public readonly currentResource?: unknown,
+    public readonly correlationId?: string,
+    public readonly retryable?: boolean,
   ) {
     super(message);
     this.name = "CopilotApiError";
   }
 }
 
-type TokenProvider = () => string | null;
-
 export class CopilotApi {
   constructor(private readonly tokenProvider: TokenProvider) {}
 
-  listAgents(search = "", category = "", cursor = "") {
+  listAgents(
+    search = "",
+    category = "",
+    cursor = "",
+    collection: "all" | "favorites" | "recent" = "all",
+  ) {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (category) params.set("category", category);
     if (cursor) params.set("cursor", cursor);
-    return this.request<AgentList>(`/agents?${params.toString()}`);
+    if (collection !== "all") params.set("collection", collection);
+    return this.request<AgentList>(`/agents?${params}`);
   }
 
-  listTasks(
+  setAgentFavorite(
+    id: string,
+    isFavorite: boolean,
+    key: string = crypto.randomUUID(),
+  ) {
+    return this.request<Agent>(`/agents/${encodeURIComponent(id)}/favorite`, {
+      method: "PUT",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ is_favorite: isFavorite }),
+    });
+  }
+
+  listSessions(
     filters: {
-      status?: string;
+      state?: string;
+      mode?: string;
       agentId?: string;
-      requesterAction?: string;
-      createdAfter?: string;
+      myAction?: string;
+      updatedAfter?: string;
       cursor?: string;
     } = {},
   ) {
     const params = new URLSearchParams();
-    if (filters.status) params.set("status", filters.status);
+    if (filters.state) params.set("state", filters.state);
+    if (filters.mode) params.set("mode", filters.mode);
     if (filters.agentId) params.set("agent_id", filters.agentId);
-    if (filters.requesterAction)
-      params.set("requester_action", filters.requesterAction);
-    if (filters.createdAfter) params.set("created_after", filters.createdAfter);
+    if (filters.myAction) params.set("my_action", filters.myAction);
+    if (filters.updatedAfter) params.set("updated_after", filters.updatedAfter);
     if (filters.cursor) params.set("cursor", filters.cursor);
-    return this.request<TaskList>(`/tasks?${params.toString()}`);
+    return this.request<SessionList>(`/sessions?${params}`);
+  }
+
+  getSession(id: string) {
+    return this.requestSession(`/sessions/${encodeURIComponent(id)}`);
+  }
+
+  createSession(input: CreateSessionInput, key: string) {
+    return this.requestSession("/sessions", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    });
+  }
+
+  appendSessionMessage(
+    id: string,
+    input: AppendSessionMessageInput,
+    key: string,
+    etag: string,
+  ) {
+    return this.requestSession(`/sessions/${encodeURIComponent(id)}/messages`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key, "If-Match": etag },
+      body: JSON.stringify(input),
+    });
+  }
+
+  listSessionRuns(id: string, cursor = "") {
+    const params = new URLSearchParams();
+    if (cursor) params.set("cursor", cursor);
+    return this.request<RunSummaryList>(
+      `/sessions/${encodeURIComponent(id)}/runs?${params}`,
+    );
+  }
+
+  cancelSessionRun(id: string, run: string, key: string) {
+    return this.request<RunSummary>(
+      `/sessions/${encodeURIComponent(id)}/runs/${encodeURIComponent(run)}:cancel`,
+      { method: "POST", headers: { "Idempotency-Key": key } },
+    );
+  }
+
+  retrySessionRun(
+    id: string,
+    run: string,
+    key: string,
+    etag: string,
+    revision: "original_revision" | "current_production_revision",
+  ) {
+    return this.request<RunSummary>(
+      `/sessions/${encodeURIComponent(id)}/runs/${encodeURIComponent(run)}:retry`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": key, "If-Match": etag },
+        body: JSON.stringify({ revision_selection: revision }),
+      },
+    );
+  }
+
+  createSessionEventsTicket(id: string, cursor?: string) {
+    return this.request<SessionEventsTicket>(
+      `/sessions/${encodeURIComponent(id)}/events:ticket`,
+      {
+        method: "POST",
+        body: JSON.stringify(cursor ? { last_cursor: cursor } : {}),
+      },
+    );
   }
 
   listApprovals(cursor = "", state = "") {
     const params = new URLSearchParams();
     if (cursor) params.set("cursor", cursor);
     if (state) params.set("state", state);
-    return this.request<ApprovalList>(`/approvals?${params.toString()}`);
+    return this.request<ApprovalList>(`/approvals?${params}`);
+  }
+
+  getApproval(id: string) {
+    return this.request<Approval>(`/approvals/${encodeURIComponent(id)}`);
   }
 
   decideApproval(
-    approvalId: string,
+    id: string,
     decision: "approve" | "reject",
-    actionDigest: string,
-    approvalRevision: number,
+    digest: string,
+    revision: number,
     reason = "",
-    idempotencyKey: string = crypto.randomUUID(),
+    key: string = crypto.randomUUID(),
   ) {
-    return this.request<Approval>(
-      `/approvals/${encodeURIComponent(approvalId)}:decide`,
-      {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({
-          decision,
-          action_digest: actionDigest,
-          approval_revision: approvalRevision,
-          reason,
-        }),
-      },
-    );
-  }
-
-  getTask(taskId: string) {
-    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}`);
-  }
-
-  appendTaskMessage(
-    taskId: string,
-    input: AppendTaskMessageInput,
-    idempotencyKey: string,
-    conversationETag: string,
-  ) {
-    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}/messages`, {
+    return this.request<Approval>(`/approvals/${encodeURIComponent(id)}:decide`, {
       method: "POST",
-      headers: {
-        "Idempotency-Key": idempotencyKey,
-        "If-Match": conversationETag,
-      },
-      body: JSON.stringify(input),
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({
+        decision,
+        action_digest: digest,
+        approval_revision: revision,
+        reason,
+      }),
     });
   }
 
-  listTaskRuns(taskId: string, cursor = "") {
+  listArtifacts(
+    sessionId = "",
+    classification = "",
+    cursor = "",
+    state = "",
+  ) {
     const params = new URLSearchParams();
+    if (sessionId) params.set("session_id", sessionId);
+    if (classification) params.set("classification", classification);
     if (cursor) params.set("cursor", cursor);
-    return this.request<RunAttemptList>(
-      `/tasks/${encodeURIComponent(taskId)}/runs?${params.toString()}`,
-    );
+    if (state) params.set("state", state);
+    return this.request<ArtifactList>(`/artifacts?${params}`);
   }
 
-  createEventsTicket(taskId: string, lastCursor?: string) {
-    return this.request<EventsTicket>(
-      `/tasks/${encodeURIComponent(taskId)}/events:ticket`,
-      {
-        method: "POST",
-        body: JSON.stringify(lastCursor ? { last_cursor: lastCursor } : {}),
-      },
-    );
+  getArtifact(id: string) {
+    return this.request<Artifact>(`/artifacts/${encodeURIComponent(id)}`);
   }
 
-  getArtifact(artifactId: string) {
-    return this.request<Artifact>(
-      `/artifacts/${encodeURIComponent(artifactId)}`,
-    );
-  }
-
-  requestArtifactDownload(artifactId: string) {
+  requestArtifactDownload(id: string) {
     return this.request<ArtifactDownloadGrant>(
-      `/artifacts/${encodeURIComponent(artifactId)}:download`,
+      `/artifacts/${encodeURIComponent(id)}:download`,
       { method: "POST" },
     );
   }
 
-  listArtifacts(taskId = "", classification = "", cursor = "", state = "") {
-    const params = new URLSearchParams();
-    if (taskId) params.set("task_id", taskId);
-    if (classification) params.set("classification", classification);
-    if (cursor) params.set("cursor", cursor);
-    if (state) params.set("state", state);
-    return this.request<ArtifactList>(`/artifacts?${params.toString()}`);
-  }
-
-  createAttachment(input: CreateAttachmentInput) {
-    return this.request<Attachment>("/attachments", {
+  createAttachment(
+    input: CreateAttachmentInput,
+    key = crypto.randomUUID(),
+  ) {
+    return this.request<AttachmentUploadGrant>("/attachments", {
       method: "POST",
+      headers: { "Idempotency-Key": key },
       body: JSON.stringify(input),
     });
   }
 
   uploadAttachment(
-    attachment: Attachment,
+    grant: AttachmentUploadGrant,
     file: File,
-    onProgress?: (percent: number) => void,
+    progress?: (percent: number) => void,
   ) {
-    const token = this.tokenProvider();
-    if (!token)
-      return Promise.reject(
-        new CopilotApiError(401, "Your session has expired."),
-      );
-    if (!attachment.upload_url || !attachment.upload_token) {
-      return Promise.reject(
-        new CopilotApiError(
-          409,
-          "This attachment upload grant is no longer available.",
-        ),
-      );
-    }
-    const uploadURL = attachment.upload_url;
-    const uploadToken = attachment.upload_token;
     return new Promise<void>((resolve, reject) => {
-      const request = new XMLHttpRequest();
-      request.open("PUT", uploadURL);
-      request.setRequestHeader("Authorization", `Bearer ${token}`);
-      request.setRequestHeader(
-        "Content-Type",
-        file.type || "application/octet-stream",
-      );
-      request.setRequestHeader("X-Gantry-Upload-Token", uploadToken);
-      request.upload.onprogress = (event) => {
-        if (event.lengthComputable)
-          onProgress?.(Math.round((event.loaded / event.total) * 100));
-      };
-      request.onerror = () =>
-        reject(new CopilotApiError(0, "Attachment upload failed."));
-      request.onload = () => {
-        if (request.status >= 200 && request.status < 300) {
-          resolve();
-          return;
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", `${baseUrl}${grant.upload_path}`);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("X-Gantry-Upload-Token", grant.upload_token);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          progress?.(Math.round((event.loaded / event.total) * 100));
         }
-        reject(
-          new CopilotApiError(
-            request.status,
-            "Attachment upload was rejected.",
-          ),
-        );
       };
-      request.send(file);
+      xhr.onerror = () => reject(new CopilotApiError(0, "Attachment upload failed."));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new CopilotApiError(xhr.status, "Attachment upload was rejected."));
+      };
+      xhr.send(file);
     });
   }
 
-  completeAttachment(attachmentId: string) {
+  completeAttachment(id: string, key = crypto.randomUUID()) {
     return this.request<Attachment>(
-      `/attachments/${encodeURIComponent(attachmentId)}:complete`,
-      {
-        method: "POST",
-        body: "{}",
-      },
+      `/attachments/${encodeURIComponent(id)}:complete`,
+      { method: "POST", headers: { "Idempotency-Key": key } },
     );
   }
 
-  getApproval(approvalId: string) {
-    return this.request<Approval>(
-      `/approvals/${encodeURIComponent(approvalId)}`,
-    );
+  private async request<T>(path: string, init: RequestInit = {}) {
+    return (await this.response(path, init)).json() as Promise<T>;
   }
 
-  submitTask(input: SubmitTaskInput, idempotencyKey: string) {
-    return this.request<Task>("/tasks", {
-      method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey },
-      body: JSON.stringify(input),
-    });
-  }
-
-  cancelRun(taskId: string, runId: string, idempotencyKey: string) {
-    return this.request<RunStatus>(
-      `/tasks/${encodeURIComponent(taskId)}/runs/${encodeURIComponent(runId)}:cancel`,
-      {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: "{}",
-      },
-    );
-  }
-
-  retryTask(
-    taskId: string,
-    idempotencyKey: string,
-    conversationETag: string,
-    revisionSelection: "original_revision" | "current_production_revision",
-  ) {
-    return this.requestTask(`/tasks/${encodeURIComponent(taskId)}:retry`, {
-      method: "POST",
-      headers: {
-        "Idempotency-Key": idempotencyKey,
-        "If-Match": conversationETag,
-      },
-      body: JSON.stringify({ revision_selection: revisionSelection }),
-    });
-  }
-
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  private async requestSession(path: string, init: RequestInit = {}) {
     const response = await this.response(path, init);
-    return response.json() as Promise<T>;
-  }
-
-  private async requestTask(
-    path: string,
-    init: RequestInit = {},
-  ): Promise<Task> {
-    const response = await this.response(path, init);
-    const task = (await response.json()) as Task;
+    const session = (await response.json()) as Session;
     return {
-      ...task,
+      ...session,
       conversation_etag: response.headers.get("ETag") ?? undefined,
     };
   }
 
-  private async response(
-    path: string,
-    init: RequestInit = {},
-  ): Promise<Response> {
+  private async response(path: string, init: RequestInit = {}) {
     const token = this.tokenProvider();
     if (!token) throw new CopilotApiError(401, "Your session has expired.");
     const response = await fetch(`${baseUrl}${path}`, {
@@ -293,36 +283,21 @@ export class CopilotApi {
         ...init.headers,
       },
     });
-    if (!response.ok) {
-      let message = `Request failed with status ${response.status}.`;
-      let payload:
-        | {
-            error?: {
-              code?: string;
-              message?: string;
-              current_resource?: unknown;
-            };
-          }
-        | undefined;
-      try {
-        payload = (await response.json()) as {
-          error?: {
-            code?: string;
-            message?: string;
-            current_resource?: unknown;
-          };
-        };
-      } catch {
-        // Preserve the status-based message when the server did not return JSON.
-      }
-      message = payload?.error?.message ?? message;
-      throw new CopilotApiError(
-        response.status,
-        message,
-        payload?.error?.code,
-        payload?.error?.current_resource,
-      );
+    if (response.ok) return response;
+
+    let problem: CopilotProblem | undefined;
+    try {
+      problem = (await response.json()) as CopilotProblem;
+    } catch {
+      // Preserve the HTTP status when the body is not a CopilotProblem.
     }
-    return response;
+    throw new CopilotApiError(
+      response.status,
+      problem?.message ?? `Request failed with status ${response.status}.`,
+      problem?.code,
+      problem?.current_resource,
+      problem?.correlation_id,
+      problem?.retryable,
+    );
   }
 }

@@ -76,12 +76,14 @@ Current and planned resources:
   private protocol is in [Runner Attachment Contracts](runner-attachment-contracts.md).
 - Planned Run mutations and richer diagnostic projections remain separate from
   the implemented read-only Run workbench. Evaluation Suite/Case/Version and
-  exact Run request routes are implemented as a partial slice. Remaining
-  planned resources include `/integrations`,
-  `/retention-policies`, `/legal-holds`, and
-  `/platform/runner-pools`, `/retention-deletion-jobs`, `/platform/settings`,
-  `/platform/data-classifications`, `/platform/limit-policies`, and
-  `/platform/environment-profiles`. `/audit-events`
+  exact Run request routes are implemented as a partial slice. Integrations
+  have an implemented partial slice for their directory, client metadata,
+  Revision publications, and webhook endpoint metadata. Platform has an
+  implemented partial slice for providers and routes, runner inventory,
+  credential and classification metadata, limit policies, Environment
+  Profiles, and scope-aware Settings. Delivery workers, production health,
+  usage projections, `/retention-policies`, `/legal-holds`, and
+  `/retention-deletion-jobs` remain planned. `/audit-events`
   is implemented as the canonical cross-resource immutable event explorer;
   resource APIs may
   return a bounded Recent activity slice and a pre-filtered Audit link but do
@@ -96,8 +98,9 @@ The complete target contract for the four resource families is in
 document remains the authoritative design for their component schemas, state
 machines, command headers, route capabilities, and redaction rules. Policy's
 core routes are checked into the Admin OpenAPI source; Evaluation has its
-Suite/Case/Version/Run core routes, while Integrations and Platform remain
-target-only.
+Suite/Case/Version/Run core routes; and Integrations and Platform expose the
+implemented partial slices described above. The remaining operations in that
+document are target contracts, not callable compatibility placeholders.
 
 ### Copilot API
 
@@ -105,33 +108,28 @@ Audience: `gantry-copilot-api`.
 
 Checked-in routes are defined by
 [`packages/contracts/openapi/copilot-api.yaml`](../../packages/contracts/openapi/copilot-api.yaml)
-and currently include agent discovery, task submission/list/detail, requester
-follow-up messages, compact Run history, event tickets, run cancel/retry,
+and currently include Agent discovery and requester preferences, Session
+creation/list/detail and membership commands, requester follow-up messages,
+compact Run history, Session event tickets, Run cancel/retry,
 approval list/detail/decision, requester-scoped artifact browsing, and artifact
 metadata/download, plus requester attachment creation, short-lived content
 upload, completion, and scan-state reads.
 
-Those `/tasks` routes describe the implemented pre-ADR-037 API. The target
-contract replaces the Task conversation aggregate with `/sessions`, fixed
-Session membership, Session-level event cursors, and requester-bound Runs. It is
-not callable until the OpenAPI source, persistence, generated clients, handlers,
-and authorization tests migrate together; compatibility aliases are not part of
-the target design.
+`/sessions` is the only callable conversation aggregate. The implementation has
+fixed owner/contributor/viewer membership, Session-level event cursors, ordered
+requester-bound Runs, and no `/tasks` compatibility aliases.
 
 The complete target schemas, command preconditions, route semantics, event
 frames, and member/requester authorization matrix are defined in
-[Copilot Resource Contracts](copilot-resource-contracts.md). The currently
-implemented Task-level
-cursors, conversation ETags, and the explicit audited Artifact download command
+[Copilot Resource Contracts](copilot-resource-contracts.md). Session cursors,
+conversation ETags, and the explicit audited Artifact download command
 are callable through the OpenAPI document, generated client, owning handler,
-and focused tests. Approval idempotency remains a separate command-shape delta
-because that request still carries the key in its body.
+and focused tests. Approval decisions use the common `Idempotency-Key` header.
 
 The target contract also includes Revision-frozen employee catalog metadata,
 Deployment-bound temporary availability, `collection=favorites|recent` catalog
-filters, and the idempotent favorite command. Preference persistence and the
-successful-Session recent-use update are not yet present in the checked-in
-OpenAPI or handler.
+filters, the idempotent favorite command, requester-owned preference persistence,
+and successful-Session recent-use updates.
 
 The target Copilot API uses employee-oriented response types. It does not return
 raw Agent specs and rely on the frontend to hide privileged fields. Session
@@ -194,8 +192,9 @@ Copilot Session record is not a way to enumerate global Runs.
 
 - Resource IDs are opaque and never encode authorization-relevant data.
 - Creation and command endpoints accept `Idempotency-Key`.
-- The checked-in Copilot implementation enforces idempotency for task
-  submission, follow-up messages, cancellation, retry, and approval decisions.
+- The checked-in Copilot implementation enforces idempotency for Session
+  creation, follow-up messages, cancellation, retry, Agent favorites,
+  attachments, and approval decisions.
 - An idempotent response is recoverable for at least the resource lifetime plus
   the published maximum client retry interval. After response content expires,
   a tombstone still prevents the same actor and route from reusing the key with
@@ -458,8 +457,7 @@ Protocol requirements:
 - The stream sends an initial resource snapshot and 20-second heartbeats. A
   ticket expiry closes the stream; clients request a new ticket before reconnecting.
 
-The checked-in pre-ADR-037 stream still uses Task routes. The target multi-Run
-Session stream uses a Session-level sequence that orders Messages, member
+The checked-in multi-Run Session stream uses a Session-level sequence that orders Messages, member
 changes, Run projections, approvals, and Artifacts. Its opaque cursor stays
 valid when the executing Run changes; each Run event also retains its diagnostic
 `run_sequence`.

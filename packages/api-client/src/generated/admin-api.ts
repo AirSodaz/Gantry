@@ -4,5964 +4,5906 @@
  */
 
 export interface paths {
-  "/overview": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get the scope-authorized Admin overview */
-    get: operations["getAdminOverview"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/runs": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List durable Runs in the authorized operational scope */
-    get: operations["listAdminRuns"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/runs/{run_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect one durable Run and its read-only operational evidence */
-    get: operations["getAdminRun"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/audit-events": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Search immutable audit events in the authorized scope */
-    get: operations["listAdminAuditEvents"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/audit-events/{event_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect one immutable audit event in the authorized scope */
-    get: operations["getAdminAuditEvent"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/audit-events:export": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Create a signed, scoped audit export package */
-    post: operations["createAdminAuditExport"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/audit-exports/{export_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect an audit export package lifecycle */
-    get: operations["getAdminAuditExport"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/audit-exports/{export_id}/download": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get a short-lived download reference for a ready export */
-    get: operations["downloadAdminAuditExport"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/workspaces": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List workspaces manageable by the current administrator */
-    get: operations["listManagedWorkspaces"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List agents in manageable workspaces */
-    get: operations["listAgents"];
-    put?: never;
-    /** Create an agent and its initial draft */
-    post: operations["createAgent"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List imported Skill artifacts */
-    get: operations["listSkills"];
-    put?: never;
-    /** Register an imported Skill artifact */
-    post: operations["registerSkill"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills/{skill_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect one imported Skill artifact */
-    get: operations["getSkill"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills/{skill_id}/usage": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Agent drafts and revisions using a Skill artifact */
-    get: operations["listSkillUsage"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List organization Plugin versions */
-    get: operations["listPlugins"];
-    put?: never;
-    /** Register an organization Plugin version */
-    post: operations["registerPlugin"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect a Plugin version and workspace enablement */
-    get: operations["getPlugin"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}/usage": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Agent drafts and revisions using a Plugin version */
-    get: operations["listPluginUsage"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List active Tool descriptors */
-    get: operations["listTools"];
-    put?: never;
-    /** Register a Tool server and descriptor version */
-    post: operations["registerTool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools/{tool_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect a Tool descriptor, server, and input schema */
-    get: operations["getTool"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools/{tool_id}/usage": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Agent drafts and revisions using a Tool descriptor */
-    get: operations["listToolUsage"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}/enable": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Enable one active Plugin version in a workspace */
-    post: operations["enablePluginForWorkspace"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills/{skill_id}:activate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Activate an imported Skill artifact */
-    post: operations["activateSkill"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}/disable": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Disable a Plugin version in a workspace */
-    post: operations["disablePlugin"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills/{skill_id}:deprecate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Deprecate an imported Skill artifact */
-    post: operations["deprecateSkill"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/skills/{skill_id}:retire": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Retire an imported Skill artifact */
-    post: operations["retireSkill"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}:activate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Activate an installed Plugin version */
-    post: operations["activatePlugin"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}:deprecate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Deprecate an installed Plugin version */
-    post: operations["deprecatePlugin"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/plugins/{plugin_id}:retire": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Retire an installed Plugin version */
-    post: operations["retirePlugin"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools/{tool_id}:activate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Activate a proposed Tool descriptor */
-    post: operations["activateTool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools/{tool_id}:deprecate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Deprecate a Tool descriptor */
-    post: operations["deprecateTool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tools/{tool_id}:retire": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Retire a Tool descriptor */
-    post: operations["retireTool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get an agent in the current administrator domain */
-    get: operations["getAgent"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/lifecycle": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get named Drafts, exact Deployments, and recent lifecycle activity */
-    get: operations["getAgentLifecycle"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/drafts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List named mutable Draft working copies */
-    get: operations["listAgentDrafts"];
-    put?: never;
-    /** Create a named Draft, optionally from one exact Revision */
-    post: operations["createAgentDraft"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/drafts/{draft_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get one named Draft working copy */
-    get: operations["getNamedAgentDraft"];
-    /** Replace a named Draft with optimistic concurrency */
-    put: operations["updateNamedAgentDraft"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/drafts/{draft_id}:archive": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Archive a non-Main Draft without deleting its Revisions */
-    post: operations["archiveAgentDraft"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/drafts/{draft_id}:commit": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Commit one valid Draft as an immutable hash-identified Revision */
-    post: operations["commitAgentDraft"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/revisions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List immutable Agent Revisions ordered by commit time */
-    get: operations["listAgentRevisions"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/revisions/{revision_hash}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inspect one immutable Revision by its full hash */
-    get: operations["getAgentRevision"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/revisions/{revision_hash}/review": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get review evidence for one exact Revision */
-    get: operations["getAgentRevisionReview"];
-    put?: never;
-    /** Submit review evidence for one exact Revision */
-    post: operations["submitAgentRevisionReview"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/revisions/{revision_hash}:review-decision": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Approve or reject one exact Revision review */
-    post: operations["decideAgentRevisionReview"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/revisions/{revision_hash}:publish": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Move the Production Deployment pointer to an approved Revision */
-    post: operations["publishAgentRevision"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/deployments": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List exact Revision Deployment pointers */
-    get: operations["listAgentDeployments"];
-    put?: never;
-    /** Create a named Test Deployment for one exact Revision */
-    post: operations["createAgentTestDeployment"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/agents/{agent_id}/deployments/{deployment_id}:stop": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Stop one Test Deployment without deleting its Revision */
-    post: operations["stopAgentTestDeployment"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List typed policies in the authorized scope */
-    get: operations["listPolicies"];
-    put?: never;
-    /** Create a typed policy and Draft */
-    post: operations["createPolicy"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get a typed policy projection */
-    get: operations["getPolicy"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}/draft": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get the typed Policy Draft */
-    get: operations["getPolicyDraft"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Update a Policy Draft with optimistic concurrency */
-    patch: operations["updatePolicyDraft"];
-    trace?: never;
-  };
-  "/policies/{policy_id}:validate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Validate a Policy Draft without runtime effect */
-    post: operations["validatePolicy"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}/versions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List immutable Policy Versions */
-    get: operations["listPolicyVersions"];
-    put?: never;
-    /** Publish the exact valid Policy Draft as an immutable Version */
-    post: operations["publishPolicyVersion"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}/bindings": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Policy Bindings */
-    get: operations["listPolicyBindings"];
-    put?: never;
-    /** Bind one exact Policy Version */
-    post: operations["bindPolicy"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policy-bindings/{binding_id}:revoke": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Revoke one Policy Binding */
-    post: operations["revokePolicyBinding"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}:simulate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Simulate a typed Policy decision without side effects */
-    post: operations["simulatePolicy"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/policies/{policy_id}:retire": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Retire a Policy without active Bindings */
-    post: operations["retirePolicy"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-suites": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List workspace-scoped Evaluation Suites */
-    get: operations["listEvaluationSuites"];
-    put?: never;
-    /** Create an Evaluation Suite Draft */
-    post: operations["createEvaluationSuite"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get an Evaluation Suite projection */
-    get: operations["getEvaluationSuite"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Update Evaluation Suite metadata with ETag */
-    patch: operations["patchEvaluationSuite"];
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}:validate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Validate cases and fixture manifests */
-    post: operations["validateEvaluationSuite"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}/cases": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List typed Evaluation Cases */
-    get: operations["listEvaluationCases"];
-    put?: never;
-    /** Add one case to a Suite Draft */
-    post: operations["createEvaluationCase"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}/cases/{case_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Update one Evaluation Case with ETag */
-    patch: operations["patchEvaluationCase"];
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}/versions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List immutable Evaluation Suite Versions */
-    get: operations["listEvaluationVersions"];
-    put?: never;
-    /** Freeze and publish a Suite Version */
-    post: operations["publishEvaluationVersion"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-suites/{suite_id}/runs": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List Evaluation Runs */
-    get: operations["listEvaluationRuns"];
-    put?: never;
-    /** Request a Run from exact Suite Version and Agent Revision */
-    post: operations["createEvaluationRun"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-runs/{run_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get Evaluation Run status and evidence projection */
-    get: operations["getEvaluationRun"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-runs/{run_id}:cancel": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Cancel a queued or active Evaluation Run */
-    post: operations["cancelEvaluationRun"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-runs/{run_id}/regressions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List comparable candidate and baseline regressions */
-    get: operations["listEvaluationRunRegressions"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-gates": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List authorized publication Gate projections */
-    get: operations["listEvaluationGates"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/evaluation-gates/{gate_id}:override": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Create an expiring, attributed Gate override */
-    post: operations["overrideEvaluationGate"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integrations": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List organization integrations */
-    get: operations["listIntegrations"];
-    put?: never;
-    /** Register an integration identity */
-    post: operations["createIntegration"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integrations/{integration_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    /** Get integration metadata */
-    get: operations["getIntegration"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Update integration metadata */
-    patch: operations["patchIntegration"];
-    trace?: never;
-  };
-  "/integrations/{integration_id}/clients": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    /** List client metadata without secrets */
-    get: operations["listIntegrationClients"];
-    put?: never;
-    /** Register an integration client */
-    post: operations["createIntegrationClient"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integration-clients/{client_id}:rotate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Rotate client credential reference */
-    post: operations["rotateIntegrationClient"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integration-clients/{client_id}:disable": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Disable an integration client */
-    post: operations["disableIntegrationClient"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integrations/{integration_id}/publications": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    /** List agent publications */
-    get: operations["listIntegrationPublications"];
-    put?: never;
-    /** Publish an exact Agent Revision to a client */
-    post: operations["createIntegrationPublication"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integration-publications/{publication_id}:revoke": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Revoke a publication */
-    post: operations["revokeIntegrationPublication"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/integrations/{integration_id}/webhooks": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    /** List webhook endpoint metadata */
-    get: operations["listIntegrationWebhooks"];
-    put?: never;
-    /** Register an HTTPS webhook endpoint */
-    post: operations["createIntegrationWebhook"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/webhook-endpoints/{endpoint_id}:redeliver": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Queue a new delivery attempt for an existing event */
-    post: operations["redeliverWebhook"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/model-providers": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List organization model providers */
-    get: operations["listPlatformModelProviders"];
-    put?: never;
-    /** Register provider metadata and credential reference */
-    post: operations["createPlatformModelProvider"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/model-providers/{provider_id}/routes": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List provider routes */
-    get: operations["listProviderRoutes"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/model-providers/{provider_id}/routes/{route_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Update provider route policy with ETag */
-    put: operations["putProviderRoute"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/model-providers/{provider_id}:quarantine": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Quarantine a model provider */
-    post: operations["quarantineModelProvider"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/runner-pools": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List runner pools */
-    get: operations["listPlatformRunnerPools"];
-    put?: never;
-    /** Create a runner pool definition */
-    post: operations["createPlatformRunnerPool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/runner-pools/{pool_id}/runners": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List runner health metadata */
-    get: operations["listPlatformRunners"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/runner-pools/{pool_id}:drain": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Drain a runner pool */
-    post: operations["drainRunnerPool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/runner-pools/{pool_id}:quarantine": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Quarantine a runner pool */
-    post: operations["quarantineRunnerPool"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/credentials": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List non-secret credential references */
-    get: operations["listPlatformCredentials"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/credentials/{credential_id}:rotate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Start broker-owned credential rotation */
-    post: operations["rotatePlatformCredential"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/credentials/{credential_id}:revoke": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Revoke a credential reference */
-    post: operations["revokePlatformCredential"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/data-classifications": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List data classifications */
-    get: operations["listDataClassifications"];
-    put?: never;
-    /** Create a data classification definition */
-    post: operations["createDataClassification"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/limit-policies": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List organization and workspace limit policies */
-    get: operations["listPlatformLimitPolicies"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/limit-policies/{policy_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Replace a bounded limit policy with ETag protection */
-    put: operations["upsertPlatformLimitPolicy"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/environment-profiles": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List organization and workspace environment profiles */
-    get: operations["listPlatformEnvironmentProfiles"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/environment-profiles/{profile_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Replace a bounded environment profile with ETag protection */
-    put: operations["upsertPlatformEnvironmentProfile"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/settings": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get the composed scope-aware platform settings projection */
-    get: operations["getPlatformSettings"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/settings:validate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Validate a proposed settings section without writing */
-    post: operations["validatePlatformSettings"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/platform/settings:apply": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Apply a settings section with ETag protection */
-    post: operations["applyPlatformSettings"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the scope-authorized Admin overview */
+        get: operations["getAdminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List durable Runs in the authorized operational scope */
+        get: operations["listAdminRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one durable Run and its read-only operational evidence */
+        get: operations["getAdminRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search immutable audit events in the authorized scope */
+        get: operations["listAdminAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one immutable audit event in the authorized scope */
+        get: operations["getAdminAuditEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-events:export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a signed, scoped audit export package */
+        post: operations["createAdminAuditExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect an audit export package lifecycle */
+        get: operations["getAdminAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit-exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a short-lived download reference for a ready export */
+        get: operations["downloadAdminAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List workspaces manageable by the current administrator */
+        get: operations["listManagedWorkspaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List agents in manageable workspaces */
+        get: operations["listAgents"];
+        put?: never;
+        /** Create an agent and its initial draft */
+        post: operations["createAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List imported Skill artifacts */
+        get: operations["listSkills"];
+        put?: never;
+        /** Register an imported Skill artifact */
+        post: operations["registerSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one imported Skill artifact */
+        get: operations["getSkill"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skill_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agent drafts and revisions using a Skill artifact */
+        get: operations["listSkillUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization Plugin versions */
+        get: operations["listPlugins"];
+        put?: never;
+        /** Register an organization Plugin version */
+        post: operations["registerPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a Plugin version and workspace enablement */
+        get: operations["getPlugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agent drafts and revisions using a Plugin version */
+        get: operations["listPluginUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active Tool descriptors */
+        get: operations["listTools"];
+        put?: never;
+        /** Register a Tool server and descriptor version */
+        post: operations["registerTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/{tool_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect a Tool descriptor, server, and input schema */
+        get: operations["getTool"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/{tool_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agent drafts and revisions using a Tool descriptor */
+        get: operations["listToolUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable one active Plugin version in a workspace */
+        post: operations["enablePluginForWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skill_id}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate an imported Skill artifact */
+        post: operations["activateSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable a Plugin version in a workspace */
+        post: operations["disablePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skill_id}:deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deprecate an imported Skill artifact */
+        post: operations["deprecateSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills/{skill_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire an imported Skill artifact */
+        post: operations["retireSkill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate an installed Plugin version */
+        post: operations["activatePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}:deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deprecate an installed Plugin version */
+        post: operations["deprecatePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{plugin_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire an installed Plugin version */
+        post: operations["retirePlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/{tool_id}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate a proposed Tool descriptor */
+        post: operations["activateTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/{tool_id}:deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deprecate a Tool descriptor */
+        post: operations["deprecateTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/{tool_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a Tool descriptor */
+        post: operations["retireTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an agent in the current administrator domain */
+        get: operations["getAgent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get named Drafts, exact Deployments, and recent lifecycle activity */
+        get: operations["getAgentLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List named mutable Draft working copies */
+        get: operations["listAgentDrafts"];
+        put?: never;
+        /** Create a named Draft, optionally from one exact Revision */
+        post: operations["createAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one named Draft working copy */
+        get: operations["getNamedAgentDraft"];
+        /** Replace a named Draft with optimistic concurrency */
+        put: operations["updateNamedAgentDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}:archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a non-Main Draft without deleting its Revisions */
+        post: operations["archiveAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/drafts/{draft_id}:commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit one valid Draft as an immutable hash-identified Revision */
+        post: operations["commitAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Agent Revisions ordered by commit time */
+        get: operations["listAgentRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect one immutable Revision by its full hash */
+        get: operations["getAgentRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get review evidence for one exact Revision */
+        get: operations["getAgentRevisionReview"];
+        put?: never;
+        /** Submit review evidence for one exact Revision */
+        post: operations["submitAgentRevisionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}:review-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject one exact Revision review */
+        post: operations["decideAgentRevisionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/revisions/{revision_hash}:publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move the Production Deployment pointer to an approved Revision */
+        post: operations["publishAgentRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List exact Revision Deployment pointers */
+        get: operations["listAgentDeployments"];
+        put?: never;
+        /** Create a named Test Deployment for one exact Revision */
+        post: operations["createAgentTestDeployment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/deployments/{deployment_id}:stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop one Test Deployment without deleting its Revision */
+        post: operations["stopAgentTestDeployment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List typed policies in the authorized scope */
+        get: operations["listPolicies"];
+        put?: never;
+        /** Create a typed policy and Draft */
+        post: operations["createPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a typed policy projection */
+        get: operations["getPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the typed Policy Draft */
+        get: operations["getPolicyDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a Policy Draft with optimistic concurrency */
+        patch: operations["updatePolicyDraft"];
+        trace?: never;
+    };
+    "/policies/{policy_id}:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a Policy Draft without runtime effect */
+        post: operations["validatePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Policy Versions */
+        get: operations["listPolicyVersions"];
+        put?: never;
+        /** Publish the exact valid Policy Draft as an immutable Version */
+        post: operations["publishPolicyVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}/bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Policy Bindings */
+        get: operations["listPolicyBindings"];
+        put?: never;
+        /** Bind one exact Policy Version */
+        post: operations["bindPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policy-bindings/{binding_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke one Policy Binding */
+        post: operations["revokePolicyBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}:simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate a typed Policy decision without side effects */
+        post: operations["simulatePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/policies/{policy_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a Policy without active Bindings */
+        post: operations["retirePolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List workspace-scoped Evaluation Suites */
+        get: operations["listEvaluationSuites"];
+        put?: never;
+        /** Create an Evaluation Suite Draft */
+        post: operations["createEvaluationSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an Evaluation Suite projection */
+        get: operations["getEvaluationSuite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Evaluation Suite metadata with ETag */
+        patch: operations["patchEvaluationSuite"];
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate cases and fixture manifests */
+        post: operations["validateEvaluationSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List typed Evaluation Cases */
+        get: operations["listEvaluationCases"];
+        put?: never;
+        /** Add one case to a Suite Draft */
+        post: operations["createEvaluationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update one Evaluation Case with ETag */
+        patch: operations["patchEvaluationCase"];
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable Evaluation Suite Versions */
+        get: operations["listEvaluationVersions"];
+        put?: never;
+        /** Freeze and publish a Suite Version */
+        post: operations["publishEvaluationVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-suites/{suite_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Evaluation Runs */
+        get: operations["listEvaluationRuns"];
+        put?: never;
+        /** Request a Run from exact Suite Version and Agent Revision */
+        post: operations["createEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Evaluation Run status and evidence projection */
+        get: operations["getEvaluationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a queued or active Evaluation Run */
+        post: operations["cancelEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-runs/{run_id}/regressions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List comparable candidate and baseline regressions */
+        get: operations["listEvaluationRunRegressions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List authorized publication Gate projections */
+        get: operations["listEvaluationGates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evaluation-gates/{gate_id}:override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an expiring, attributed Gate override */
+        post: operations["overrideEvaluationGate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization integrations */
+        get: operations["listIntegrations"];
+        put?: never;
+        /** Register an integration identity */
+        post: operations["createIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** Get integration metadata */
+        get: operations["getIntegration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update integration metadata */
+        patch: operations["patchIntegration"];
+        trace?: never;
+    };
+    "/integrations/{integration_id}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List client metadata without secrets */
+        get: operations["listIntegrationClients"];
+        put?: never;
+        /** Register an integration client */
+        post: operations["createIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-clients/{client_id}:rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate client credential reference */
+        post: operations["rotateIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-clients/{client_id}:disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable an integration client */
+        post: operations["disableIntegrationClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List agent publications */
+        get: operations["listIntegrationPublications"];
+        put?: never;
+        /** Publish an exact Agent Revision to a client */
+        post: operations["createIntegrationPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration-publications/{publication_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a publication */
+        post: operations["revokeIntegrationPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        /** List webhook endpoint metadata */
+        get: operations["listIntegrationWebhooks"];
+        put?: never;
+        /** Register an HTTPS webhook endpoint */
+        post: operations["createIntegrationWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhook-endpoints/{endpoint_id}:redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a new delivery attempt for an existing event */
+        post: operations["redeliverWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization model providers */
+        get: operations["listPlatformModelProviders"];
+        put?: never;
+        /** Register provider metadata and credential reference */
+        post: operations["createPlatformModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List provider routes */
+        get: operations["listProviderRoutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}/routes/{route_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update provider route policy with ETag */
+        put: operations["putProviderRoute"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/model-providers/{provider_id}:quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine a model provider */
+        post: operations["quarantineModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List runner pools */
+        get: operations["listPlatformRunnerPools"];
+        put?: never;
+        /** Create a runner pool definition */
+        post: operations["createPlatformRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}/runners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List runner health metadata */
+        get: operations["listPlatformRunners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}:drain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drain a runner pool */
+        post: operations["drainRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/runner-pools/{pool_id}:quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine a runner pool */
+        post: operations["quarantineRunnerPool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List non-secret credential references */
+        get: operations["listPlatformCredentials"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/credentials/{credential_id}:rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start broker-owned credential rotation */
+        post: operations["rotatePlatformCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/credentials/{credential_id}:revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a credential reference */
+        post: operations["revokePlatformCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/data-classifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List data classifications */
+        get: operations["listDataClassifications"];
+        put?: never;
+        /** Create a data classification definition */
+        post: operations["createDataClassification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/limit-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization and workspace limit policies */
+        get: operations["listPlatformLimitPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/limit-policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a bounded limit policy with ETag protection */
+        put: operations["upsertPlatformLimitPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/environment-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List organization and workspace environment profiles */
+        get: operations["listPlatformEnvironmentProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/environment-profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a bounded environment profile with ETag protection */
+        put: operations["upsertPlatformEnvironmentProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the composed scope-aware platform settings projection */
+        get: operations["getPlatformSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a proposed settings section without writing */
+        post: operations["validatePlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/settings:apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply a settings section with ETag protection */
+        post: operations["applyPlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    EvaluationSuite: {
-      id: string;
-      organization_id: string;
-      workspace_id: string;
-      name: string;
-      /** @enum {string} */
-      state: "draft" | "published" | "retired";
-      owner_principal_id: string;
-      latest_version_id?: string | null;
-      gate_usage_count: number;
-      etag: string;
-    };
-    EvaluationSuiteList: {
-      items: components["schemas"]["EvaluationSuite"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    CreateEvaluationSuiteRequest: {
-      workspace_id: string;
-      name: string;
-    };
-    PatchEvaluationSuiteRequest: {
-      name: string;
-    };
-    EvaluationCase: {
-      id: string;
-      suite_id: string;
-      input: {
-        [key: string]: unknown;
-      };
-      fixture_manifest: {
-        [key: string]: unknown;
-      };
-      assertions: {
-        [key: string]: unknown;
-      }[];
-      rubric?: {
-        [key: string]: unknown;
-      } | null;
-      compatibility: {
-        [key: string]: unknown;
-      };
-      etag: string;
-    };
-    EvaluationCaseList: {
-      items: components["schemas"]["EvaluationCase"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    CreateEvaluationCaseRequest: {
-      input: {
-        [key: string]: unknown;
-      };
-      fixture_manifest: {
-        [key: string]: unknown;
-      };
-      assertions: {
-        [key: string]: unknown;
-      }[];
-      rubric?: {
-        [key: string]: unknown;
-      } | null;
-      compatibility?: {
-        [key: string]: unknown;
-      };
-    };
-    EvaluationValidation: {
-      /** @enum {string} */
-      state: "valid" | "invalid" | "pending";
-      findings: {
-        [key: string]: unknown;
-      }[];
-    };
-    EvaluationSuiteVersion: {
-      id: string;
-      suite_id: string;
-      content_digest: string;
-      case_manifest_digest: string;
-      fixture_manifest_digest: string;
-      evaluator_policy_version_id?: string;
-      runtime_image_digest: string;
-      /** Format: date-time */
-      published_at: string;
-    };
-    EvaluationSuiteVersionList: {
-      items: components["schemas"]["EvaluationSuiteVersion"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    PublishEvaluationVersionRequest: {
-      evaluator_policy_version_id?: string;
-      runtime_image_digest: string;
-    };
-    EvaluationRun: {
-      id: string;
-      suite_version_id: string;
-      candidate_revision_hash: string;
-      baseline_revision_hash?: string | null;
-      environment_digest: string;
-      /** @enum {string} */
-      state:
-        | "requested"
-        | "queued"
-        | "provisioning"
-        | "running"
-        | "completed"
-        | "failed"
-        | "canceled"
-        | "invalid";
-      /** @enum {string} */
-      gate_result:
-        "not_applicable" | "passed" | "failed" | "blocked" | "invalid";
-      deterministic_summary: {
-        [key: string]: unknown;
-      };
-      probabilistic_summary?: {
-        [key: string]: unknown;
-      } | null;
-      evidence_manifest_digest?: string | null;
-      /** Format: date-time */
-      created_at: string;
-    };
-    EvaluationRunList: {
-      items: components["schemas"]["EvaluationRun"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    CreateEvaluationRunRequest: {
-      suite_version_id: string;
-      candidate_revision_hash: string;
-      baseline_revision_hash?: string | null;
-      environment_digest: string;
-    };
-    EvaluationGate: {
-      id: string;
-      agent_revision_hash: string;
-      suite_version_id: string;
-      requirement: {
-        [key: string]: unknown;
-      };
-      /** @enum {string} */
-      state: "required" | "passed" | "failed" | "overridden" | "expired";
-      override_id?: string | null;
-    };
-    EvaluationGateList: {
-      items: components["schemas"]["EvaluationGate"][];
-    };
-    OverrideEvaluationGateRequest: {
-      reason: string;
-      /** Format: date-time */
-      expires_at: string;
-    };
-    EvaluationRegression: {
-      /** @enum {string} */
-      kind:
-        | "deterministic"
-        | "policy"
-        | "side_effect"
-        | "quality"
-        | "latency"
-        | "cost"
-        | "fixture"
-        | "environment";
-      /** @enum {string} */
-      severity: "low" | "medium" | "high" | "critical";
-      case_id?: string;
-      message: string;
-      candidate_evidence: {
-        [key: string]: unknown;
-      };
-      baseline_evidence: {
-        [key: string]: unknown;
-      };
-    };
-    EvaluationRegressionList: {
-      /** @enum {string} */
-      comparison_state: "pending" | "comparable" | "invalid";
-      items: components["schemas"]["EvaluationRegression"][];
-    };
-    Policy: {
-      id: string;
-      organization_id: string;
-      workspace_id?: string | null;
-      /** @enum {string} */
-      type:
-        | "approval"
-        | "model"
-        | "tool"
-        | "command"
-        | "network"
-        | "credential"
-        | "data"
-        | "budget"
-        | "retention"
-        | "evaluation"
-        | "publication";
-      name: string;
-      owner_principal_id?: string;
-      /** @enum {string} */
-      state: "draft" | "published" | "retired";
-      schema_version: string;
-      draft_etag: string;
-      latest_version_id?: string | null;
-      active_binding_count: number;
-    };
-    PolicyList: {
-      items: components["schemas"]["Policy"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    PolicyPageInfo: {
-      next_cursor: string | null;
-    };
-    ValidationResult: {
-      /** @enum {string} */
-      state: "valid" | "invalid" | "pending";
-      findings: {
-        [key: string]: unknown;
-      }[];
-    };
-    PolicyDraft: {
-      policy_id: string;
-      document: {
-        [key: string]: unknown;
-      };
-      schema_version: string;
-      etag: string;
-      validation: components["schemas"]["ValidationResult"];
-    };
-    CreatePolicyRequest: {
-      workspace_id?: string;
-      /** @enum {string} */
-      type:
-        | "approval"
-        | "model"
-        | "tool"
-        | "command"
-        | "network"
-        | "credential"
-        | "data"
-        | "budget"
-        | "retention"
-        | "evaluation"
-        | "publication";
-      name: string;
-      schema_version?: string;
-      document: {
-        [key: string]: unknown;
-      };
-    };
-    CreatedPolicy: {
-      policy: components["schemas"]["Policy"];
-      draft: components["schemas"]["PolicyDraft"];
-    };
-    UpdatePolicyDraftRequest: {
-      schema_version?: string;
-      document: {
-        [key: string]: unknown;
-      };
-    };
-    PublishPolicyRequest: {
-      message: string;
-    };
-    PolicyVersion: {
-      id: string;
-      policy_id: string;
-      content_digest: string;
-      schema_version: string;
-      message: string;
-      document: {
-        [key: string]: unknown;
-      };
-      compiler_evidence: {
-        [key: string]: unknown;
-      };
-      created_by: string;
-      /** Format: date-time */
-      created_at: string;
-    };
-    PolicyVersionList: {
-      items: components["schemas"]["PolicyVersion"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    PolicyScopeRef: {
-      organization_id: string;
-      workspace_id?: string | null;
-      /** @enum {string} */
-      scope: "organization" | "workspace";
-    };
-    PolicyBinding: {
-      id: string;
-      version_id: string;
-      target: components["schemas"]["PolicyScopeRef"];
-      target_resource_id?: string | null;
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      /** @enum {string} */
-      state: "pending" | "active" | "expired" | "revoked";
-      /** Format: date-time */
-      effective_from: string;
-      /** Format: date-time */
-      effective_until?: string | null;
-      reason: string;
-    };
-    PolicyBindingList: {
-      items: components["schemas"]["PolicyBinding"][];
-      page_info: components["schemas"]["PolicyPageInfo"];
-    };
-    BindPolicyRequest: {
-      version_id: string;
-      /** @enum {string} */
-      scope: "organization" | "workspace";
-      workspace_id?: string;
-      target_resource_id?: string;
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      reason?: string;
-    };
-    ReasonRequest: {
-      reason?: string;
-    };
-    SimulatePolicyRequest: {
-      version_id?: string;
-      action?: {
-        [key: string]: unknown;
-      };
-    };
-    PolicySimulation: {
-      /** @enum {string} */
-      decision: "allow" | "deny" | "require_requester_approval";
-      contributing_versions: {
-        [key: string]: unknown;
-      }[];
-      ineffective_rules: {
-        [key: string]: unknown;
-      }[];
-      explanation: string;
-    };
-    ErrorResponse: {
-      error: {
-        code: string;
-        message: string;
-      };
-    };
-    PageInfo: {
-      has_more: boolean;
-      next_cursor?: string;
-    };
-    Workspace: {
-      id: string;
-      slug: string;
-      display_name: string;
-    };
-    WorkspaceList: {
-      items: components["schemas"]["Workspace"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    Skill: {
-      id: string;
-      workspace_id: string;
-      slug: string;
-      display_name: string;
-      description: string;
-      /** @enum {string} */
-      source_type: "marketplace" | "locator" | "upload" | "local";
-      source_ref: string;
-      declared_version: string;
-      content_digest: string;
-      /** @enum {string} */
-      status: "available" | "deprecated" | "retired";
-      metadata_json: {
-        [key: string]: unknown;
-      };
-    };
-    SkillList: {
-      items: components["schemas"]["Skill"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    AssetUsage: {
-      agent_id: string;
-      agent_name: string;
-      workspace_id: string;
-      /** @enum {string} */
-      reference_kind: "draft" | "revision";
-      reference_id: string;
-      reference_hash?: string;
-    };
-    AssetUsageList: {
-      items: components["schemas"]["AssetUsage"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    RegisterSkillRequest: {
-      workspace_id: string;
-      slug: string;
-      display_name: string;
-      description?: string;
-      /** @enum {string} */
-      source_type: "marketplace" | "locator" | "upload" | "local";
-      source_ref: string;
-      declared_version?: string;
-      content_digest: string;
-      metadata_json?: Record<string, never>;
-    };
-    Plugin: {
-      id: string;
-      slug: string;
-      display_name: string;
-      description: string;
-      version: string;
-      content_digest: string;
-      /** @enum {string} */
-      status: "active" | "deprecated" | "retired";
-      manifest_json: {
-        [key: string]: unknown;
-      };
-    };
-    PluginList: {
-      items: components["schemas"]["Plugin"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    PluginWorkspace: {
-      id: string;
-      display_name: string;
-    };
-    PluginDetail: components["schemas"]["Plugin"] & {
-      workspaces: components["schemas"]["PluginWorkspace"][];
-    };
-    RegisterPluginRequest: {
-      slug: string;
-      display_name: string;
-      description?: string;
-      version: string;
-      content_digest: string;
-      manifest_json?: {
-        [key: string]: unknown;
-      };
-    };
-    EnablePluginRequest: {
-      workspace_id: string;
-    };
-    AssetStatusRequest: {
-      reason?: string;
-    };
-    Tool: {
-      id: string;
-      server_id: string;
-      server_name: string;
-      /** @enum {string} */
-      server_type: "builtin" | "mcp" | "cli";
-      endpoint_ref: string;
-      fully_qualified_name: string;
-      version: string;
-      /** @enum {string} */
-      effect: "read" | "write" | "external_side_effect" | "administrative";
-      /** @enum {string} */
-      idempotency:
-        "read_only" | "idempotent" | "compensatable" | "non_repeatable";
-      content_digest: string;
-      schema_json: {
-        [key: string]: unknown;
-      };
-      /** @enum {string} */
-      status: "active" | "proposed" | "deprecated" | "retired";
-    };
-    ToolList: {
-      items: components["schemas"]["Tool"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    RegisterToolRequest: {
-      server_name: string;
-      /** @enum {string} */
-      server_type: "builtin" | "mcp" | "cli";
-      endpoint_ref?: string;
-      fully_qualified_name: string;
-      version: string;
-      /** @enum {string} */
-      effect: "read" | "write" | "external_side_effect" | "administrative";
-      /** @enum {string} */
-      idempotency:
-        "read_only" | "idempotent" | "compensatable" | "non_repeatable";
-      content_digest: string;
-      schema_json?: {
-        [key: string]: unknown;
-      };
-    };
-    Agent: {
-      id: string;
-      organization_id: string;
-      workspace_id: string;
-      slug: string;
-      display_name: string;
-      description: string;
-      category: string;
-      /** @enum {string} */
-      lifecycle_status: "draft" | "published" | "active" | "retired";
-      current_published_version_id?: string;
-      current_production_revision_hash?: string;
-    };
-    AgentList: {
-      items: components["schemas"]["Agent"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    CreateAgentRequest: {
-      workspace_id: string;
-      slug: string;
-      display_name: string;
-      description: string;
-      category: string;
-    };
-    NamedAgentDraft: {
-      id: string;
-      agent_id: string;
-      name: string;
-      /** @enum {string} */
-      status: "active" | "archived";
-      derived_from_revision_hash?: string;
-      latest_revision_hash?: string;
-      spec: Record<string, never>;
-      schema_version: string;
-      working_copy_etag: number;
-      /** @enum {string} */
-      validation_status: "valid" | "invalid";
-      validation_findings: components["schemas"]["ValidationFinding"][];
-      created_by: string;
-      updated_by: string;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      updated_at: string;
-    };
-    AgentDraftList: {
-      items: components["schemas"]["NamedAgentDraft"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    CreateAgentDraftRequest: {
-      name: string;
-      from_revision_hash?: string;
-    };
-    CommitAgentDraftRequest: {
-      message: string;
-    };
-    AgentRevision: {
-      id: string;
-      agent_id: string;
-      revision_hash: string;
-      source_draft_id: string;
-      source_draft_name: string;
-      message: string;
-      spec: Record<string, never>;
-      spec_digest: string;
-      schema_version: string;
-      runtime_image_digest?: string;
-      /** Format: date-time */
-      created_at: string;
-      created_by: string;
-      /** @enum {string} */
-      review_status:
-        "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
-      production_deployed: boolean;
-      test_deployed: boolean;
-      run_count: number;
-      latest_run_status?: string;
-      /** Format: date-time */
-      latest_run_at?: string;
-      prompt_snapshot: components["schemas"]["PromptSnapshot"];
-    };
-    AgentRevisionList: {
-      items: components["schemas"]["AgentRevision"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    AgentRevisionReview: {
-      id?: string;
-      agent_id: string;
-      revision_hash: string;
-      base_revision_hash?: string;
-      release_notes: string;
-      diff: components["schemas"]["DiffEntry"][];
-      risk_summary: components["schemas"]["RiskSummary"];
-      /** @enum {string} */
-      status:
-        "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
-      submitted_by?: string;
-      reviewed_by?: string;
-      review_reason?: string;
-      /** Format: date-time */
-      submitted_at?: string;
-      /** Format: date-time */
-      reviewed_at?: string;
-    };
-    AgentDeployment: {
-      id: string;
-      agent_id: string;
-      workspace_id: string;
-      name: string;
-      /** @enum {string} */
-      environment_kind: "test" | "production";
-      revision_id: string;
-      revision_hash: string;
-      spec_digest: string;
-      /** @enum {string} */
-      status: "active" | "stopped" | "quarantined";
-      owner?: string;
-      purpose?: string;
-      /** Format: date-time */
-      expires_at?: string;
-      environment_policy: {
-        [key: string]: unknown;
-      };
-      changed_by: string;
-      review_id?: string;
-      previous_revision_hash?: string;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      updated_at: string;
-    };
-    AgentDeploymentList: {
-      items: components["schemas"]["AgentDeployment"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    CreateAgentDeploymentRequest: {
-      name: string;
-      revision_hash: string;
-      purpose?: string;
-      /** Format: date-time */
-      expires_at?: string;
-      environment_policy?: {
-        [key: string]: unknown;
-      };
-    };
-    PublishAgentRevisionRequest: {
-      expected_production_revision_hash?: string;
-    };
-    AgentLifecycleOverview: {
-      agent: components["schemas"]["Agent"];
-      main_draft: components["schemas"]["NamedAgentDraft"];
-      drafts: components["schemas"]["NamedAgentDraft"][];
-      production_deployment?: components["schemas"]["AgentDeployment"] | null;
-      test_deployments: components["schemas"]["AgentDeployment"][];
-      revision_count: number;
-      recent_activity: components["schemas"]["ActivityItem"][];
-    };
-    AdminRun: {
-      id: string;
-      task_id: string;
-      workspace_id: string;
-      workspace_name: string;
-      agent_id: string;
-      agent_name: string;
-      revision_hash: string;
-      deployment_id?: string;
-      deployment_name?: string;
-      requester_id: string;
-      requester_name: string;
-      /** @enum {string} */
-      status:
-        | "queued"
-        | "assigned"
-        | "accepted"
-        | "awaiting_approval"
-        | "canceling"
-        | "completed"
-        | "failed"
-        | "canceled";
-      status_reason?: string;
-      runner_id?: string;
-      attempt_number: number;
-      manifest_digest?: string;
-      action_count: number;
-      approval_count: number;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      started_at?: string;
-      /** Format: date-time */
-      completed_at?: string;
-      /** Format: date-time */
-      last_event_at?: string;
-    };
-    AdminRunList: {
-      items: components["schemas"]["AdminRun"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    AdminRunEvent: {
-      sequence: number;
-      type: string;
-      payload: {
-        [key: string]: unknown;
-      };
-      /** Format: date-time */
-      created_at: string;
-    };
-    AdminRunAction: {
-      id: string;
-      tool_name: string;
-      operation: string;
-      target?: string;
-      /** @enum {string} */
-      effect: "read" | "write" | "destructive";
-      state: string;
-      action_digest: string;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      updated_at: string;
-    };
-    AdminRunApproval: {
-      id: string;
-      action_id: string;
-      action_digest: string;
-      risk_class: string;
-      /** @enum {string} */
-      status: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
-      requested_by: string;
-      /** Format: date-time */
-      expires_at: string;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      decided_at?: string;
-    };
-    AdminRunArtifact: {
-      id: string;
-      filename: string;
-      media_type: string;
-      /** Format: int64 */
-      size_bytes: number;
-      digest: string;
-      classification: string;
-      /** @enum {string} */
-      scan_status: "pending" | "passed" | "failed";
-      /** @enum {string} */
-      state: "declared" | "uploaded" | "available" | "rejected";
-      /** Format: date-time */
-      created_at: string;
-    };
-    AdminRunDetail: {
-      run: components["schemas"]["AdminRun"];
-      events: components["schemas"]["AdminRunEvent"][];
-      actions: components["schemas"]["AdminRunAction"][];
-      approvals: components["schemas"]["AdminRunApproval"][];
-      artifacts: components["schemas"]["AdminRunArtifact"][];
-    };
-    AdminAuditEvent: {
-      /** Format: int64 */
-      id: number;
-      actor_id: string;
-      actor_name: string;
-      resource_type: string;
-      resource_id: string;
-      event_type: string;
-      scope: string;
-      outcome: string;
-      risk: string;
-      correlation_id: string;
-      run_id: string;
-      revision_hash: string;
-      policy_version_id: string;
-      /** Format: date-time */
-      created_at: string;
-    };
-    AdminAuditEventList: {
-      items: components["schemas"]["AdminAuditEvent"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    AdminAuditEvidence: {
-      kind: string;
-      id: string;
-    };
-    AdminAuditRedactionMetadata: {
-      mode: string;
-      redacted_fields: string[];
-    };
-    AdminAuditEventDetail: components["schemas"]["AdminAuditEvent"] & {
-      payload: {
-        [key: string]: unknown;
-      };
-      evidence: components["schemas"]["AdminAuditEvidence"][];
-      redaction_metadata: components["schemas"]["AdminAuditRedactionMetadata"];
-    };
-    AdminAuditExportRequest: {
-      workspace_id?: string;
-      resource_type?: string;
-      resource_id?: string;
-      actor_id?: string;
-      event_type?: string;
-      outcome?: string;
-      risk?: string;
-      correlation_id?: string;
-      run_id?: string;
-      revision_hash?: string;
-      policy_version_id?: string;
-      /** Format: date-time */
-      before?: string;
-      /** Format: date-time */
-      after?: string;
-    };
-    AdminAuditExport: {
-      id: string;
-      query_digest: string;
-      scope: string;
-      /** @enum {string} */
-      state: "requested" | "processing" | "ready" | "expired" | "failed";
-      package_digest: string;
-      download_count: number;
-      /** Format: date-time */
-      expires_at?: string;
-      failure_reason?: string;
-      /** Format: date-time */
-      created_at: string;
-      /** Format: date-time */
-      updated_at: string;
-    };
-    AdminAuditExportDownload: {
-      /** Format: uri */
-      url: string;
-      /** Format: date-time */
-      expires_at: string;
-    };
-    UpdateDraftRequest: {
-      spec: Record<string, never>;
-    };
-    ValidationFinding: {
-      path: string;
-      message: string;
-    };
-    PromptSnapshot: {
-      compiler_version: string;
-      content_digest: string;
-      compiled_text: string;
-      system_prompt?: string;
-      user_input?: string;
-      rules?: Record<string, never>[];
-    };
-    ActivityItem: {
-      /** Format: int64 */
-      id: number;
-      event_type: string;
-      payload: {
-        [key: string]: unknown;
-      };
-      /** Format: date-time */
-      created_at: string;
-    };
-    AdminOverviewScope: {
-      workspace_id?: string;
-      label: string;
-    };
-    AdminOverviewMetrics: {
-      agents_total: number;
-      published_agents: number;
-      drafts_needing_review: number;
-      invalid_drafts: number;
-      active_runs: number;
-      awaiting_approvals: number;
-      failed_runs_24_hours: number;
-    };
-    AdminOverviewAttentionItem: {
-      id: string;
-      kind: string;
-      /** @enum {string} */
-      severity: "high" | "medium";
-      title: string;
-      description: string;
-      href: string;
-      /** Format: date-time */
-      created_at: string;
-    };
-    AdminOverviewPublication: {
-      agent_id: string;
-      agent_name: string;
-      workspace_id: string;
-      revision_hash: string;
-      /** Format: date-time */
-      published_at: string;
-    };
-    AdminOverview: {
-      scope: components["schemas"]["AdminOverviewScope"];
-      /** Format: date-time */
-      generated_at: string;
-      metrics: components["schemas"]["AdminOverviewMetrics"];
-      attention: components["schemas"]["AdminOverviewAttentionItem"][];
-      recent_publications: components["schemas"]["AdminOverviewPublication"][];
-      recent_activity: components["schemas"]["ActivityItem"][];
-      unavailable_signals: string[];
-    };
-    SubmitReviewRequest: {
-      release_notes: string;
-    };
-    ReviewDecisionRequest: {
-      /** @enum {string} */
-      decision: "approve" | "reject";
-      reason: string;
-    };
-    DiffEntry: {
-      path: string;
-      /** @enum {string} */
-      change: "added" | "removed" | "changed";
-      /** @enum {string} */
-      category: "metadata" | "behavior" | "security";
-      /** @enum {string} */
-      risk: "low" | "medium" | "high";
-      before?: unknown;
-      after?: unknown;
-    };
-    RiskSummary: {
-      total: number;
-      high: number;
-      medium: number;
-      low: number;
-    };
-    Integration: {
-      id: string;
-      organization_id: string;
-      slug: string;
-      display_name: string;
-      /** @enum {string} */
-      state: "active" | "disabled" | "retired";
-      owner_principal_id: string;
-      environments: string[];
-    };
-    IntegrationList: {
-      items: components["schemas"]["Integration"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    CreateIntegrationRequest: {
-      slug: string;
-      display_name: string;
-    };
-    PatchIntegrationRequest: {
-      display_name: string;
-    };
-    IntegrationClient: {
-      id: string;
-      integration_id: string;
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      auth_modes: ("application" | "delegated_user")[];
-      audience: string;
-      /** @enum {string} */
-      status: "active" | "disabled" | "expired" | "revoked";
-      credential_fingerprint: string;
-      /** Format: date-time */
-      expires_at?: string | null;
-    };
-    IntegrationClientList: {
-      items: components["schemas"]["IntegrationClient"][];
-    };
-    CreateIntegrationClientRequest: {
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      auth_modes: ("application" | "delegated_user")[];
-      audience?: string;
-      credential_fingerprint: string;
-      /** Format: date-time */
-      expires_at?: string | null;
-    };
-    RotateIntegrationClientRequest: {
-      credential_fingerprint: string;
-    };
-    AgentPublication: {
-      id: string;
-      integration_id: string;
-      client_id: string;
-      workspace_id: string;
-      environment: string;
-      revision_hash: string;
-      input_contract_digest: string;
-      output_contract_digest: string;
-      authority_modes: string[];
-      /** @enum {string} */
-      state: "draft" | "active" | "expired" | "revoked";
-      /** Format: date-time */
-      effective_until?: string | null;
-    };
-    AgentPublicationList: {
-      items: components["schemas"]["AgentPublication"][];
-    };
-    CreateAgentPublicationRequest: {
-      client_id: string;
-      workspace_id: string;
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      revision_hash: string;
-      input_contract_digest: string;
-      output_contract_digest: string;
-      authority_modes: ("application" | "delegated_user")[];
-      /** Format: date-time */
-      effective_until?: string | null;
-    };
-    WebhookEndpoint: {
-      id: string;
-      integration_id: string;
-      environment: string;
-      /** Format: uri */
-      destination: string;
-      /** @enum {string} */
-      status: "active" | "disabled" | "quarantined" | "retired";
-      signing_key_fingerprint: string;
-      subscribed_events: string[];
-      retry_policy: {
-        [key: string]: unknown;
-      };
-    };
-    WebhookEndpointList: {
-      items: components["schemas"]["WebhookEndpoint"][];
-    };
-    CreateWebhookEndpointRequest: {
-      /** @enum {string} */
-      environment: "development" | "staging" | "production";
-      /** Format: uri */
-      destination: string;
-      signing_key_fingerprint: string;
-      subscribed_events: string[];
-      retry_policy?: {
-        [key: string]: unknown;
-      };
-    };
-    WebhookDelivery: {
-      id: string;
-      endpoint_id: string;
-      event_id: string;
-      delivery_id: string;
-      attempt: number;
-      /** @enum {string} */
-      state: "queued" | "delivered" | "retrying" | "failed" | "canceled";
-      response_class?: string | null;
-      /** Format: date-time */
-      next_attempt_at?: string | null;
-    };
-    RedeliverWebhookRequest: {
-      delivery_id: string;
-    };
-    ModelProvider: {
-      id: string;
-      organization_id: string;
-      name: string;
-      /** @enum {string} */
-      state: "active" | "degraded" | "disabled" | "quarantined";
-      data_classes: string[];
-      credential_reference_id: string;
-      health: {
-        [key: string]: unknown;
-      };
-    };
-    ModelProviderList: {
-      items: components["schemas"]["ModelProvider"][];
-    };
-    CreateModelProviderRequest: {
-      name: string;
-      data_classes: string[];
-      credential_reference_id: string;
-    };
-    ProviderRoute: {
-      id: string;
-      provider_id: string;
-      allowed_models: string[];
-      fallback_route_ids: string[];
-      /** @enum {string} */
-      state: "active" | "degraded" | "disabled";
-      budget_policy_id?: string | null;
-      classification_constraints: {
-        [key: string]: unknown;
-      };
-      etag: string;
-    };
-    ProviderRouteList: {
-      items: components["schemas"]["ProviderRoute"][];
-    };
-    PutProviderRouteRequest: {
-      allowed_models: string[];
-      fallback_route_ids: string[];
-      /** @enum {string} */
-      state: "active" | "degraded" | "disabled";
-      budget_policy_id?: string | null;
-      classification_constraints?: {
-        [key: string]: unknown;
-      };
-    };
-    RunnerPool: {
-      id: string;
-      organization_id: string;
-      /** @enum {string} */
-      isolation_tier: "development" | "gvisor" | "microvm";
-      /** @enum {string} */
-      state: "active" | "draining" | "quarantined" | "disabled";
-      compatible_protocols: string[];
-      capacity: {
-        [key: string]: unknown;
-      };
-    };
-    RunnerPoolList: {
-      items: components["schemas"]["RunnerPool"][];
-    };
-    CreateRunnerPoolRequest: {
-      /** @enum {string} */
-      isolation_tier: "development" | "gvisor" | "microvm";
-      compatible_protocols: string[];
-      capacity: {
-        [key: string]: unknown;
-      };
-    };
-    Runner: {
-      id: string;
-      pool_id: string;
-      /** @enum {string} */
-      state: "ready" | "assigned" | "draining" | "quarantined" | "offline";
-      protocol_version: string;
-      /** Format: int64 */
-      lease_epoch: number;
-      /** Format: date-time */
-      last_heartbeat_at?: string | null;
-    };
-    RunnerList: {
-      items: components["schemas"]["Runner"][];
-    };
-    CredentialReference: {
-      id: string;
-      organization_id: string;
-      target_service: string;
-      /** @enum {string} */
-      state: "active" | "rotating" | "expired" | "revoked" | "disabled";
-      classification: string;
-      allowed_modes: string[];
-      secret_version?: string | null;
-      /** Format: date-time */
-      expires_at?: string | null;
-    };
-    CredentialReferenceList: {
-      items: components["schemas"]["CredentialReference"][];
-    };
-    DataClassification: {
-      id: string;
-      organization_id: string;
-      label: string;
-      /** @enum {string} */
-      handling: "public" | "internal" | "confidential" | "restricted";
-      retention_class: string;
-      allowed_provider_ids: string[];
-      allowed_tool_classes: string[];
-      etag: string;
-    };
-    DataClassificationList: {
-      items: components["schemas"]["DataClassification"][];
-    };
-    CreateDataClassificationRequest: {
-      label: string;
-      /** @enum {string} */
-      handling: "public" | "internal" | "confidential" | "restricted";
-      retention_class: string;
-      allowed_provider_ids: string[];
-      allowed_tool_classes: string[];
-    };
-    LimitPolicy: {
-      id: string;
-      organization_id: string;
-      workspace_id?: string | null;
-      concurrency: number;
-      duration_seconds: number;
-      /** Format: int64 */
-      output_bytes: number;
-      /** Format: int64 */
-      artifact_bytes: number;
-      budget: {
-        [key: string]: unknown;
-      };
-      etag: string;
-    };
-    LimitPolicyList: {
-      items: components["schemas"]["LimitPolicy"][];
-    };
-    UpsertLimitPolicyRequest: {
-      workspace_id?: string | null;
-      concurrency: number;
-      duration_seconds: number;
-      /** Format: int64 */
-      output_bytes: number;
-      /** Format: int64 */
-      artifact_bytes: number;
-      budget: {
-        [key: string]: unknown;
-      };
-    };
-    EnvironmentProfile: {
-      id: string;
-      organization_id: string;
-      workspace_id?: string | null;
-      /** @enum {string} */
-      name: "development" | "staging" | "production";
-      /** @enum {string} */
-      publication_posture: "test_only" | "review_required" | "production";
-      /** @enum {string} */
-      state: "active" | "emergency" | "disabled";
-      data_classification_id?: string | null;
-      allowed_target_controls: {
-        [key: string]: unknown;
-      };
-      etag: string;
-    };
-    EnvironmentProfileList: {
-      items: components["schemas"]["EnvironmentProfile"][];
-    };
-    UpsertEnvironmentProfileRequest: {
-      workspace_id?: string | null;
-      /** @enum {string} */
-      name: "development" | "staging" | "production";
-      /** @enum {string} */
-      publication_posture: "test_only" | "review_required" | "production";
-      /** @enum {string} */
-      state: "active" | "emergency" | "disabled";
-      data_classification_id?: string | null;
-      allowed_target_controls: {
-        [key: string]: unknown;
-      };
-    };
-    PlatformSettingsProjection: {
-      scope: {
-        [key: string]: unknown;
-      };
-      values: {
-        [key: string]: unknown;
-      };
-      etag: string;
-      /** @enum {string} */
-      validation_state: "valid" | "conflict" | "pending";
-    };
-    SettingsApplyRequest: {
-      workspace_id?: string | null;
-      values: {
-        [key: string]: unknown;
-      };
-    };
-    SettingsValidation: {
-      /** @enum {string} */
-      state: "valid" | "invalid" | "pending";
-      findings: {
-        [key: string]: unknown;
-      }[];
-      semantic_diff: {
-        [key: string]: unknown;
-      }[];
-      required_capabilities: string[];
-    };
-  };
-  responses: {
-    /** @description Authentication is required. */
-    Unauthorized: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Administrative access is required. */
-    Forbidden: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Resource was not found. */
-    NotFound: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Request syntax or query parameters are invalid. */
-    InvalidRequest: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Request is invalid. */
-    InvalidInput: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Operation is not permitted in the current state. */
-    InvalidState: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Required storage or infrastructure is unavailable. */
-    ServiceUnavailable: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Draft revision is stale. */
-    RevisionConflict: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-    /** @description Command precondition or idempotency conflict. */
-    Conflict: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorResponse"];
-      };
-    };
-  };
-  parameters: {
-    AgentId: string;
-    /** @description Current named Draft working-copy ETag. */
-    IfMatch: string;
-  };
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    schemas: {
+        EvaluationSuite: {
+            id: string;
+            organization_id: string;
+            workspace_id: string;
+            name: string;
+            /** @enum {string} */
+            state: "draft" | "published" | "retired";
+            owner_principal_id: string;
+            latest_version_id?: string | null;
+            gate_usage_count: number;
+            etag: string;
+        };
+        EvaluationSuiteList: {
+            items: components["schemas"]["EvaluationSuite"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationSuiteRequest: {
+            workspace_id: string;
+            name: string;
+        };
+        PatchEvaluationSuiteRequest: {
+            name: string;
+        };
+        EvaluationCase: {
+            id: string;
+            suite_id: string;
+            input: {
+                [key: string]: unknown;
+            };
+            fixture_manifest: {
+                [key: string]: unknown;
+            };
+            assertions: {
+                [key: string]: unknown;
+            }[];
+            rubric?: {
+                [key: string]: unknown;
+            } | null;
+            compatibility: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        EvaluationCaseList: {
+            items: components["schemas"]["EvaluationCase"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationCaseRequest: {
+            input: {
+                [key: string]: unknown;
+            };
+            fixture_manifest: {
+                [key: string]: unknown;
+            };
+            assertions: {
+                [key: string]: unknown;
+            }[];
+            rubric?: {
+                [key: string]: unknown;
+            } | null;
+            compatibility?: {
+                [key: string]: unknown;
+            };
+        };
+        EvaluationValidation: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+        };
+        EvaluationSuiteVersion: {
+            id: string;
+            suite_id: string;
+            content_digest: string;
+            case_manifest_digest: string;
+            fixture_manifest_digest: string;
+            evaluator_policy_version_id?: string;
+            runtime_image_digest: string;
+            /** Format: date-time */
+            published_at: string;
+        };
+        EvaluationSuiteVersionList: {
+            items: components["schemas"]["EvaluationSuiteVersion"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PublishEvaluationVersionRequest: {
+            evaluator_policy_version_id?: string;
+            runtime_image_digest: string;
+        };
+        EvaluationRun: {
+            id: string;
+            suite_version_id: string;
+            candidate_revision_hash: string;
+            baseline_revision_hash?: string | null;
+            environment_digest: string;
+            /** @enum {string} */
+            state: "requested" | "queued" | "provisioning" | "running" | "completed" | "failed" | "canceled" | "invalid";
+            /** @enum {string} */
+            gate_result: "not_applicable" | "passed" | "failed" | "blocked" | "invalid";
+            deterministic_summary: {
+                [key: string]: unknown;
+            };
+            probabilistic_summary?: {
+                [key: string]: unknown;
+            } | null;
+            evidence_manifest_digest?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        EvaluationRunList: {
+            items: components["schemas"]["EvaluationRun"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        CreateEvaluationRunRequest: {
+            suite_version_id: string;
+            candidate_revision_hash: string;
+            baseline_revision_hash?: string | null;
+            environment_digest: string;
+        };
+        EvaluationGate: {
+            id: string;
+            agent_revision_hash: string;
+            suite_version_id: string;
+            requirement: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            state: "required" | "passed" | "failed" | "overridden" | "expired";
+            override_id?: string | null;
+        };
+        EvaluationGateList: {
+            items: components["schemas"]["EvaluationGate"][];
+        };
+        OverrideEvaluationGateRequest: {
+            reason: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        EvaluationRegression: {
+            /** @enum {string} */
+            kind: "deterministic" | "policy" | "side_effect" | "quality" | "latency" | "cost" | "fixture" | "environment";
+            /** @enum {string} */
+            severity: "low" | "medium" | "high" | "critical";
+            case_id?: string;
+            message: string;
+            candidate_evidence: {
+                [key: string]: unknown;
+            };
+            baseline_evidence: {
+                [key: string]: unknown;
+            };
+        };
+        EvaluationRegressionList: {
+            /** @enum {string} */
+            comparison_state: "pending" | "comparable" | "invalid";
+            items: components["schemas"]["EvaluationRegression"][];
+        };
+        Policy: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            type: "approval" | "model" | "tool" | "command" | "network" | "credential" | "data" | "budget" | "retention" | "evaluation" | "publication";
+            name: string;
+            owner_principal_id?: string;
+            /** @enum {string} */
+            state: "draft" | "published" | "retired";
+            schema_version: string;
+            draft_etag: string;
+            latest_version_id?: string | null;
+            active_binding_count: number;
+        };
+        PolicyList: {
+            items: components["schemas"]["Policy"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PolicyPageInfo: {
+            next_cursor: string | null;
+        };
+        ValidationResult: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+        };
+        PolicyDraft: {
+            policy_id: string;
+            document: {
+                [key: string]: unknown;
+            };
+            schema_version: string;
+            etag: string;
+            validation: components["schemas"]["ValidationResult"];
+        };
+        CreatePolicyRequest: {
+            workspace_id?: string;
+            /** @enum {string} */
+            type: "approval" | "model" | "tool" | "command" | "network" | "credential" | "data" | "budget" | "retention" | "evaluation" | "publication";
+            name: string;
+            schema_version?: string;
+            document: {
+                [key: string]: unknown;
+            };
+        };
+        CreatedPolicy: {
+            policy: components["schemas"]["Policy"];
+            draft: components["schemas"]["PolicyDraft"];
+        };
+        UpdatePolicyDraftRequest: {
+            schema_version?: string;
+            document: {
+                [key: string]: unknown;
+            };
+        };
+        PublishPolicyRequest: {
+            message: string;
+        };
+        PolicyVersion: {
+            id: string;
+            policy_id: string;
+            content_digest: string;
+            schema_version: string;
+            message: string;
+            document: {
+                [key: string]: unknown;
+            };
+            compiler_evidence: {
+                [key: string]: unknown;
+            };
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        PolicyVersionList: {
+            items: components["schemas"]["PolicyVersion"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        PolicyScopeRef: {
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            scope: "organization" | "workspace";
+        };
+        PolicyBinding: {
+            id: string;
+            version_id: string;
+            target: components["schemas"]["PolicyScopeRef"];
+            target_resource_id?: string | null;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            /** @enum {string} */
+            state: "pending" | "active" | "expired" | "revoked";
+            /** Format: date-time */
+            effective_from: string;
+            /** Format: date-time */
+            effective_until?: string | null;
+            reason: string;
+        };
+        PolicyBindingList: {
+            items: components["schemas"]["PolicyBinding"][];
+            page_info: components["schemas"]["PolicyPageInfo"];
+        };
+        BindPolicyRequest: {
+            version_id: string;
+            /** @enum {string} */
+            scope: "organization" | "workspace";
+            workspace_id?: string;
+            target_resource_id?: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            reason?: string;
+        };
+        ReasonRequest: {
+            reason?: string;
+        };
+        SimulatePolicyRequest: {
+            version_id?: string;
+            action?: {
+                [key: string]: unknown;
+            };
+        };
+        PolicySimulation: {
+            /** @enum {string} */
+            decision: "allow" | "deny" | "require_requester_approval";
+            contributing_versions: {
+                [key: string]: unknown;
+            }[];
+            ineffective_rules: {
+                [key: string]: unknown;
+            }[];
+            explanation: string;
+        };
+        ErrorResponse: {
+            error: {
+                code: string;
+                message: string;
+            };
+        };
+        PageInfo: {
+            has_more: boolean;
+            next_cursor?: string;
+        };
+        Workspace: {
+            id: string;
+            slug: string;
+            display_name: string;
+        };
+        WorkspaceList: {
+            items: components["schemas"]["Workspace"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        Skill: {
+            id: string;
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            /** @enum {string} */
+            source_type: "marketplace" | "locator" | "upload" | "local";
+            source_ref: string;
+            declared_version: string;
+            content_digest: string;
+            /** @enum {string} */
+            status: "available" | "deprecated" | "retired";
+            metadata_json: {
+                [key: string]: unknown;
+            };
+        };
+        SkillList: {
+            items: components["schemas"]["Skill"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AssetUsage: {
+            agent_id: string;
+            agent_name: string;
+            workspace_id: string;
+            /** @enum {string} */
+            reference_kind: "draft" | "revision";
+            reference_id: string;
+            reference_hash?: string;
+        };
+        AssetUsageList: {
+            items: components["schemas"]["AssetUsage"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RegisterSkillRequest: {
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description?: string;
+            /** @enum {string} */
+            source_type: "marketplace" | "locator" | "upload" | "local";
+            source_ref: string;
+            declared_version?: string;
+            content_digest: string;
+            metadata_json?: Record<string, never>;
+        };
+        Plugin: {
+            id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            version: string;
+            content_digest: string;
+            /** @enum {string} */
+            status: "active" | "deprecated" | "retired";
+            manifest_json: {
+                [key: string]: unknown;
+            };
+        };
+        PluginList: {
+            items: components["schemas"]["Plugin"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        PluginWorkspace: {
+            id: string;
+            display_name: string;
+        };
+        PluginDetail: components["schemas"]["Plugin"] & {
+            workspaces: components["schemas"]["PluginWorkspace"][];
+        };
+        RegisterPluginRequest: {
+            slug: string;
+            display_name: string;
+            description?: string;
+            version: string;
+            content_digest: string;
+            manifest_json?: {
+                [key: string]: unknown;
+            };
+        };
+        EnablePluginRequest: {
+            workspace_id: string;
+        };
+        AssetStatusRequest: {
+            reason?: string;
+        };
+        Tool: {
+            id: string;
+            server_id: string;
+            server_name: string;
+            /** @enum {string} */
+            server_type: "builtin" | "mcp" | "cli";
+            endpoint_ref: string;
+            fully_qualified_name: string;
+            version: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "external_side_effect" | "administrative";
+            /** @enum {string} */
+            idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
+            content_digest: string;
+            schema_json: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            status: "active" | "proposed" | "deprecated" | "retired";
+        };
+        ToolList: {
+            items: components["schemas"]["Tool"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RegisterToolRequest: {
+            server_name: string;
+            /** @enum {string} */
+            server_type: "builtin" | "mcp" | "cli";
+            endpoint_ref?: string;
+            fully_qualified_name: string;
+            version: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "external_side_effect" | "administrative";
+            /** @enum {string} */
+            idempotency: "read_only" | "idempotent" | "compensatable" | "non_repeatable";
+            content_digest: string;
+            schema_json?: {
+                [key: string]: unknown;
+            };
+        };
+        Agent: {
+            id: string;
+            organization_id: string;
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            category: string;
+            /** @enum {string} */
+            lifecycle_status: "draft" | "published" | "active" | "retired";
+            current_published_version_id?: string;
+            current_production_revision_hash?: string;
+        };
+        AgentList: {
+            items: components["schemas"]["Agent"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAgentRequest: {
+            workspace_id: string;
+            slug: string;
+            display_name: string;
+            description: string;
+            category: string;
+        };
+        NamedAgentDraft: {
+            id: string;
+            agent_id: string;
+            name: string;
+            /** @enum {string} */
+            status: "active" | "archived";
+            derived_from_revision_hash?: string;
+            latest_revision_hash?: string;
+            spec: Record<string, never>;
+            schema_version: string;
+            working_copy_etag: number;
+            /** @enum {string} */
+            validation_status: "valid" | "invalid";
+            validation_findings: components["schemas"]["ValidationFinding"][];
+            created_by: string;
+            updated_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AgentDraftList: {
+            items: components["schemas"]["NamedAgentDraft"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAgentDraftRequest: {
+            name: string;
+            from_revision_hash?: string;
+        };
+        CommitAgentDraftRequest: {
+            message: string;
+        };
+        AgentRevision: {
+            id: string;
+            agent_id: string;
+            revision_hash: string;
+            source_draft_id: string;
+            source_draft_name: string;
+            message: string;
+            spec: Record<string, never>;
+            spec_digest: string;
+            schema_version: string;
+            runtime_image_digest?: string;
+            /** Format: date-time */
+            created_at: string;
+            created_by: string;
+            /** @enum {string} */
+            review_status: "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
+            production_deployed: boolean;
+            test_deployed: boolean;
+            run_count: number;
+            latest_run_status?: string;
+            /** Format: date-time */
+            latest_run_at?: string;
+            prompt_snapshot: components["schemas"]["PromptSnapshot"];
+        };
+        AgentRevisionList: {
+            items: components["schemas"]["AgentRevision"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AgentRevisionReview: {
+            id?: string;
+            agent_id: string;
+            revision_hash: string;
+            base_revision_hash?: string;
+            release_notes: string;
+            diff: components["schemas"]["DiffEntry"][];
+            risk_summary: components["schemas"]["RiskSummary"];
+            /** @enum {string} */
+            status: "not_submitted" | "pending" | "approved" | "rejected" | "superseded";
+            submitted_by?: string;
+            reviewed_by?: string;
+            review_reason?: string;
+            /** Format: date-time */
+            submitted_at?: string;
+            /** Format: date-time */
+            reviewed_at?: string;
+        };
+        AgentDeployment: {
+            id: string;
+            agent_id: string;
+            workspace_id: string;
+            name: string;
+            /** @enum {string} */
+            environment_kind: "test" | "production";
+            revision_id: string;
+            revision_hash: string;
+            spec_digest: string;
+            /** @enum {string} */
+            status: "active" | "stopped" | "quarantined";
+            owner?: string;
+            purpose?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            environment_policy: {
+                [key: string]: unknown;
+            };
+            changed_by: string;
+            review_id?: string;
+            previous_revision_hash?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AgentDeploymentList: {
+            items: components["schemas"]["AgentDeployment"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateAgentDeploymentRequest: {
+            name: string;
+            revision_hash: string;
+            purpose?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            environment_policy?: {
+                [key: string]: unknown;
+            };
+        };
+        PublishAgentRevisionRequest: {
+            expected_production_revision_hash?: string;
+        };
+        AgentLifecycleOverview: {
+            agent: components["schemas"]["Agent"];
+            main_draft: components["schemas"]["NamedAgentDraft"];
+            drafts: components["schemas"]["NamedAgentDraft"][];
+            production_deployment?: components["schemas"]["AgentDeployment"] | null;
+            test_deployments: components["schemas"]["AgentDeployment"][];
+            revision_count: number;
+            recent_activity: components["schemas"]["ActivityItem"][];
+        };
+        AdminRun: {
+            id: string;
+            session_id: string;
+            workspace_id: string;
+            workspace_name: string;
+            agent_id: string;
+            agent_name: string;
+            revision_hash: string;
+            deployment_id?: string;
+            deployment_name?: string;
+            requester_id: string;
+            requester_name: string;
+            /** @enum {string} */
+            status: "queued" | "assigned" | "accepted" | "awaiting_approval" | "suspended" | "canceling" | "completed" | "failed" | "canceled" | "expired";
+            status_reason?: string;
+            runner_id?: string;
+            /** Format: int64 */
+            session_sequence: number;
+            manifest_digest?: string;
+            action_count: number;
+            approval_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            last_event_at?: string;
+        };
+        AdminRunList: {
+            items: components["schemas"]["AdminRun"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AdminRunEvent: {
+            sequence: number;
+            type: string;
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminRunAction: {
+            id: string;
+            tool_name: string;
+            operation: string;
+            target?: string;
+            /** @enum {string} */
+            effect: "read" | "write" | "destructive";
+            state: string;
+            action_digest: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminRunApproval: {
+            id: string;
+            action_id: string;
+            action_digest: string;
+            risk_class: string;
+            /** @enum {string} */
+            status: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
+            requested_by: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            decided_at?: string;
+        };
+        AdminRunArtifact: {
+            id: string;
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+            /** @enum {string} */
+            scan_status: "pending" | "passed" | "failed";
+            /** @enum {string} */
+            state: "declared" | "uploaded" | "available" | "rejected";
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminRunDetail: {
+            run: components["schemas"]["AdminRun"];
+            events: components["schemas"]["AdminRunEvent"][];
+            actions: components["schemas"]["AdminRunAction"][];
+            approvals: components["schemas"]["AdminRunApproval"][];
+            artifacts: components["schemas"]["AdminRunArtifact"][];
+        };
+        AdminAuditEvent: {
+            /** Format: int64 */
+            id: number;
+            actor_id: string;
+            actor_name: string;
+            resource_type: string;
+            resource_id: string;
+            event_type: string;
+            scope: string;
+            outcome: string;
+            risk: string;
+            correlation_id: string;
+            run_id: string;
+            revision_hash: string;
+            policy_version_id: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminAuditEventList: {
+            items: components["schemas"]["AdminAuditEvent"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        AdminAuditEvidence: {
+            kind: string;
+            id: string;
+        };
+        AdminAuditRedactionMetadata: {
+            mode: string;
+            redacted_fields: string[];
+        };
+        AdminAuditEventDetail: components["schemas"]["AdminAuditEvent"] & {
+            payload: {
+                [key: string]: unknown;
+            };
+            evidence: components["schemas"]["AdminAuditEvidence"][];
+            redaction_metadata: components["schemas"]["AdminAuditRedactionMetadata"];
+        };
+        AdminAuditExportRequest: {
+            workspace_id?: string;
+            resource_type?: string;
+            resource_id?: string;
+            actor_id?: string;
+            event_type?: string;
+            outcome?: string;
+            risk?: string;
+            correlation_id?: string;
+            run_id?: string;
+            revision_hash?: string;
+            policy_version_id?: string;
+            /** Format: date-time */
+            before?: string;
+            /** Format: date-time */
+            after?: string;
+        };
+        AdminAuditExport: {
+            id: string;
+            query_digest: string;
+            scope: string;
+            /** @enum {string} */
+            state: "requested" | "processing" | "ready" | "expired" | "failed";
+            package_digest: string;
+            download_count: number;
+            /** Format: date-time */
+            expires_at?: string;
+            failure_reason?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminAuditExportDownload: {
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        UpdateDraftRequest: {
+            spec: Record<string, never>;
+        };
+        ValidationFinding: {
+            path: string;
+            message: string;
+        };
+        PromptSnapshot: {
+            compiler_version: string;
+            content_digest: string;
+            compiled_text: string;
+            system_prompt?: string;
+            user_input?: string;
+            rules?: Record<string, never>[];
+        };
+        ActivityItem: {
+            /** Format: int64 */
+            id: number;
+            event_type: string;
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminOverviewScope: {
+            workspace_id?: string;
+            label: string;
+        };
+        AdminOverviewMetrics: {
+            agents_total: number;
+            published_agents: number;
+            drafts_needing_review: number;
+            invalid_drafts: number;
+            active_runs: number;
+            awaiting_approvals: number;
+            failed_runs_24_hours: number;
+        };
+        AdminOverviewAttentionItem: {
+            id: string;
+            kind: string;
+            /** @enum {string} */
+            severity: "high" | "medium";
+            title: string;
+            description: string;
+            href: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminOverviewPublication: {
+            agent_id: string;
+            agent_name: string;
+            workspace_id: string;
+            revision_hash: string;
+            /** Format: date-time */
+            published_at: string;
+        };
+        AdminOverview: {
+            scope: components["schemas"]["AdminOverviewScope"];
+            /** Format: date-time */
+            generated_at: string;
+            metrics: components["schemas"]["AdminOverviewMetrics"];
+            attention: components["schemas"]["AdminOverviewAttentionItem"][];
+            recent_publications: components["schemas"]["AdminOverviewPublication"][];
+            recent_activity: components["schemas"]["ActivityItem"][];
+            unavailable_signals: string[];
+        };
+        SubmitReviewRequest: {
+            release_notes: string;
+        };
+        ReviewDecisionRequest: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            reason: string;
+        };
+        DiffEntry: {
+            path: string;
+            /** @enum {string} */
+            change: "added" | "removed" | "changed";
+            /** @enum {string} */
+            category: "metadata" | "behavior" | "security";
+            /** @enum {string} */
+            risk: "low" | "medium" | "high";
+            before?: unknown;
+            after?: unknown;
+        };
+        RiskSummary: {
+            total: number;
+            high: number;
+            medium: number;
+            low: number;
+        };
+        Integration: {
+            id: string;
+            organization_id: string;
+            slug: string;
+            display_name: string;
+            /** @enum {string} */
+            state: "active" | "disabled" | "retired";
+            owner_principal_id: string;
+            environments: string[];
+        };
+        IntegrationList: {
+            items: components["schemas"]["Integration"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateIntegrationRequest: {
+            slug: string;
+            display_name: string;
+        };
+        PatchIntegrationRequest: {
+            display_name: string;
+        };
+        IntegrationClient: {
+            id: string;
+            integration_id: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            auth_modes: ("application" | "delegated_user")[];
+            audience: string;
+            /** @enum {string} */
+            status: "active" | "disabled" | "expired" | "revoked";
+            credential_fingerprint: string;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        IntegrationClientList: {
+            items: components["schemas"]["IntegrationClient"][];
+        };
+        CreateIntegrationClientRequest: {
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            auth_modes: ("application" | "delegated_user")[];
+            audience?: string;
+            credential_fingerprint: string;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        RotateIntegrationClientRequest: {
+            credential_fingerprint: string;
+        };
+        AgentPublication: {
+            id: string;
+            integration_id: string;
+            client_id: string;
+            workspace_id: string;
+            environment: string;
+            revision_hash: string;
+            input_contract_digest: string;
+            output_contract_digest: string;
+            authority_modes: string[];
+            /** @enum {string} */
+            state: "draft" | "active" | "expired" | "revoked";
+            /** Format: date-time */
+            effective_until?: string | null;
+        };
+        AgentPublicationList: {
+            items: components["schemas"]["AgentPublication"][];
+        };
+        CreateAgentPublicationRequest: {
+            client_id: string;
+            workspace_id: string;
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            revision_hash: string;
+            input_contract_digest: string;
+            output_contract_digest: string;
+            authority_modes: ("application" | "delegated_user")[];
+            /** Format: date-time */
+            effective_until?: string | null;
+        };
+        WebhookEndpoint: {
+            id: string;
+            integration_id: string;
+            environment: string;
+            /** Format: uri */
+            destination: string;
+            /** @enum {string} */
+            status: "active" | "disabled" | "quarantined" | "retired";
+            signing_key_fingerprint: string;
+            subscribed_events: string[];
+            retry_policy: {
+                [key: string]: unknown;
+            };
+        };
+        WebhookEndpointList: {
+            items: components["schemas"]["WebhookEndpoint"][];
+        };
+        CreateWebhookEndpointRequest: {
+            /** @enum {string} */
+            environment: "development" | "staging" | "production";
+            /** Format: uri */
+            destination: string;
+            signing_key_fingerprint: string;
+            subscribed_events: string[];
+            retry_policy?: {
+                [key: string]: unknown;
+            };
+        };
+        WebhookDelivery: {
+            id: string;
+            endpoint_id: string;
+            event_id: string;
+            delivery_id: string;
+            attempt: number;
+            /** @enum {string} */
+            state: "queued" | "delivered" | "retrying" | "failed" | "canceled";
+            response_class?: string | null;
+            /** Format: date-time */
+            next_attempt_at?: string | null;
+        };
+        RedeliverWebhookRequest: {
+            delivery_id: string;
+        };
+        ModelProvider: {
+            id: string;
+            organization_id: string;
+            name: string;
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled" | "quarantined";
+            data_classes: string[];
+            credential_reference_id: string;
+            health: {
+                [key: string]: unknown;
+            };
+        };
+        ModelProviderList: {
+            items: components["schemas"]["ModelProvider"][];
+        };
+        CreateModelProviderRequest: {
+            name: string;
+            data_classes: string[];
+            credential_reference_id: string;
+        };
+        ProviderRoute: {
+            id: string;
+            provider_id: string;
+            allowed_models: string[];
+            fallback_route_ids: string[];
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled";
+            budget_policy_id?: string | null;
+            classification_constraints: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        ProviderRouteList: {
+            items: components["schemas"]["ProviderRoute"][];
+        };
+        PutProviderRouteRequest: {
+            allowed_models: string[];
+            fallback_route_ids: string[];
+            /** @enum {string} */
+            state: "active" | "degraded" | "disabled";
+            budget_policy_id?: string | null;
+            classification_constraints?: {
+                [key: string]: unknown;
+            };
+        };
+        RunnerPool: {
+            id: string;
+            organization_id: string;
+            /** @enum {string} */
+            isolation_tier: "development" | "gvisor" | "microvm";
+            /** @enum {string} */
+            state: "active" | "draining" | "quarantined" | "disabled";
+            compatible_protocols: string[];
+            capacity: {
+                [key: string]: unknown;
+            };
+        };
+        RunnerPoolList: {
+            items: components["schemas"]["RunnerPool"][];
+        };
+        CreateRunnerPoolRequest: {
+            /** @enum {string} */
+            isolation_tier: "development" | "gvisor" | "microvm";
+            compatible_protocols: string[];
+            capacity: {
+                [key: string]: unknown;
+            };
+        };
+        Runner: {
+            id: string;
+            pool_id: string;
+            /** @enum {string} */
+            state: "ready" | "assigned" | "draining" | "quarantined" | "offline";
+            protocol_version: string;
+            /** Format: int64 */
+            lease_epoch: number;
+            /** Format: date-time */
+            last_heartbeat_at?: string | null;
+        };
+        RunnerList: {
+            items: components["schemas"]["Runner"][];
+        };
+        CredentialReference: {
+            id: string;
+            organization_id: string;
+            target_service: string;
+            /** @enum {string} */
+            state: "active" | "rotating" | "expired" | "revoked" | "disabled";
+            classification: string;
+            allowed_modes: string[];
+            secret_version?: string | null;
+            /** Format: date-time */
+            expires_at?: string | null;
+        };
+        CredentialReferenceList: {
+            items: components["schemas"]["CredentialReference"][];
+        };
+        DataClassification: {
+            id: string;
+            organization_id: string;
+            label: string;
+            /** @enum {string} */
+            handling: "public" | "internal" | "confidential" | "restricted";
+            retention_class: string;
+            allowed_provider_ids: string[];
+            allowed_tool_classes: string[];
+            etag: string;
+        };
+        DataClassificationList: {
+            items: components["schemas"]["DataClassification"][];
+        };
+        CreateDataClassificationRequest: {
+            label: string;
+            /** @enum {string} */
+            handling: "public" | "internal" | "confidential" | "restricted";
+            retention_class: string;
+            allowed_provider_ids: string[];
+            allowed_tool_classes: string[];
+        };
+        LimitPolicy: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            concurrency: number;
+            duration_seconds: number;
+            /** Format: int64 */
+            output_bytes: number;
+            /** Format: int64 */
+            artifact_bytes: number;
+            budget: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        LimitPolicyList: {
+            items: components["schemas"]["LimitPolicy"][];
+        };
+        UpsertLimitPolicyRequest: {
+            workspace_id?: string | null;
+            concurrency: number;
+            duration_seconds: number;
+            /** Format: int64 */
+            output_bytes: number;
+            /** Format: int64 */
+            artifact_bytes: number;
+            budget: {
+                [key: string]: unknown;
+            };
+        };
+        EnvironmentProfile: {
+            id: string;
+            organization_id: string;
+            workspace_id?: string | null;
+            /** @enum {string} */
+            name: "development" | "staging" | "production";
+            /** @enum {string} */
+            publication_posture: "test_only" | "review_required" | "production";
+            /** @enum {string} */
+            state: "active" | "emergency" | "disabled";
+            data_classification_id?: string | null;
+            allowed_target_controls: {
+                [key: string]: unknown;
+            };
+            etag: string;
+        };
+        EnvironmentProfileList: {
+            items: components["schemas"]["EnvironmentProfile"][];
+        };
+        UpsertEnvironmentProfileRequest: {
+            workspace_id?: string | null;
+            /** @enum {string} */
+            name: "development" | "staging" | "production";
+            /** @enum {string} */
+            publication_posture: "test_only" | "review_required" | "production";
+            /** @enum {string} */
+            state: "active" | "emergency" | "disabled";
+            data_classification_id?: string | null;
+            allowed_target_controls: {
+                [key: string]: unknown;
+            };
+        };
+        PlatformSettingsProjection: {
+            scope: {
+                [key: string]: unknown;
+            };
+            values: {
+                [key: string]: unknown;
+            };
+            etag: string;
+            /** @enum {string} */
+            validation_state: "valid" | "conflict" | "pending";
+        };
+        SettingsApplyRequest: {
+            workspace_id?: string | null;
+            values: {
+                [key: string]: unknown;
+            };
+        };
+        SettingsValidation: {
+            /** @enum {string} */
+            state: "valid" | "invalid" | "pending";
+            findings: {
+                [key: string]: unknown;
+            }[];
+            semantic_diff: {
+                [key: string]: unknown;
+            }[];
+            required_capabilities: string[];
+        };
+    };
+    responses: {
+        /** @description Authentication is required. */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Administrative access is required. */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Resource was not found. */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Request syntax or query parameters are invalid. */
+        InvalidRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Request is invalid. */
+        InvalidInput: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Operation is not permitted in the current state. */
+        InvalidState: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Required storage or infrastructure is unavailable. */
+        ServiceUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Draft revision is stale. */
+        RevisionConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Command precondition or idempotency conflict. */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+    };
+    parameters: {
+        AgentId: string;
+        /** @description Current named Draft working-copy ETag. */
+        IfMatch: string;
+    };
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  getAdminOverview: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Admin overview */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminOverview"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listAdminRuns: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        agent_id?: string;
-        revision_hash?: string;
-        status?:
-          | "queued"
-          | "assigned"
-          | "accepted"
-          | "awaiting_approval"
-          | "canceling"
-          | "completed"
-          | "failed"
-          | "canceled";
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Runs */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminRunList"];
-        };
-      };
-      400: components["responses"]["InvalidRequest"];
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getAdminRun: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Run detail */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminRunDetail"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listAdminAuditEvents: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        resource_type?: string;
-        resource_id?: string;
-        actor_id?: string;
-        event_type?: string;
-        outcome?: string;
-        risk?: string;
-        correlation_id?: string;
-        run_id?: string;
-        revision_hash?: string;
-        policy_version_id?: string;
-        before?: string;
-        after?: string;
-        cursor?: string;
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Audit event summaries */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminAuditEventList"];
-        };
-      };
-      400: components["responses"]["InvalidRequest"];
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  getAdminAuditEvent: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        event_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Audit event detail */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminAuditEventDetail"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  createAdminAuditExport: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["AdminAuditExportRequest"];
-      };
-    };
-    responses: {
-      /** @description Export requested */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminAuditExport"];
-        };
-      };
-      400: components["responses"]["InvalidRequest"];
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      503: components["responses"]["ServiceUnavailable"];
-    };
-  };
-  getAdminAuditExport: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        export_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Audit export state */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminAuditExport"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  downloadAdminAuditExport: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        export_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Short-lived download reference */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AdminAuditExportDownload"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  listManagedWorkspaces: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Managed workspaces */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WorkspaceList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  listAgents: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        search?: string;
-        status?: "draft" | "active" | "retired";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Agents */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  createAgent: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAgentRequest"];
-      };
-    };
-    responses: {
-      /** @description Agent created */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Agent"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  listSkills: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        search?: string;
-        status?: "available" | "deprecated" | "retired";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Skills */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SkillList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  registerSkill: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RegisterSkillRequest"];
-      };
-    };
-    responses: {
-      /** @description Skill registered */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Skill"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getSkill: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skill_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Skill artifact */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Skill"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listSkillUsage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skill_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Skill usage */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AssetUsageList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listPlugins: {
-    parameters: {
-      query?: {
-        search?: string;
-        status?: "active" | "deprecated" | "retired";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Plugins */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PluginList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  registerPlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RegisterPluginRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin registered */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Plugin"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getPlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Plugin detail */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PluginDetail"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listPluginUsage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Plugin usage */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AssetUsageList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listTools: {
-    parameters: {
-      query?: {
-        search?: string;
-        status?: "active" | "proposed" | "deprecated" | "retired";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tools */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ToolList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  registerTool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RegisterToolRequest"];
-      };
-    };
-    responses: {
-      /** @description Tool registered */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Tool"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getTool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tool descriptor */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Tool"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listToolUsage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tool usage */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AssetUsageList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  enablePluginForWorkspace: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["EnablePluginRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin enabled */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  activateSkill: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skill_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Skill activated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  disablePlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["EnablePluginRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin disabled */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  deprecateSkill: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skill_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Skill deprecated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  retireSkill: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        skill_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Skill retired */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  activatePlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin activated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  deprecatePlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin deprecated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  retirePlugin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        plugin_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Plugin retired */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  activateTool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Tool activated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  deprecateTool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Tool deprecated */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  retireTool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AssetStatusRequest"];
-      };
-    };
-    responses: {
-      /** @description Tool retired */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getAgent: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Agent */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Agent"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  getAgentLifecycle: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Agent lifecycle */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentLifecycleOverview"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listAgentDrafts: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Drafts */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentDraftList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  createAgentDraft: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAgentDraftRequest"];
-      };
-    };
-    responses: {
-      /** @description Draft created */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["NamedAgentDraft"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getNamedAgentDraft: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        draft_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Draft */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["NamedAgentDraft"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  updateNamedAgentDraft: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description Current named Draft working-copy ETag. */
-        "If-Match": components["parameters"]["IfMatch"];
-      };
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        draft_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateDraftRequest"];
-      };
-    };
-    responses: {
-      /** @description Draft updated */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["NamedAgentDraft"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      412: components["responses"]["RevisionConflict"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  archiveAgentDraft: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        draft_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Draft archived */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  commitAgentDraft: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        draft_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CommitAgentDraftRequest"];
-      };
-    };
-    responses: {
-      /** @description Revision committed */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevision"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  listAgentRevisions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Revisions */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevisionList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  getAgentRevision: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        revision_hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Revision */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevision"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  getAgentRevisionReview: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        revision_hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Revision review */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevisionReview"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  submitAgentRevisionReview: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        revision_hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SubmitReviewRequest"];
-      };
-    };
-    responses: {
-      /** @description Review submitted */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevisionReview"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  decideAgentRevisionReview: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        revision_hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ReviewDecisionRequest"];
-      };
-    };
-    responses: {
-      /** @description Review decision recorded */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentRevisionReview"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  publishAgentRevision: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        revision_hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["PublishAgentRevisionRequest"];
-      };
-    };
-    responses: {
-      /** @description Production Deployment */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentDeployment"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-      412: components["responses"]["RevisionConflict"];
-    };
-  };
-  listAgentDeployments: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Deployments */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentDeploymentList"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  createAgentTestDeployment: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAgentDeploymentRequest"];
-      };
-    };
-    responses: {
-      /** @description Test Deployment created */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentDeployment"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  stopAgentTestDeployment: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        agent_id: components["parameters"]["AgentId"];
-        deployment_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Test Deployment stopped */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-      409: components["responses"]["InvalidState"];
-    };
-  };
-  listPolicies: {
-    parameters: {
-      query?: {
-        type?: string;
-        workspace_id?: string;
-        state?: "draft" | "published" | "retired";
-        owner_id?: string;
-        binding_target?: string;
-        cursor?: string;
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Policies */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyList"];
-        };
-      };
-      400: components["responses"]["InvalidRequest"];
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  createPolicy: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreatePolicyRequest"];
-      };
-    };
-    responses: {
-      /** @description Policy and Draft */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CreatedPolicy"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getPolicy: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Policy */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Policy"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  getPolicyDraft: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Policy Draft */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyDraft"];
-        };
-      };
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-      404: components["responses"]["NotFound"];
-    };
-  };
-  updatePolicyDraft: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-      };
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdatePolicyDraftRequest"];
-      };
-    };
-    responses: {
-      /** @description Updated Policy Draft */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyDraft"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  validatePolicy: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Validation result */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyDraft"];
-        };
-      };
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  listPolicyVersions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Policy Versions */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyVersionList"];
-        };
-      };
-    };
-  };
-  publishPolicyVersion: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-        "Idempotency-Key": string;
-      };
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PublishPolicyRequest"];
-      };
-    };
-    responses: {
-      /** @description Policy Version */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyVersion"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  listPolicyBindings: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Policy Bindings */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyBindingList"];
-        };
-      };
-    };
-  };
-  bindPolicy: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BindPolicyRequest"];
-      };
-    };
-    responses: {
-      /** @description Policy Binding */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyBinding"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  revokePolicyBinding: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        binding_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["ReasonRequest"];
-      };
-    };
-    responses: {
-      /** @description Revoked Policy Binding */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicyBinding"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  simulatePolicy: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SimulatePolicyRequest"];
-      };
-    };
-    responses: {
-      /** @description Simulation */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PolicySimulation"];
-        };
-      };
-    };
-  };
-  retirePolicy: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["ReasonRequest"];
-      };
-    };
-    responses: {
-      /** @description Retired Policy */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Policy"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listEvaluationSuites: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        state?: "draft" | "published" | "retired";
-        search?: string;
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Evaluation Suites */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuiteList"];
-        };
-      };
-      400: components["responses"]["InvalidRequest"];
-      401: components["responses"]["Unauthorized"];
-      403: components["responses"]["Forbidden"];
-    };
-  };
-  createEvaluationSuite: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateEvaluationSuiteRequest"];
-      };
-    };
-    responses: {
-      /** @description Evaluation Suite */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuite"];
-        };
-      };
-      403: components["responses"]["Forbidden"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getEvaluationSuite: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Evaluation Suite */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuite"];
-        };
-      };
-      404: components["responses"]["NotFound"];
-    };
-  };
-  patchEvaluationSuite: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-      };
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PatchEvaluationSuiteRequest"];
-      };
-    };
-    responses: {
-      /** @description Evaluation Suite */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuite"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  validateEvaluationSuite: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Validation result */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationValidation"];
-        };
-      };
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listEvaluationCases: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Cases */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationCaseList"];
-        };
-      };
-    };
-  };
-  createEvaluationCase: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
-      };
-    };
-    responses: {
-      /** @description Evaluation Case */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationCase"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  patchEvaluationCase: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-      };
-      path: {
-        suite_id: string;
-        case_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
-      };
-    };
-    responses: {
-      /** @description Evaluation Case */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationCase"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listEvaluationVersions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Suite Versions */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuiteVersionList"];
-        };
-      };
-    };
-  };
-  publishEvaluationVersion: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-        "Idempotency-Key": string;
-      };
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PublishEvaluationVersionRequest"];
-      };
-    };
-    responses: {
-      /** @description Suite Version */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationSuiteVersion"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listEvaluationRuns: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Evaluation Runs */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationRunList"];
-        };
-      };
-    };
-  };
-  createEvaluationRun: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        suite_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateEvaluationRunRequest"];
-      };
-    };
-    responses: {
-      /** @description Evaluation Run requested */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationRun"];
-        };
-      };
-      404: components["responses"]["NotFound"];
-      422: components["responses"]["InvalidInput"];
-    };
-  };
-  getEvaluationRun: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Evaluation Run */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationRun"];
-        };
-      };
-      404: components["responses"]["NotFound"];
-    };
-  };
-  cancelEvaluationRun: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Canceled Evaluation Run */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationRun"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listEvaluationRunRegressions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Regression projection */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationRegressionList"];
-        };
-      };
-      404: components["responses"]["NotFound"];
-    };
-  };
-  listEvaluationGates: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-        agent_revision_hash?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Publication Gates */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationGateList"];
-        };
-      };
-    };
-  };
-  overrideEvaluationGate: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        gate_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["OverrideEvaluationGateRequest"];
-      };
-    };
-    responses: {
-      /** @description Overridden Gate */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EvaluationGate"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listIntegrations: {
-    parameters: {
-      query?: {
-        state?: "active" | "disabled" | "retired";
-        search?: string;
-        environment?: "development" | "staging" | "production";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Integrations */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["IntegrationList"];
-        };
-      };
-    };
-  };
-  createIntegration: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateIntegrationRequest"];
-      };
-    };
-    responses: {
-      /** @description Integration */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Integration"];
-        };
-      };
-    };
-  };
-  getIntegration: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Integration */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Integration"];
-        };
-      };
-    };
-  };
-  patchIntegration: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PatchIntegrationRequest"];
-      };
-    };
-    responses: {
-      /** @description Integration */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Integration"];
-        };
-      };
-    };
-  };
-  listIntegrationClients: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Clients */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["IntegrationClientList"];
-        };
-      };
-    };
-  };
-  createIntegrationClient: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateIntegrationClientRequest"];
-      };
-    };
-    responses: {
-      /** @description Client */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["IntegrationClient"];
-        };
-      };
-    };
-  };
-  rotateIntegrationClient: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        client_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RotateIntegrationClientRequest"];
-      };
-    };
-    responses: {
-      /** @description Client */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["IntegrationClient"];
-        };
-      };
-    };
-  };
-  disableIntegrationClient: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        client_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Disabled */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  listIntegrationPublications: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Publications */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentPublicationList"];
-        };
-      };
-    };
-  };
-  createIntegrationPublication: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAgentPublicationRequest"];
-      };
-    };
-    responses: {
-      /** @description Publication */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["AgentPublication"];
-        };
-      };
-    };
-  };
-  revokeIntegrationPublication: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        publication_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Revoked */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  listIntegrationWebhooks: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Webhooks */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookEndpointList"];
-        };
-      };
-    };
-  };
-  createIntegrationWebhook: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        integration_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateWebhookEndpointRequest"];
-      };
-    };
-    responses: {
-      /** @description Webhook */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookEndpoint"];
-        };
-      };
-    };
-  };
-  redeliverWebhook: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        endpoint_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["RedeliverWebhookRequest"];
-      };
-    };
-    responses: {
-      /** @description Delivery */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookDelivery"];
-        };
-      };
-    };
-  };
-  listPlatformModelProviders: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Model providers */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ModelProviderList"];
-        };
-      };
-    };
-  };
-  createPlatformModelProvider: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateModelProviderRequest"];
-      };
-    };
-    responses: {
-      /** @description Model provider */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ModelProvider"];
-        };
-      };
-    };
-  };
-  listProviderRoutes: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        provider_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Provider routes */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ProviderRouteList"];
-        };
-      };
-    };
-  };
-  putProviderRoute: {
-    parameters: {
-      query?: never;
-      header: {
-        "If-Match": string;
-      };
-      path: {
-        provider_id: string;
-        route_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PutProviderRouteRequest"];
-      };
-    };
-    responses: {
-      /** @description Provider route */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ProviderRoute"];
-        };
-      };
-    };
-  };
-  quarantineModelProvider: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        provider_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Quarantined provider */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ModelProvider"];
-        };
-      };
-    };
-  };
-  listPlatformRunnerPools: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Runner pools */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunnerPoolList"];
-        };
-      };
-    };
-  };
-  createPlatformRunnerPool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateRunnerPoolRequest"];
-      };
-    };
-    responses: {
-      /** @description Runner pool */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunnerPool"];
-        };
-      };
-    };
-  };
-  listPlatformRunners: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        pool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Runners */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunnerList"];
-        };
-      };
-    };
-  };
-  drainRunnerPool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        pool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Draining pool */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunnerPool"];
-        };
-      };
-    };
-  };
-  quarantineRunnerPool: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        pool_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Quarantined pool */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunnerPool"];
-        };
-      };
-    };
-  };
-  listPlatformCredentials: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Credential references */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CredentialReferenceList"];
-        };
-      };
-    };
-  };
-  rotatePlatformCredential: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        credential_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Credential reference */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CredentialReference"];
-        };
-      };
-    };
-  };
-  revokePlatformCredential: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        credential_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Credential reference */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CredentialReference"];
-        };
-      };
-    };
-  };
-  listDataClassifications: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Data classifications */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DataClassificationList"];
-        };
-      };
-    };
-  };
-  createDataClassification: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateDataClassificationRequest"];
-      };
-    };
-    responses: {
-      /** @description Data classification */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DataClassification"];
-        };
-      };
-    };
-  };
-  listPlatformLimitPolicies: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Limit policies */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["LimitPolicyList"];
-        };
-      };
-    };
-  };
-  upsertPlatformLimitPolicy: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description Current named Draft working-copy ETag. */
-        "If-Match": components["parameters"]["IfMatch"];
-      };
-      path: {
-        policy_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpsertLimitPolicyRequest"];
-      };
-    };
-    responses: {
-      /** @description Limit policy */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["LimitPolicy"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  listPlatformEnvironmentProfiles: {
-    parameters: {
-      query?: {
-        workspace_id?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Environment profiles */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EnvironmentProfileList"];
-        };
-      };
-    };
-  };
-  upsertPlatformEnvironmentProfile: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description Current named Draft working-copy ETag. */
-        "If-Match": components["parameters"]["IfMatch"];
-      };
-      path: {
-        profile_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpsertEnvironmentProfileRequest"];
-      };
-    };
-    responses: {
-      /** @description Environment profile */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EnvironmentProfile"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
-  getPlatformSettings: {
-    parameters: {
-      query: {
-        scope: "organization" | "workspace";
-        workspace_id?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Platform settings projection */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PlatformSettingsProjection"];
-        };
-      };
-    };
-  };
-  validatePlatformSettings: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SettingsApplyRequest"];
-      };
-    };
-    responses: {
-      /** @description Validation result */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SettingsValidation"];
-        };
-      };
-    };
-  };
-  applyPlatformSettings: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description Current named Draft working-copy ETag. */
-        "If-Match": components["parameters"]["IfMatch"];
-        "Idempotency-Key": string;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SettingsApplyRequest"];
-      };
-    };
-    responses: {
-      /** @description Updated settings projection */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PlatformSettingsProjection"];
-        };
-      };
-      409: components["responses"]["Conflict"];
-    };
-  };
+    getAdminOverview: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminRuns: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                agent_id?: string;
+                revision_hash?: string;
+                status?: "queued" | "assigned" | "accepted" | "awaiting_approval" | "canceling" | "completed" | "failed" | "canceled";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRunList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getAdminRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Run detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRunDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminAuditEvents: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                resource_type?: string;
+                resource_id?: string;
+                actor_id?: string;
+                event_type?: string;
+                outcome?: string;
+                risk?: string;
+                correlation_id?: string;
+                run_id?: string;
+                revision_hash?: string;
+                policy_version_id?: string;
+                before?: string;
+                after?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit event summaries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditEventList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAdminAuditEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit event detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditEventDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminAuditExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Export requested */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExport"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit export state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    downloadAdminAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived download reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditExportDownload"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    listManagedWorkspaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Managed workspaces */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAgents: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                search?: string;
+                status?: "draft" | "active" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Agent created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Agent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listSkills: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                search?: string;
+                status?: "available" | "deprecated" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skills */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterSkillRequest"];
+            };
+        };
+        responses: {
+            /** @description Skill registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Skill"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skill artifact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Skill"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listSkillUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skill usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetUsageList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPlugins: {
+        parameters: {
+            query?: {
+                search?: string;
+                status?: "active" | "deprecated" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plugins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plugin detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPluginUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plugin usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetUsageList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listTools: {
+        parameters: {
+            query?: {
+                search?: string;
+                status?: "active" | "proposed" | "deprecated" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tools */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterToolRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tool"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tool descriptor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tool"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listToolUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tool usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetUsageList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    enablePluginForWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnablePluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin enabled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    activateSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Skill activated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    disablePlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnablePluginRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin disabled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    deprecateSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Skill deprecated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    retireSkill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Skill retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    activatePlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin activated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    deprecatePlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin deprecated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    retirePlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Plugin retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    activateTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool activated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    deprecateTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool deprecated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    retireTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool retired */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Agent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentLifecycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent lifecycle */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentLifecycleOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAgentDrafts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Drafts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDraftList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getNamedAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateNamedAgentDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedAgentDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            412: components["responses"]["RevisionConflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    archiveAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft archived */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    commitAgentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitAgentDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Revision committed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevision"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    listAgentRevisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revisions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevision"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revision review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Review submitted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    decideAgentRevisionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Review decision recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRevisionReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    publishAgentRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                revision_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishAgentRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Production Deployment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeployment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+            412: components["responses"]["RevisionConflict"];
+        };
+    };
+    listAgentDeployments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deployments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeploymentList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAgentTestDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentDeploymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Test Deployment created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDeployment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    stopAgentTestDeployment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: components["parameters"]["AgentId"];
+                deployment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Test Deployment stopped */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    listPolicies: {
+        parameters: {
+            query?: {
+                type?: string;
+                workspace_id?: string;
+                state?: "draft" | "published" | "retired";
+                owner_id?: string;
+                binding_target?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy and Draft */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPolicyDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePolicyDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePolicyDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated Policy Draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    validatePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyDraft"];
+                };
+            };
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listPolicyVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersionList"];
+                };
+            };
+        };
+    };
+    publishPolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy Version */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersion"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    listPolicyBindings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy Bindings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBindingList"];
+                };
+            };
+        };
+    };
+    bindPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy Binding */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBinding"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    revokePolicyBinding: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                binding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description Revoked Policy Binding */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyBinding"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    simulatePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulatePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Simulation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySimulation"];
+                };
+            };
+        };
+    };
+    retirePolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description Retired Policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationSuites: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                state?: "draft" | "published" | "retired";
+                search?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Suites */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Suite */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Suite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    patchEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchEvaluationSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Suite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuite"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    validateEvaluationSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationValidation"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listEvaluationCases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cases */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCaseList"];
+                };
+            };
+        };
+    };
+    createEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Case */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCase"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    patchEvaluationCase: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                suite_id: string;
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Case */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationCase"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suite Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteVersionList"];
+                };
+            };
+        };
+    };
+    publishEvaluationVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishEvaluationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Suite Version */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSuiteVersion"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRunList"];
+                };
+            };
+        };
+    };
+    createEvaluationRun: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvaluationRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluation Run requested */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidInput"];
+        };
+    };
+    getEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evaluation Run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canceled Evaluation Run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listEvaluationRunRegressions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Regression projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRegressionList"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listEvaluationGates: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+                agent_revision_hash?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Publication Gates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationGateList"];
+                };
+            };
+        };
+    };
+    overrideEvaluationGate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                gate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideEvaluationGateRequest"];
+            };
+        };
+        responses: {
+            /** @description Overridden Gate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationGate"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listIntegrations: {
+        parameters: {
+            query?: {
+                state?: "active" | "disabled" | "retired";
+                search?: string;
+                environment?: "development" | "staging" | "production";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Integrations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationList"];
+                };
+            };
+        };
+    };
+    createIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Integration */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    getIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Integration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    patchIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Integration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Integration"];
+                };
+            };
+        };
+    };
+    listIntegrationClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clients */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClientList"];
+                };
+            };
+        };
+    };
+    createIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIntegrationClientRequest"];
+            };
+        };
+        responses: {
+            /** @description Client */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClient"];
+                };
+            };
+        };
+    };
+    rotateIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RotateIntegrationClientRequest"];
+            };
+        };
+        responses: {
+            /** @description Client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationClient"];
+                };
+            };
+        };
+    };
+    disableIntegrationClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disabled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIntegrationPublications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Publications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPublicationList"];
+                };
+            };
+        };
+    };
+    createIntegrationPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentPublicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Publication */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPublication"];
+                };
+            };
+        };
+    };
+    revokeIntegrationPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIntegrationWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Webhooks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointList"];
+                };
+            };
+        };
+    };
+    createIntegrationWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebhookEndpointRequest"];
+            };
+        };
+        responses: {
+            /** @description Webhook */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpoint"];
+                };
+            };
+        };
+    };
+    redeliverWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeliverWebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description Delivery */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+        };
+    };
+    listPlatformModelProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProviderList"];
+                };
+            };
+        };
+    };
+    createPlatformModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateModelProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Model provider */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProvider"];
+                };
+            };
+        };
+    };
+    listProviderRoutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider routes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRouteList"];
+                };
+            };
+        };
+    };
+    putProviderRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                provider_id: string;
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderRouteRequest"];
+            };
+        };
+        responses: {
+            /** @description Provider route */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRoute"];
+                };
+            };
+        };
+    };
+    quarantineModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quarantined provider */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProvider"];
+                };
+            };
+        };
+    };
+    listPlatformRunnerPools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runner pools */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPoolList"];
+                };
+            };
+        };
+    };
+    createPlatformRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunnerPoolRequest"];
+            };
+        };
+        responses: {
+            /** @description Runner pool */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    listPlatformRunners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runners */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerList"];
+                };
+            };
+        };
+    };
+    drainRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draining pool */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    quarantineRunnerPool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pool_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quarantined pool */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerPool"];
+                };
+            };
+        };
+    };
+    listPlatformCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential references */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReferenceList"];
+                };
+            };
+        };
+    };
+    rotatePlatformCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReference"];
+                };
+            };
+        };
+    };
+    revokePlatformCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialReference"];
+                };
+            };
+        };
+    };
+    listDataClassifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Data classifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataClassificationList"];
+                };
+            };
+        };
+    };
+    createDataClassification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDataClassificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Data classification */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataClassification"];
+                };
+            };
+        };
+    };
+    listPlatformLimitPolicies: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Limit policies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitPolicyList"];
+                };
+            };
+        };
+    };
+    upsertPlatformLimitPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertLimitPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Limit policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitPolicy"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listPlatformEnvironmentProfiles: {
+        parameters: {
+            query?: {
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Environment profiles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentProfileList"];
+                };
+            };
+        };
+    };
+    upsertPlatformEnvironmentProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertEnvironmentProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Environment profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentProfile"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getPlatformSettings: {
+        parameters: {
+            query: {
+                scope: "organization" | "workspace";
+                workspace_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform settings projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsProjection"];
+                };
+            };
+        };
+    };
+    validatePlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsValidation"];
+                };
+            };
+        };
+    };
+    applyPlatformSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current named Draft working-copy ETag. */
+                "If-Match": components["parameters"]["IfMatch"];
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated settings projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsProjection"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
 }

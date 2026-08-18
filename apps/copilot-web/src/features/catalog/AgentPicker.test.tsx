@@ -1,10 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentPicker } from "./AgentPicker";
 
-const mocked = vi.hoisted(() => ({ api: { listAgents: vi.fn() } }));
+const mocked = vi.hoisted(() => ({
+  api: { listAgents: vi.fn(), setAgentFavorite: vi.fn() },
+}));
 vi.mock("../../api/ApiProvider", () => ({ useCopilotApi: () => mocked.api }));
 
 const agents = [
@@ -13,6 +16,7 @@ const agents = [
     display_name: "Lifecycle Demo",
     description: "A deterministic fixture.",
     category: "Development",
+    is_favorite: false,
   },
 ];
 
@@ -79,7 +83,23 @@ describe("AgentPicker", () => {
         "lifecycle",
         "Development",
         "",
+        "all",
       ),
     );
+  });
+
+  it("updates a requester-owned favorite preference", async () => {
+    mocked.api.listAgents.mockResolvedValue({ items: agents });
+    mocked.api.setAgentFavorite.mockResolvedValue({
+      ...agents[0],
+      is_favorite: true,
+    });
+    renderPicker();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add to favorites" }),
+    );
+
+    expect(mocked.api.setAgentFavorite).toHaveBeenCalledWith("agt_1", true);
   });
 });

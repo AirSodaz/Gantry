@@ -60,13 +60,12 @@ CREATE TABLE IF NOT EXISTS gantry.skills (
   source_ref text NOT NULL,
   declared_version text NOT NULL DEFAULT '',
   content_digest text NOT NULL,
+  metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   status text NOT NULL CHECK (status IN ('available', 'deprecated', 'retired')),
   created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, slug, content_digest)
 );
-ALTER TABLE gantry.skills
-  ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS skills_workspace_idx ON gantry.skills (workspace_id, status, display_name);
 
 CREATE TABLE IF NOT EXISTS gantry.plugins (
@@ -77,13 +76,12 @@ CREATE TABLE IF NOT EXISTS gantry.plugins (
   description text NOT NULL DEFAULT '',
   version text NOT NULL,
   content_digest text NOT NULL,
+  manifest_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   status text NOT NULL CHECK (status IN ('active', 'deprecated', 'retired')),
   created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id, slug, version, content_digest)
 );
-ALTER TABLE gantry.plugins
-  ADD COLUMN IF NOT EXISTS manifest_json jsonb NOT NULL DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS plugins_org_idx ON gantry.plugins (organization_id, status, display_name);
 
 CREATE TABLE IF NOT EXISTS gantry.workspace_plugin_enablements (
@@ -130,11 +128,11 @@ CREATE TABLE IF NOT EXISTS gantry.agents (
   display_name text NOT NULL,
   description text NOT NULL,
   category text NOT NULL,
+  access_revision bigint NOT NULL DEFAULT 1,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, slug)
 );
-
 -- The target Agent lifecycle is intentionally flat. Named Draft working copies,
 -- immutable hash-addressed Revisions, and Deployments are separate resources.
 CREATE TABLE IF NOT EXISTS gantry.agent_draft_workspaces (
@@ -225,6 +223,57 @@ CREATE UNIQUE INDEX IF NOT EXISTS agent_deployments_one_production_idx
 CREATE INDEX IF NOT EXISTS agent_deployments_agent_idx
   ON gantry.agent_deployments (agent_id, environment_kind, status, updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS gantry.agent_access_grants (
+  id text PRIMARY KEY,
+  agent_id text NOT NULL REFERENCES gantry.agents(id),
+  subject_type text NOT NULL CHECK (subject_type IN ('principal', 'group', 'service_identity')),
+  subject_id text NOT NULL,
+  state text NOT NULL CHECK (state IN ('scheduled', 'active', 'expired', 'revoked')),
+  valid_from timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz,
+  created_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  updated_by_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (expires_at IS NULL OR expires_at > valid_from)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_access_grants_effective_subject_idx
+  ON gantry.agent_access_grants (agent_id, subject_type, subject_id)
+  WHERE state IN ('scheduled', 'active');
+CREATE INDEX IF NOT EXISTS agent_access_grants_lookup_idx
+  ON gantry.agent_access_grants (agent_id, state, subject_type, subject_id);
+
+CREATE TABLE IF NOT EXISTS gantry.agent_access_grant_capabilities (
+  grant_id text NOT NULL REFERENCES gantry.agent_access_grants(id) ON DELETE CASCADE,
+  capability text NOT NULL CHECK (capability IN ('metadata.read', 'configuration.read', 'draft.edit', 'review.decide', 'deployment.test', 'deployment.production', 'runs.read', 'execute', 'access.manage')),
+  PRIMARY KEY (grant_id, capability)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.agent_preferences (
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  agent_id text NOT NULL REFERENCES gantry.agents(id) ON DELETE CASCADE,
+  is_favorite boolean NOT NULL DEFAULT false,
+  last_used_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (principal_id, workspace_id, agent_id)
+);
+CREATE INDEX IF NOT EXISTS agent_preferences_recent_idx
+  ON gantry.agent_preferences (principal_id, workspace_id, last_used_at DESC, agent_id DESC)
+  WHERE last_used_at IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS gantry.agent_preference_command_receipts (
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  route text NOT NULL,
+  idempotency_key text NOT NULL,
+  request_digest text NOT NULL,
+  workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
+  agent_id text NOT NULL REFERENCES gantry.agents(id) ON DELETE CASCADE,
+  is_favorite boolean NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (principal_id, route, idempotency_key)
+);
+
 CREATE TABLE IF NOT EXISTS gantry.audit_events (
   id bigserial PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),
@@ -253,39 +302,46 @@ CREATE TABLE IF NOT EXISTS gantry.audit_exports (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE gantry.audit_exports
-  ADD COLUMN IF NOT EXISTS download_count integer NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS audit_exports_owner_idx ON gantry.audit_exports (organization_id, requested_by_principal_id, created_at DESC);
 
-CREATE TABLE IF NOT EXISTS gantry.tasks (
+CREATE TABLE IF NOT EXISTS gantry.sessions (
   id text PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),
   workspace_id text NOT NULL REFERENCES gantry.workspaces(id),
-  requester_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  owner_principal_id text NOT NULL REFERENCES gantry.principals(id),
   agent_id text NOT NULL REFERENCES gantry.agents(id),
-  input_json jsonb NOT NULL,
-  current_run_id text,
-  status text NOT NULL CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled')),
+  mode text NOT NULL DEFAULT 'personal' CHECK (mode IN ('personal', 'shared', 'channel')),
+  state text NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'archived')),
   conversation_revision bigint NOT NULL DEFAULT 1,
-  task_event_sequence bigint NOT NULL DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now()
+  session_event_sequence bigint NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE gantry.tasks
-  ADD COLUMN IF NOT EXISTS conversation_revision bigint NOT NULL DEFAULT 1;
-ALTER TABLE gantry.tasks
-  ADD COLUMN IF NOT EXISTS task_event_sequence bigint NOT NULL DEFAULT 0;
-ALTER TABLE gantry.tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
-ALTER TABLE gantry.tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('queued', 'running', 'awaiting_approval', 'awaiting_requester_input', 'canceling', 'completed', 'failed', 'canceled'));
+
+CREATE TABLE IF NOT EXISTS gantry.session_members (
+  session_id text NOT NULL REFERENCES gantry.sessions(id),
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  role text NOT NULL CHECK (role IN ('owner', 'contributor', 'viewer')),
+  joined_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (session_id, principal_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS session_members_one_owner_idx
+  ON gantry.session_members (session_id) WHERE role='owner';
+CREATE INDEX IF NOT EXISTS session_members_principal_idx ON gantry.session_members (principal_id, session_id);
 
 CREATE TABLE IF NOT EXISTS gantry.runs (
   id text PRIMARY KEY,
-  task_id text NOT NULL REFERENCES gantry.tasks(id),
+  session_id text NOT NULL REFERENCES gantry.sessions(id),
+  requester_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  session_sequence bigint NOT NULL CHECK (session_sequence > 0),
   agent_revision_id text NOT NULL REFERENCES gantry.agent_revisions(id),
   deployment_id text REFERENCES gantry.agent_deployments(id),
   manifest_digest text NOT NULL DEFAULT '',
-  attempt_number integer NOT NULL,
-  status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'awaiting_approval', 'canceling', 'completed', 'failed', 'canceled')),
+  input_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  retry_of_run_id text REFERENCES gantry.runs(id),
+  status text NOT NULL CHECK (status IN ('queued', 'assigned', 'accepted', 'awaiting_approval', 'suspended', 'canceling', 'completed', 'failed', 'canceled', 'expired')),
   status_reason text NOT NULL DEFAULT '',
+  outcome text CHECK (outcome IN ('succeeded', 'requester_input_required', 'failed', 'canceled', 'expired')),
   runner_id text,
   lease_epoch bigint NOT NULL DEFAULT 0,
   event_sequence bigint NOT NULL DEFAULT 0,
@@ -293,69 +349,40 @@ CREATE TABLE IF NOT EXISTS gantry.runs (
   created_at timestamptz NOT NULL DEFAULT now(),
   started_at timestamptz,
   completed_at timestamptz,
-  UNIQUE (task_id, attempt_number)
+  UNIQUE (session_id, session_sequence)
 );
-ALTER TABLE gantry.runs
-  ADD COLUMN IF NOT EXISTS deployment_id text REFERENCES gantry.agent_deployments(id);
-ALTER TABLE gantry.runs
-  ADD COLUMN IF NOT EXISTS manifest_digest text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS gantry.run_events (
   run_id text NOT NULL REFERENCES gantry.runs(id),
   sequence bigint NOT NULL,
-  task_sequence bigint NOT NULL DEFAULT 0,
+  session_sequence bigint NOT NULL DEFAULT 0,
   event_type text NOT NULL,
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (run_id, sequence)
 );
-ALTER TABLE gantry.run_events
-  ADD COLUMN IF NOT EXISTS task_sequence bigint;
-WITH ordered_task_events AS (
-  SELECT e.run_id, e.sequence,
-    row_number() OVER (PARTITION BY r.task_id ORDER BY e.created_at, e.run_id, e.sequence) AS task_sequence
-  FROM gantry.run_events e
-  JOIN gantry.runs r ON r.id=e.run_id
-  WHERE e.task_sequence IS NULL
-)
-UPDATE gantry.run_events e
-SET task_sequence=ordered_task_events.task_sequence
-FROM ordered_task_events
-WHERE e.run_id=ordered_task_events.run_id AND e.sequence=ordered_task_events.sequence;
-ALTER TABLE gantry.run_events
-  ALTER COLUMN task_sequence SET NOT NULL;
-UPDATE gantry.tasks t
-SET task_event_sequence=COALESCE((
-  SELECT MAX(e.task_sequence)
-  FROM gantry.run_events e
-  JOIN gantry.runs r ON r.id=e.run_id
-  WHERE r.task_id=t.id
-), 0)
-WHERE task_event_sequence=0;
 
-CREATE TABLE IF NOT EXISTS gantry.task_messages (
+-- Session-owned changes are durable events even when no Run caused them.
+CREATE TABLE IF NOT EXISTS gantry.session_events (
+  session_id text NOT NULL REFERENCES gantry.sessions(id),
+  session_sequence bigint NOT NULL CHECK (session_sequence > 0),
+  event_type text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (session_id, session_sequence)
+);
+
+CREATE TABLE IF NOT EXISTS gantry.session_messages (
   id text PRIMARY KEY,
-  task_id text NOT NULL REFERENCES gantry.tasks(id),
+  session_id text NOT NULL REFERENCES gantry.sessions(id),
   run_id text REFERENCES gantry.runs(id),
-  task_sequence bigint NOT NULL,
-  role text NOT NULL CHECK (role IN ('requester', 'agent', 'system_summary')),
+  session_sequence bigint NOT NULL,
+  role text NOT NULL CHECK (role IN ('requester', 'agent', 'system_summary', 'trigger')),
+  author_principal_id text REFERENCES gantry.principals(id),
   parts jsonb NOT NULL DEFAULT '[]'::jsonb,
   content text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE gantry.task_messages
-  ADD COLUMN IF NOT EXISTS task_sequence bigint;
-UPDATE gantry.task_messages
-SET task_sequence=0
-WHERE task_sequence IS NULL;
-ALTER TABLE gantry.task_messages
-  ALTER COLUMN task_sequence SET DEFAULT 0;
-ALTER TABLE gantry.task_messages
-  ALTER COLUMN task_sequence SET NOT NULL;
-ALTER TABLE gantry.task_messages
-  ADD COLUMN IF NOT EXISTS parts jsonb NOT NULL DEFAULT '[]'::jsonb;
-ALTER TABLE gantry.task_messages DROP CONSTRAINT IF EXISTS task_messages_role_check;
-ALTER TABLE gantry.task_messages ADD CONSTRAINT task_messages_role_check CHECK (role IN ('requester', 'agent', 'system_summary'));
-CREATE INDEX IF NOT EXISTS task_messages_task_created_idx ON gantry.task_messages (task_id, created_at, id);
+CREATE INDEX IF NOT EXISTS session_messages_session_created_idx ON gantry.session_messages (session_id, created_at, id);
 
 CREATE TABLE IF NOT EXISTS gantry.run_content_segments (
   id text PRIMARY KEY,
@@ -375,7 +402,7 @@ CREATE INDEX IF NOT EXISTS run_content_segments_stream_idx ON gantry.run_content
 
 CREATE TABLE IF NOT EXISTS gantry.artifacts (
   id text PRIMARY KEY,
-  task_id text NOT NULL REFERENCES gantry.tasks(id),
+  session_id text NOT NULL REFERENCES gantry.sessions(id),
   run_id text NOT NULL REFERENCES gantry.runs(id),
   object_key text NOT NULL UNIQUE,
   filename text NOT NULL,
@@ -383,9 +410,9 @@ CREATE TABLE IF NOT EXISTS gantry.artifacts (
   size_bytes bigint NOT NULL CHECK (size_bytes >= 0),
   digest text NOT NULL,
   classification text NOT NULL DEFAULT 'internal',
-  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed')),
+  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed', 'unavailable')),
   visibility text NOT NULL CHECK (visibility IN ('requester', 'workspace')),
-  state text NOT NULL CHECK (state IN ('declared', 'uploaded', 'available', 'rejected')),
+  state text NOT NULL CHECK (state IN ('declared', 'uploading', 'quarantined', 'available', 'rejected', 'expired', 'deleted')),
   upload_token_hash text NOT NULL DEFAULT '',
   upload_lease_epoch bigint NOT NULL DEFAULT 0,
   upload_expires_at timestamptz,
@@ -393,45 +420,61 @@ CREATE TABLE IF NOT EXISTS gantry.artifacts (
   uploaded_at timestamptz,
   UNIQUE (run_id, filename)
 );
-CREATE INDEX IF NOT EXISTS artifacts_task_idx ON gantry.artifacts (task_id, created_at);
+CREATE INDEX IF NOT EXISTS artifacts_session_idx ON gantry.artifacts (session_id, created_at);
 
--- Attachments are requester-owned input objects before they are bound to one
--- task. They intentionally do not share the runner-produced artifact model.
+-- Attachments are principal-owned input objects before they are bound to one
+-- Session. They intentionally do not share the runner-produced artifact model.
 CREATE TABLE IF NOT EXISTS gantry.attachments (
   id text PRIMARY KEY,
   organization_id text NOT NULL REFERENCES gantry.organizations(id),
   workspace_id text REFERENCES gantry.workspaces(id),
-  requester_principal_id text NOT NULL REFERENCES gantry.principals(id),
-  bound_task_id text REFERENCES gantry.tasks(id),
+  owner_principal_id text NOT NULL REFERENCES gantry.principals(id),
+  bound_session_id text REFERENCES gantry.sessions(id),
   object_key text NOT NULL UNIQUE,
   filename text NOT NULL,
   media_type text NOT NULL,
   size_bytes bigint NOT NULL CHECK (size_bytes >= 0),
   digest text NOT NULL,
   classification text NOT NULL DEFAULT 'internal',
-  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed')),
-  state text NOT NULL CHECK (state IN ('declared', 'uploaded', 'available', 'rejected')),
+  scan_status text NOT NULL CHECK (scan_status IN ('pending', 'passed', 'failed', 'unavailable')),
+  state text NOT NULL CHECK (state IN ('declared', 'uploading', 'quarantined', 'available', 'bound', 'rejected', 'expired', 'deleted')),
   upload_token_hash text NOT NULL DEFAULT '',
   upload_expires_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   uploaded_at timestamptz,
-  completed_at timestamptz
+  completed_at timestamptz,
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours')
 );
-CREATE INDEX IF NOT EXISTS attachments_requester_created_idx ON gantry.attachments (requester_principal_id, created_at DESC, id DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS attachments_bound_task_once_idx ON gantry.attachments (bound_task_id, id) WHERE bound_task_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS attachments_owner_created_idx ON gantry.attachments (owner_principal_id, created_at DESC, id DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS attachments_bound_session_once_idx ON gantry.attachments (bound_session_id, id) WHERE bound_session_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS gantry.idempotency_tombstones (
   principal_id text NOT NULL REFERENCES gantry.principals(id),
   route text NOT NULL,
   idempotency_key text NOT NULL,
   request_digest text NOT NULL,
-  task_id text NOT NULL REFERENCES gantry.tasks(id) DEFERRABLE INITIALLY DEFERRED,
+  session_id text NOT NULL REFERENCES gantry.sessions(id) DEFERRABLE INITIALLY DEFERRED,
+  run_id text REFERENCES gantry.runs(id) DEFERRABLE INITIALLY DEFERRED,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (principal_id, route, idempotency_key)
 );
-
-CREATE INDEX IF NOT EXISTS tasks_requester_created_idx ON gantry.tasks (requester_principal_id, created_at DESC, id DESC);
-CREATE INDEX IF NOT EXISTS runs_queue_idx ON gantry.runs (status, created_at);
+-- Attachment upload grants are command receipts rather than Session commands:
+-- their idempotent replay must return the original short-lived grant.
+CREATE TABLE IF NOT EXISTS gantry.attachment_command_receipts (
+  principal_id text NOT NULL REFERENCES gantry.principals(id),
+  route text NOT NULL,
+  idempotency_key text NOT NULL,
+  request_digest text NOT NULL,
+  attachment_id text NOT NULL REFERENCES gantry.attachments(id),
+  upload_token text NOT NULL DEFAULT '',
+  upload_expires_at timestamptz,
+  response_json jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (principal_id, route, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS sessions_owner_created_idx ON gantry.sessions (owner_principal_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS runs_queue_idx ON gantry.runs (status, created_at, id);
+CREATE INDEX IF NOT EXISTS runs_session_queue_idx ON gantry.runs (session_id, status, session_sequence);
 
 CREATE TABLE IF NOT EXISTS gantry.actions (
   id text PRIMARY KEY,

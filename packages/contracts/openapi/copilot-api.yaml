@@ -2,505 +2,323 @@ openapi: "3.1.0"
 info:
   title: Gantry Copilot API
   version: "1.0.0"
-  description: |
-    Employee-facing API for Gantry Copilot. Provides agent discovery,
-    task submission, run monitoring, approvals, and artifact access.
-  contact:
-    name: Gantry Platform Team
-
+  description: Employee-facing Session, Run, approval, attachment, and artifact API.
+  contact: {name: Gantry Platform Team}
 servers:
   - url: /api/copilot/v1
     description: Copilot API v1
-
 security:
-  - oauth2:
-      - copilot
+  - oauth2: [copilot]
 
 paths:
   /agents:
     get:
       operationId: listPublishedAgents
-      summary: List agents published to the current user
+      summary: List published agents visible to the current employee
       tags: [Agents]
       parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
-        - name: category
-          in: query
-          schema:
-            type: string
-        - name: search
-          in: query
-          schema:
-            type: string
+        - {$ref: "#/components/parameters/CursorParam"}
+        - {$ref: "#/components/parameters/LimitParam"}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: collection, in: query, schema: {type: string, enum: [all, favorites, recent], default: all}}
       responses:
-        "200":
-          description: Published agents visible to the employee
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CopilotAgentList"
+        "200": {description: Employee-safe Agent projections, content: {application/json: {schema: {$ref: "#/components/schemas/CopilotAgentList"}}}}
+        "400": {$ref: "#/components/responses/Problem"}
+  /agents/{agent_id}/favorite:
+    put:
+      operationId: setAgentFavorite
+      summary: Set the caller's favorite preference for an authorized Agent
+      tags: [Agents]
+      parameters: [{$ref: "#/components/parameters/AgentIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/SetAgentFavoriteRequest"}}}}
+      responses:
+        "200": {description: Updated Agent projection, content: {application/json: {schema: {$ref: "#/components/schemas/CopilotAgent"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
 
   /attachments:
     post:
       operationId: createAttachment
       summary: Create a requester-owned attachment upload grant
       tags: [Attachments]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAttachmentRequest"
+      parameters: [{$ref: "#/components/parameters/IdempotencyKeyParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateAttachmentRequest"}}}}
       responses:
-        "201":
-          description: Quarantined attachment with a short-lived upload grant
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttachmentResponse"
-
+        "200": {description: Original upload grant returned for an idempotent retry, content: {application/json: {schema: {$ref: "#/components/schemas/AttachmentUploadGrant"}}}}
+        "201": {description: Quarantined attachment and upload grant, content: {application/json: {schema: {$ref: "#/components/schemas/AttachmentUploadGrant"}}}}
+        "409": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
   /attachments/{attachment_id}:
     get:
       operationId: getAttachment
-      summary: Get requester-authorized attachment metadata and scan state
+      summary: Get requester-authorized attachment metadata
       tags: [Attachments]
-      parameters:
-        - $ref: "#/components/parameters/AttachmentIdParam"
+      parameters: [{$ref: "#/components/parameters/AttachmentIdParam"}]
       responses:
-        "200":
-          description: Attachment metadata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttachmentResponse"
-
+        "200": {description: Attachment metadata without upload credentials, content: {application/json: {schema: {$ref: "#/components/schemas/Attachment"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
   /attachments/{attachment_id}/content:
     put:
       operationId: uploadAttachmentContent
       summary: Upload attachment bytes with a short-lived grant
       tags: [Attachments]
       parameters:
-        - $ref: "#/components/parameters/AttachmentIdParam"
-        - name: X-Gantry-Upload-Token
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
+        - {$ref: "#/components/parameters/AttachmentIdParam"}
+        - {name: X-Gantry-Upload-Token, in: header, required: true, schema: {type: string}}
+      requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
       responses:
-        "204":
-          description: Bytes stored in quarantine
-
+        "204": {description: Bytes stored in quarantine}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
   /attachments/{attachment_id}:complete:
     post:
       operationId: completeAttachment
-      summary: Validate and complete a quarantined attachment upload
+      summary: Verify attachment bytes and schedule a scan
       tags: [Attachments]
-      parameters:
-        - $ref: "#/components/parameters/AttachmentIdParam"
+      parameters: [{$ref: "#/components/parameters/AttachmentIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}]
       responses:
-        "200":
-          description: Attachment state after validation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttachmentResponse"
+        "200": {description: Original completion projection returned for an idempotent retry, content: {application/json: {schema: {$ref: "#/components/schemas/Attachment"}}}}
+        "202": {description: Attachment accepted for scanning, content: {application/json: {schema: {$ref: "#/components/schemas/Attachment"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
 
-  /tasks:
+  /sessions:
     post:
-      operationId: submitTask
-      summary: Submit a new task
-      tags: [Tasks]
-      parameters:
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SubmitTaskRequest"
+      operationId: createSession
+      summary: Create a personal Session and its first queued Run
+      tags: [Sessions]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKeyParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateSessionRequest"}}}}
       responses:
-        "200":
-          description: Original task returned for an idempotent retry
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
-        "201":
-          description: Task accepted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
+        "200": {description: Original Session returned for an idempotent retry, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "201": {description: Personal Session and first Run created, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
     get:
-      operationId: listMyTasks
-      summary: List tasks for the current user
-      tags: [Tasks]
+      operationId: listSessions
+      summary: List Sessions for which the caller is currently a member
+      tags: [Sessions]
       parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: agent_id
-          in: query
-          schema:
-            type: string
-        - name: requester_action
-          in: query
-          schema:
-            type: string
-            enum: [approval, input]
-        - name: created_after
-          in: query
-          schema:
-            type: string
-            format: date-time
+        - {$ref: "#/components/parameters/CursorParam"}
+        - {$ref: "#/components/parameters/LimitParam"}
+        - {name: state, in: query, schema: {$ref: "#/components/schemas/SessionState"}}
+        - {name: mode, in: query, schema: {$ref: "#/components/schemas/SessionMode"}}
+        - {name: agent_id, in: query, schema: {type: string}}
+        - {name: my_action, in: query, schema: {type: string, enum: [approval]}}
+        - {name: updated_after, in: query, schema: {type: string, format: date-time}}
       responses:
-        "200":
-          description: List of user's tasks
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskList"
-
-  /tasks/{task_id}:
+        "200": {description: Member-authorized Session list, content: {application/json: {schema: {$ref: "#/components/schemas/SessionList"}}}}
+        "400": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}:
     get:
-      operationId: getTask
-      summary: Get task details
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
+      operationId: getSession
+      summary: Get a member-authorized Session conversation projection
+      tags: [Sessions]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}]
       responses:
-        "200":
-          description: Task details
-          headers:
-            ETag:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
-
-  /tasks/{task_id}/messages:
+        "200": {description: Session conversation projection, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/messages:
     post:
-      operationId: appendTaskMessage
-      summary: Add requester input and start the next task run
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: If-Match
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AppendTaskMessageRequest"
+      operationId: appendSessionMessage
+      summary: Append an instruction and create a queued Run
+      tags: [Sessions]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppendSessionMessageRequest"}}}}
       responses:
-        "200":
-          description: Original task returned for an idempotent retry
-          headers:
-            ETag:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
-        "201":
-          description: Follow-up accepted and next run queued
-          headers:
-            ETag:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
-
-  /tasks/{task_id}/runs:
+        "200": {description: Original Session returned for an idempotent retry, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "201": {description: Instruction committed and Run queued, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/members:
     get:
-      operationId: listTaskRuns
-      summary: List compact run attempts for one task
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
+      operationId: listSessionMembers
+      summary: List current Session members
+      tags: [Session members]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/CursorParam"}, {$ref: "#/components/parameters/LimitParam"}]
       responses:
-        "200":
-          description: Requester-authorized run attempt history
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RunAttemptList"
-
-  /tasks/{task_id}/events:ticket:
+        "200": {description: Current member list, content: {application/json: {schema: {$ref: "#/components/schemas/SessionMemberList"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
     post:
-      operationId: createTaskEventsTicket
-      summary: Create a short-lived WebSocket event ticket
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskEventsTicketRequest"
+      operationId: addSessionMember
+      summary: Add a contributor or viewer to a Session
+      tags: [Session members]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AddSessionMemberRequest"}}}}
       responses:
-        "200":
-          description: Short-lived ticket for the task event stream
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskEventsTicket"
-        "404":
-          description: Task was not found
-
-  /tasks/{task_id}/runs/{run_id}:cancel:
+        "201": {description: Updated Session after member creation, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/members/{principal_id}:
+    patch:
+      operationId: updateSessionMember
+      summary: Change a non-owner Session member role
+      tags: [Session members]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/PrincipalIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateSessionMemberRequest"}}}}
+      responses:
+        "200": {description: Updated Session after member role change, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
+    delete:
+      operationId: removeSessionMember
+      summary: Remove a non-owner Session member
+      tags: [Session members]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/PrincipalIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      responses:
+        "200": {description: Updated Session after member removal, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}:transfer-owner:
     post:
-      operationId: cancelRun
-      summary: Cancel a run
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
+      operationId: transferSessionOwner
+      summary: Transfer a Session to an eligible current contributor
+      tags: [Sessions]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/TransferSessionOwnerRequest"}}}}
       responses:
-        "200":
-          description: Cancellation accepted or already terminal
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RunStatus"
-
-  /tasks/{task_id}:retry:
+        "200": {description: Updated Session after owner transfer, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}:archive:
     post:
-      operationId: retryTask
-      summary: Retry a task
-      tags: [Tasks]
-      parameters:
-        - $ref: "#/components/parameters/TaskIdParam"
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: If-Match
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RetryTaskRequest"
+      operationId: archiveSession
+      summary: Archive a Session and block new instructions
+      tags: [Sessions]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
       responses:
-        "201":
-          description: New run created
-          headers:
-            ETag:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskResponse"
+        "200": {description: Archived Session, headers: {ETag: {$ref: "#/components/headers/ConversationETag"}}, content: {application/json: {schema: {$ref: "#/components/schemas/Session"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/runs:
+    get:
+      operationId: listSessionRuns
+      summary: List compact Run history for a Session member
+      tags: [Runs]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/CursorParam"}, {$ref: "#/components/parameters/LimitParam"}]
+      responses:
+        "200": {description: Member-authorized Run history, content: {application/json: {schema: {$ref: "#/components/schemas/RunSummaryList"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/runs/{run_id}:cancel:
+    post:
+      operationId: cancelSessionRun
+      summary: Cancel a Run as its requester or the current Session owner
+      tags: [Runs]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/RunIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}]
+      responses:
+        "200": {description: Terminal or replayed Run state, content: {application/json: {schema: {$ref: "#/components/schemas/RunSummary"}}}}
+        "202": {description: Cancellation reconciliation accepted, content: {application/json: {schema: {$ref: "#/components/schemas/RunSummary"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/runs/{run_id}:retry:
+    post:
+      operationId: retrySessionRun
+      summary: Create a queued retry Run in the same Session
+      tags: [Runs]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}, {$ref: "#/components/parameters/RunIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}, {$ref: "#/components/parameters/IfMatchParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RetryRunRequest"}}}}
+      responses:
+        "200": {description: Original retry Run returned for an idempotent retry, content: {application/json: {schema: {$ref: "#/components/schemas/RunSummary"}}}}
+        "201": {description: Queued retry Run, content: {application/json: {schema: {$ref: "#/components/schemas/RunSummary"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
+  /sessions/{session_id}/events:ticket:
+    post:
+      operationId: createSessionEventsTicket
+      summary: Create a short-lived, member-bound Session event-stream ticket
+      tags: [Events]
+      parameters: [{$ref: "#/components/parameters/SessionIdParam"}]
+      requestBody: {required: false, content: {application/json: {schema: {$ref: "#/components/schemas/SessionEventsTicketRequest"}}}}
+      responses:
+        "200": {description: Short-lived event-stream ticket, content: {application/json: {schema: {$ref: "#/components/schemas/SessionEventsTicket"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
 
   /approvals:
     get:
       operationId: listMyApprovals
-      summary: List approvals assigned to the current user
+      summary: List approvals decidable by the current Run requester
       tags: [Approvals]
       parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
-        - name: state
-          in: query
-          schema:
-            type: string
-            enum: [pending, satisfied, rejected, expired, superseded]
+        - {$ref: "#/components/parameters/CursorParam"}
+        - {$ref: "#/components/parameters/LimitParam"}
+        - {name: state, in: query, schema: {type: string, enum: [pending, approved, rejected, expired, superseded, revoked]}}
       responses:
-        "200":
-          description: Pending approvals
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CopilotApprovalList"
-
-  /approvals/{approval_id}:decide:
-    post:
-      operationId: decideApproval
-      summary: Approve or reject an action
-      tags: [Approvals]
-      parameters:
-        - name: approval_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ApprovalDecisionRequest"
-      responses:
-        "200":
-          description: Requester-authorized approval projection after the decision
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CopilotApproval"
-        "403":
-          description: The current principal cannot decide this action
-        "404":
-          description: Approval request was not found
-        "409":
-          description: The approval is expired or already decided
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApprovalDecisionConflict"
-        "412":
-          description: The action digest is stale
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApprovalDecisionConflict"
-
+        "200": {description: Requester-bound approval list, content: {application/json: {schema: {$ref: "#/components/schemas/CopilotApprovalList"}}}}
+        "400": {$ref: "#/components/responses/Problem"}
   /approvals/{approval_id}:
     get:
       operationId: getApproval
-      summary: Get requester-authorized approval detail and decision evidence
+      summary: Get requester-authorized approval detail and evidence
       tags: [Approvals]
-      parameters:
-        - name: approval_id
-          in: path
-          required: true
-          schema:
-            type: string
+      parameters: [{$ref: "#/components/parameters/ApprovalIdParam"}]
       responses:
-        "200":
-          description: Approval detail
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CopilotApproval"
-        "404":
-          description: Approval request was not found
+        "200": {description: Approval detail, content: {application/json: {schema: {$ref: "#/components/schemas/CopilotApproval"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+  /approvals/{approval_id}:decide:
+    post:
+      operationId: decideApproval
+      summary: Record a Run requester's decision for one exact action
+      tags: [Approvals]
+      parameters: [{$ref: "#/components/parameters/ApprovalIdParam"}, {$ref: "#/components/parameters/IdempotencyKeyParam"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ApprovalDecisionRequest"}}}}
+      responses:
+        "200": {description: Approval projection after decision or replay, content: {application/json: {schema: {$ref: "#/components/schemas/CopilotApproval"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
+        "412": {$ref: "#/components/responses/Problem"}
+        "422": {$ref: "#/components/responses/Problem"}
 
+  /artifacts:
+    get:
+      operationId: listArtifacts
+      summary: List artifacts authorized through Session membership
+      tags: [Artifacts]
+      parameters:
+        - {$ref: "#/components/parameters/CursorParam"}
+        - {$ref: "#/components/parameters/LimitParam"}
+        - {name: session_id, in: query, schema: {type: string}}
+        - {name: classification, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string, enum: [declared, uploading, quarantined, available, rejected, expired, deleted]}}
+      responses:
+        "200": {description: Session-member artifact list, content: {application/json: {schema: {$ref: "#/components/schemas/ArtifactList"}}}}
+        "400": {$ref: "#/components/responses/Problem"}
   /artifacts/{artifact_id}:
     get:
       operationId: getArtifact
-      summary: Get artifact metadata
+      summary: Get member-authorized artifact metadata
       tags: [Artifacts]
-      parameters:
-        - name: artifact_id
-          in: path
-          required: true
-          schema:
-            type: string
+      parameters: [{$ref: "#/components/parameters/ArtifactIdParam"}]
       responses:
-        "200":
-          description: Artifact metadata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ArtifactResponse"
-
+        "200": {description: Artifact metadata, content: {application/json: {schema: {$ref: "#/components/schemas/Artifact"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
   /artifacts/{artifact_id}:download:
     post:
       operationId: createArtifactDownloadGrant
       summary: Authorize and issue a short-lived artifact download reference
       tags: [Artifacts]
-      parameters:
-        - name: artifact_id
-          in: path
-          required: true
-          schema:
-            type: string
+      parameters: [{$ref: "#/components/parameters/ArtifactIdParam"}]
       responses:
-        "200":
-          description: Authorized short-lived download reference
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ArtifactDownloadGrant"
-        "404":
-          description: Artifact was not found
-        "409":
-          description: Artifact is not available for download
-
-  /artifacts:
-    get:
-      operationId: listMyArtifacts
-      summary: List requester-scoped artifacts across tasks
-      tags: [Artifacts]
-      parameters:
-        - $ref: "#/components/parameters/CursorParam"
-        - $ref: "#/components/parameters/LimitParam"
-        - name: task_id
-          in: query
-          schema:
-            type: string
-        - name: classification
-          in: query
-          schema:
-            type: string
-        - name: state
-          in: query
-          schema:
-            type: string
-            enum: [declared, uploading, quarantined, available, rejected, expired, deleted]
-      responses:
-        "200":
-          description: Requester-scoped artifact list
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ArtifactList"
+        "200": {description: Authorized short-lived download reference, content: {application/json: {schema: {$ref: "#/components/schemas/ArtifactDownloadGrant"}}}}
+        "404": {$ref: "#/components/responses/Problem"}
+        "409": {$ref: "#/components/responses/Problem"}
 
 components:
   securitySchemes:
@@ -510,610 +328,444 @@ components:
         authorizationCode:
           authorizationUrl: /oauth/authorize
           tokenUrl: /oauth/token
-          scopes:
-            copilot: Employee Copilot access
-
+          scopes: {copilot: Employee Copilot access}
+  headers:
+    ConversationETag:
+      description: Current Session conversation ETag.
+      required: true
+      schema: {type: string}
   parameters:
-    CursorParam:
-      name: cursor
-      in: query
-      schema:
-        type: string
-    LimitParam:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 25
-    TaskIdParam:
-      name: task_id
-      in: path
-      required: true
-      schema:
-        type: string
-    AttachmentIdParam:
-      name: attachment_id
-      in: path
-      required: true
-      schema:
-        type: string
-
+    CursorParam: {name: cursor, in: query, schema: {type: string}}
+    LimitParam: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+    IdempotencyKeyParam: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 1}}
+    IfMatchParam: {name: If-Match, in: header, required: true, schema: {type: string, minLength: 1}}
+    AgentIdParam: {name: agent_id, in: path, required: true, schema: {type: string}}
+    SessionIdParam: {name: session_id, in: path, required: true, schema: {type: string}}
+    RunIdParam: {name: run_id, in: path, required: true, schema: {type: string}}
+    PrincipalIdParam: {name: principal_id, in: path, required: true, schema: {type: string}}
+    ApprovalIdParam: {name: approval_id, in: path, required: true, schema: {type: string}}
+    ArtifactIdParam: {name: artifact_id, in: path, required: true, schema: {type: string}}
+    AttachmentIdParam: {name: attachment_id, in: path, required: true, schema: {type: string}}
+  responses:
+    Problem:
+      description: Employee-safe command or projection error.
+      content: {application/json: {schema: {$ref: "#/components/schemas/CopilotProblem"}}}
   schemas:
+    Timestamp: {type: string, format: date-time}
     PageInfo:
       type: object
       required: [has_more]
       properties:
-        next_cursor:
-          type: string
-        has_more:
-          type: boolean
-
-    Timestamp:
-      type: string
-      format: date-time
-
-    # --- Agents ---
+        next_cursor: {type: [string, "null"]}
+        has_more: {type: boolean}
+    CopilotProblem:
+      type: object
+      required: [code, message, correlation_id, retryable]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        correlation_id: {type: string}
+        retryable: {type: boolean}
+        retry_after_seconds: {type: [integer, "null"], minimum: 0}
+        current_resource: {type: [object, "null"], additionalProperties: true}
+    SupportContact:
+      type: object
+      required: [display_name]
+      properties:
+        display_name: {type: string}
+        contact_uri: {type: [string, "null"], format: uri}
+    CatalogInputExample:
+      type: object
+      required: [label, description]
+      properties:
+        label: {type: string, maxLength: 120}
+        description: {type: string, maxLength: 500}
+        required: {type: boolean, default: false}
+    ExpectedOutput:
+      type: object
+      required: [kind, description]
+      properties:
+        kind: {type: string, enum: [text, structured, artifact, mixed]}
+        description: {type: string, maxLength: 500}
+        schema: {type: [object, "null"], additionalProperties: true}
+    DataDisclosure:
+      type: object
+      required: [input_classifications, output_classifications, summary]
+      properties:
+        input_classifications: {type: array, uniqueItems: true, items: {type: string}}
+        output_classifications: {type: array, uniqueItems: true, items: {type: string}}
+        summary: {type: string, maxLength: 1000}
+        retention_notice: {type: [string, "null"], maxLength: 500}
+    ActionDisclosure:
+      type: object
+      required: [effect_level, summary, approval_behavior]
+      properties:
+        effect_level: {type: string, enum: [none, read_only, writes_or_external_effects]}
+        summary: {type: string, maxLength: 1000}
+        approval_behavior: {type: string, enum: [never, may_be_requested, always_before_effect]}
+    PublishedCatalogMetadata:
+      type: object
+      required: [typical_inputs, expected_output, capability_summary, data_disclosure, action_disclosure]
+      properties:
+        typical_inputs: {type: array, maxItems: 8, items: {$ref: "#/components/schemas/CatalogInputExample"}}
+        expected_output: {$ref: "#/components/schemas/ExpectedOutput"}
+        capability_summary: {type: string, maxLength: 1000}
+        data_disclosure: {$ref: "#/components/schemas/DataDisclosure"}
+        action_disclosure: {$ref: "#/components/schemas/ActionDisclosure"}
+    PublicationAvailability:
+      type: object
+      required: [state]
+      properties:
+        state: {type: string, enum: [available, temporarily_unavailable]}
+        reason_code: {type: [string, "null"], enum: [maintenance, dependency, policy, capacity, null]}
+        message: {type: [string, "null"], maxLength: 500}
+        effective_until: {type: [string, "null"], format: date-time}
     CopilotAgent:
       type: object
-      required: [id, display_name, description]
+      required: [id, display_name, description, category, owner, input_contract, published_metadata, availability, is_favorite]
       properties:
-        id:
-          type: string
-        display_name:
-          type: string
-        description:
-          type: string
-        category:
-          type: string
-        owner_name:
-          type: string
-        capability_summary:
-          type: string
-        data_scope:
-          type: string
-        is_favorite:
-          type: boolean
-
+        id: {type: string}
+        display_name: {type: string}
+        description: {type: string}
+        category: {type: string}
+        owner: {$ref: "#/components/schemas/SupportContact"}
+        input_contract: {type: object, additionalProperties: true, description: Published structured-input JSON Schema}
+        published_metadata: {$ref: "#/components/schemas/PublishedCatalogMetadata"}
+        availability: {$ref: "#/components/schemas/PublicationAvailability"}
+        is_favorite: {type: boolean}
+        last_used_at: {type: [string, "null"], format: date-time}
     CopilotAgentList:
       type: object
       required: [items, page_info]
       properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/CopilotAgent"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    # --- Tasks ---
-    SubmitTaskRequest:
+        items: {type: array, items: {$ref: "#/components/schemas/CopilotAgent"}}
+        page_info: {$ref: "#/components/schemas/PageInfo"}
+    SetAgentFavoriteRequest:
       type: object
-      required: [agent_id]
-      properties:
-        agent_id:
-          type: string
-        message:
-          type: string
-        structured_input:
-          type: object
-        attachment_ids:
-          type: array
-          items:
-            type: string
+      required: [is_favorite]
+      properties: {is_favorite: {type: boolean}}
 
-    TaskResponse:
+    SessionMode: {type: string, enum: [personal, shared, channel]}
+    SessionState: {type: string, enum: [active, archived]}
+    SessionMemberRole: {type: string, enum: [owner, contributor, viewer]}
+    RunState: {type: string, enum: [queued, provisioning, running, awaiting_approval, suspended, canceling, completed, failed, canceled, expired]}
+    SessionAgentSnapshot:
       type: object
-      required: [id, requester_id, agent_id, status, requester_action, conversation_revision, created_at, updated_at]
+      required: [agent_id, display_name]
       properties:
-        id:
-          type: string
-        requester_id:
-          type: string
-        agent_id:
-          type: string
-        agent_display_name:
-          type: string
-        title:
-          type: string
-        status:
-          type: string
-          enum: [queued, provisioning, running, awaiting_approval, awaiting_requester_input, suspended, canceling, completed, failed, canceled]
-        requester_action:
-          type: string
-          enum: [none, approval, input]
-        conversation_revision:
-          type: integer
-          format: int64
-          minimum: 1
-        current_run:
-          $ref: "#/components/schemas/RunStatus"
-        artifacts:
-          type: array
-          items:
-            $ref: "#/components/schemas/ArtifactResponse"
-        messages:
-          type: array
-          items:
-            $ref: "#/components/schemas/TaskMessage"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    TaskMessage:
+        agent_id: {type: string}
+        display_name: {type: string}
+        support_contact: {$ref: "#/components/schemas/SupportContact"}
+    SessionMember:
       type: object
-      required: [id, task_sequence, role, parts, created_at]
+      required: [principal_id, role, joined_at]
       properties:
-        id:
-          type: string
-        run_id:
-          type: string
-        task_sequence:
-          type: integer
-          format: int64
-        role:
-          type: string
-          enum: [requester, agent, system_summary]
+        principal_id: {type: string}
+        display_name: {type: string}
+        role: {$ref: "#/components/schemas/SessionMemberRole"}
+        joined_at: {$ref: "#/components/schemas/Timestamp"}
+    TextPart:
+      type: object
+      required: [type, text]
+      properties: {type: {type: string, enum: [text]}, text: {type: string}}
+    ArtifactPart:
+      type: object
+      required: [type, artifact_id, label]
+      properties: {type: {type: string, enum: [artifact]}, artifact_id: {type: string}, label: {type: string}}
+    ActionSummaryPart:
+      type: object
+      required: [type, action_id, summary, state]
+      properties: {type: {type: string, enum: [action_summary]}, action_id: {type: string}, summary: {type: string}, state: {type: string}}
+    StatusPart:
+      type: object
+      required: [type, code, message]
+      properties: {type: {type: string, enum: [status]}, code: {type: string}, message: {type: string}}
+    SessionMessage:
+      type: object
+      required: [id, session_sequence, author_kind, parts, created_at]
+      properties:
+        id: {type: string}
+        run_id: {type: [string, "null"]}
+        session_sequence: {type: integer, format: int64, minimum: 1}
+        author_kind: {type: string, enum: [principal, trigger, agent, system_summary]}
+        author_principal_id: {type: [string, "null"]}
+        trigger_id: {type: [string, "null"]}
         parts:
           type: array
           items:
             oneOf:
-              - $ref: "#/components/schemas/TextPart"
-              - $ref: "#/components/schemas/ArtifactPart"
-              - $ref: "#/components/schemas/ActionSummaryPart"
-              - $ref: "#/components/schemas/StatusPart"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    TextPart:
+              - {$ref: "#/components/schemas/TextPart"}
+              - {$ref: "#/components/schemas/ArtifactPart"}
+              - {$ref: "#/components/schemas/ActionSummaryPart"}
+              - {$ref: "#/components/schemas/StatusPart"}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+    UserFacingReason:
       type: object
-      required: [type, text]
+      required: [code, message]
       properties:
-        type: { type: string, enum: [text] }
-        text: { type: string }
-    ArtifactPart:
+        code: {type: string}
+        message: {type: string}
+        next_action: {type: string, enum: [none, wait, approve, provide_input, retry, contact_support]}
+        correlation_id: {type: [string, "null"]}
+    RunSummary:
       type: object
-      required: [type, artifact_id, label]
+      required: [id, session_sequence, requester_id, state, created_at]
       properties:
-        type: { type: string, enum: [artifact] }
-        artifact_id: { type: string }
-        label: { type: string }
-    ActionSummaryPart:
+        id: {type: string}
+        session_sequence: {type: integer, format: int64, minimum: 1}
+        requester_id: {type: string}
+        state: {$ref: "#/components/schemas/RunState"}
+        outcome: {type: [string, "null"], enum: [succeeded, requester_input_required, failed, canceled, expired, null]}
+        state_reason: {$ref: "#/components/schemas/UserFacingReason"}
+        retry_of_run_id: {type: [string, "null"]}
+        trigger_occurrence_id: {type: [string, "null"]}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        started_at: {type: [string, "null"], format: date-time}
+        completed_at: {type: [string, "null"], format: date-time}
+    Session:
       type: object
-      required: [type, action_id, summary, state]
+      required: [id, owner_principal_id, mode, agent, state, conversation_revision, queued_run_count, members, messages, created_at, updated_at]
       properties:
-        type: { type: string, enum: [action_summary] }
-        action_id: { type: string }
-        summary: { type: string }
-        state: { type: string }
-    StatusPart:
+        id: {type: string}
+        owner_principal_id: {type: string}
+        mode: {$ref: "#/components/schemas/SessionMode"}
+        source_tags: {type: array, uniqueItems: true, items: {type: string, enum: [webhook, schedule, channel]}}
+        agent: {$ref: "#/components/schemas/SessionAgentSnapshot"}
+        title: {type: [string, "null"]}
+        state: {$ref: "#/components/schemas/SessionState"}
+        conversation_revision: {type: integer, format: int64, minimum: 1}
+        my_action: {type: string, enum: [none, approval]}
+        executing_run: {oneOf: [{$ref: "#/components/schemas/RunSummary"}, {type: "null"}]}
+        queued_run_count: {type: integer, minimum: 0}
+        members: {type: array, items: {$ref: "#/components/schemas/SessionMember"}}
+        messages: {type: array, items: {$ref: "#/components/schemas/SessionMessage"}}
+        artifacts: {type: array, items: {$ref: "#/components/schemas/Artifact"}}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        updated_at: {$ref: "#/components/schemas/Timestamp"}
+    SessionList:
       type: object
-      required: [type, code, message]
+      required: [items, page_info]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Session"}}, page_info: {$ref: "#/components/schemas/PageInfo"}}
+    SessionMemberList:
+      type: object
+      required: [items, page_info]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/SessionMember"}}, page_info: {$ref: "#/components/schemas/PageInfo"}}
+    RunSummaryList:
+      type: object
+      required: [items, page_info]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/RunSummary"}}, page_info: {$ref: "#/components/schemas/PageInfo"}}
+    CreateSessionRequest:
+      type: object
+      required: [agent_id]
       properties:
-        type: { type: string, enum: [status] }
-        code: { type: string }
-        message: { type: string }
-
-    AppendTaskMessageRequest:
+        agent_id: {type: string}
+        message: {type: string, minLength: 1}
+        structured_input: {type: object, additionalProperties: true, description: Agent input-contract validated JSON object}
+        attachment_ids: {type: array, uniqueItems: true, items: {type: string}}
+      oneOf:
+        - required: [message]
+          properties:
+            message: {type: string, minLength: 1}
+            structured_input: false
+        - required: [structured_input]
+          properties:
+            message: false
+            structured_input: {type: object, additionalProperties: true, description: Agent input-contract validated JSON object}
+    AppendSessionMessageRequest:
       type: object
       required: [message]
-      properties:
-        message:
-          type: string
-        attachment_ids:
-          type: array
-          uniqueItems: true
-          items:
-            type: string
-
-    RunAttempt:
+      properties: {message: {type: string, minLength: 1}, attachment_ids: {type: array, uniqueItems: true, items: {type: string}}}
+    AddSessionMemberRequest:
       type: object
-      required: [id, attempt_number, status, created_at]
-      properties:
-        id:
-          type: string
-        attempt_number:
-          type: integer
-        status:
-          type: string
-        status_reason:
-          type: string
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        started_at:
-          $ref: "#/components/schemas/Timestamp"
-        completed_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    RunAttemptList:
+      required: [principal_id, role]
+      properties: {principal_id: {type: string}, role: {type: string, enum: [contributor, viewer]}}
+    UpdateSessionMemberRequest:
       type: object
-      required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/RunAttempt"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    TaskList:
+      required: [role]
+      properties: {role: {type: string, enum: [contributor, viewer]}}
+    TransferSessionOwnerRequest:
       type: object
-      required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/TaskResponse"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    RunStatus:
-      type: object
-      required: [id, status]
-      properties:
-        id:
-          type: string
-        status:
-          type: string
-        status_reason:
-          type: string
-
-    RetryTaskRequest:
+      required: [new_owner_principal_id]
+      properties: {new_owner_principal_id: {type: string}}
+    RetryRunRequest:
       type: object
       required: [revision_selection]
-      properties:
-        revision_selection:
-          type: string
-          enum: [original_revision, current_production_revision]
+      properties: {revision_selection: {type: string, enum: [original_revision, current_production_revision]}}
 
-    # --- Approvals ---
+    ApprovalDecisionEvidence:
+      type: object
+      required: [decision, decided_at]
+      properties:
+        decision: {type: string, enum: [approve, reject]}
+        reason: {type: [string, "null"]}
+        decided_by_current_requester: {type: boolean, enum: [true]}
+        decided_at: {$ref: "#/components/schemas/Timestamp"}
     CopilotApproval:
       type: object
-      required: [id, run_id, action_id, action_digest, approval_revision, tool_name, operation, agent_display_name, action_preview, status]
+      required: [id, session_id, run_id, requester_id, action_id, action_digest, approval_revision, state, preview, expires_at, created_at]
       properties:
-        id:
-          type: string
-        run_id:
-          type: string
-        action_id:
-          type: string
-        action_digest:
-          type: string
-        approval_revision:
-          type: integer
-          format: int64
-        tool_name:
-          type: string
-        operation:
-          type: string
-        target:
-          type: string
-        agent_display_name:
-          type: string
-        action_preview:
+        id: {type: string}
+        session_id: {type: string}
+        run_id: {type: string}
+        requester_id: {type: string}
+        action_id: {type: string}
+        action_digest: {type: string, pattern: "^sha256:"}
+        approval_revision: {type: integer, format: int64, minimum: 1}
+        state: {type: string, enum: [pending, approved, rejected, expired, superseded, revoked]}
+        preview:
           type: object
-          description: Human-readable action summary
+          required: [summary, effect, risk_class]
           properties:
-            tool_name:
-              type: string
-            operation:
-              type: string
-            target:
-              type: string
-            effect:
-              type: string
-            credential_mode:
-              type: string
-        risk_class:
-          type: string
-        status:
-          type: string
-          enum: [pending, satisfied, rejected, expired]
-        expires_at:
-          $ref: "#/components/schemas/Timestamp"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        task_id:
-          type: string
-        effect:
-          type: string
-        policy_version:
-          type: string
-        latest_decision:
-          $ref: "#/components/schemas/ApprovalDecisionEvidence"
-
+            summary: {type: string}
+            tool_display_name: {type: string}
+            operation_display_name: {type: string}
+            target: {type: [string, "null"]}
+            effect: {type: string}
+            risk_class: {type: string}
+            redacted_details: {type: object, additionalProperties: true}
+            policy_reason: {type: [string, "null"]}
+        decision: {$ref: "#/components/schemas/ApprovalDecisionEvidence"}
+        expires_at: {$ref: "#/components/schemas/Timestamp"}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
     CopilotApprovalList:
       type: object
       required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/CopilotApproval"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/CopilotApproval"}}, page_info: {$ref: "#/components/schemas/PageInfo"}}
     ApprovalDecisionRequest:
       type: object
       required: [decision, action_digest, approval_revision]
       properties:
-        decision:
-          type: string
-          enum: [approve, reject]
-        reason:
-          type: string
-        action_digest:
-          type: string
-        approval_revision:
-          type: integer
-          format: int64
+        decision: {type: string, enum: [approve, reject]}
+        reason: {type: [string, "null"]}
+        action_digest: {type: string, pattern: "^sha256:"}
+        approval_revision: {type: integer, format: int64, minimum: 1}
 
-    ApprovalDecisionConflict:
+    Attachment:
       type: object
-      required: [error]
+      required: [id, filename, media_type, size_bytes, digest, classification, state, scan_state, created_at, expires_at]
       properties:
-        error:
-          type: object
-          required: [code, message, current_resource]
-          properties:
-            code:
-              type: string
-              enum: [action_changed, already_decided, approval_changed, approval_expired, idempotency_key_reused]
-            message:
-              type: string
-            current_resource:
-              $ref: "#/components/schemas/CopilotApproval"
-
-    ApprovalDecisionEvidence:
+        id: {type: string}
+        filename: {type: string}
+        media_type: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        digest: {type: string, pattern: "^sha256:"}
+        classification: {type: string}
+        state: {type: string, enum: [declared, uploading, quarantined, available, bound, rejected, expired, deleted]}
+        scan_state: {type: string, enum: [pending, passed, failed, unavailable]}
+        rejection_reason: {$ref: "#/components/schemas/UserFacingReason"}
+        bound_session_id: {type: [string, "null"]}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        expires_at: {$ref: "#/components/schemas/Timestamp"}
+    AttachmentUploadGrant:
       type: object
-      required: [decision, decided_by, created_at]
+      required: [attachment, upload_path, upload_token, expires_at]
       properties:
-        decision:
-          type: string
-          enum: [approve, reject]
-        reason:
-          type: string
-        decided_by:
-          type: string
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    # --- Artifacts ---
-    ArtifactResponse:
+        attachment: {$ref: "#/components/schemas/Attachment"}
+        upload_path: {type: string}
+        upload_token: {type: string, description: Returned only when the grant is created}
+        expires_at: {$ref: "#/components/schemas/Timestamp"}
+    CreateAttachmentRequest:
       type: object
-      required: [id, task_id, run_id, filename, media_type, size_bytes, digest, state, scan_status]
+      required: [filename, media_type, size_bytes, digest, classification]
       properties:
-        id:
-          type: string
-        task_id:
-          type: string
-        run_id:
-          type: string
-        filename:
-          type: string
-        media_type:
-          type: string
-        size_bytes:
-          type: integer
-          format: int64
-        digest:
-          type: string
-        classification:
-          type: string
-        state:
-          type: string
-          enum: [declared, uploaded, available, rejected]
-        scan_status:
-          type: string
-          enum: [pending, passed, failed]
-
+        filename: {type: string, minLength: 1}
+        media_type: {type: string, minLength: 1}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        digest: {type: string, pattern: "^sha256:"}
+        classification: {type: string}
+    Artifact:
+      type: object
+      required: [id, session_id, run_id, filename, media_type, size_bytes, digest, classification, state, scan_state, created_at]
+      properties:
+        id: {type: string}
+        session_id: {type: string}
+        run_id: {type: string}
+        filename: {type: string}
+        media_type: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        digest: {type: string, pattern: "^sha256:"}
+        classification: {type: string}
+        state: {type: string, enum: [declared, uploading, quarantined, available, rejected, expired, deleted]}
+        scan_state: {type: string, enum: [pending, passed, failed, unavailable]}
+        retention: {type: object, additionalProperties: true}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+    ArtifactList:
+      type: object
+      required: [items, page_info]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Artifact"}}, page_info: {$ref: "#/components/schemas/PageInfo"}}
     ArtifactDownloadGrant:
       type: object
       required: [artifact_id, download_url, expires_at]
       properties:
-        artifact_id:
-          type: string
-        download_url:
-          type: string
-          format: uri
-        expires_at:
-          $ref: "#/components/schemas/Timestamp"
+        artifact_id: {type: string}
+        download_url: {type: string, format: uri, description: Returned only by the download command}
+        expires_at: {$ref: "#/components/schemas/Timestamp"}
 
-    ArtifactList:
+    SessionEventsTicketRequest:
       type: object
-      required: [items, page_info]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/ArtifactResponse"
-        page_info:
-          $ref: "#/components/schemas/PageInfo"
-
-    # --- Attachments ---
-    CreateAttachmentRequest:
+      properties: {last_cursor: {type: string}}
+    SessionEventsTicket:
       type: object
-      required: [filename, media_type, size_bytes, digest]
+      required: [ticket, session_id, websocket_url, expires_at]
       properties:
-        filename:
-          type: string
-        media_type:
-          type: string
-        size_bytes:
-          type: integer
-          format: int64
-          minimum: 0
-        digest:
-          type: string
-          description: SHA-256 digest in sha256:<hex> form
-        classification:
-          type: string
-
-    AttachmentResponse:
+        ticket: {type: string, description: Returned only when the ticket is created}
+        session_id: {type: string}
+        websocket_url: {type: string, format: uri}
+        expires_at: {$ref: "#/components/schemas/Timestamp"}
+    SessionEventSnapshot:
       type: object
-      required: [id, filename, media_type, size_bytes, digest, classification, state, scan_status]
+      required: [schema_version, session, runs, approvals, cursor]
       properties:
-        id:
-          type: string
-        filename:
-          type: string
-        media_type:
-          type: string
-        size_bytes:
-          type: integer
-          format: int64
-        digest:
-          type: string
-        classification:
-          type: string
-        state:
-          type: string
-          enum: [declared, uploaded, available, rejected]
-        scan_status:
-          type: string
-          enum: [pending, passed, failed]
-        upload_url:
-          type: string
-          description: Short-lived request path for the content upload
-        upload_token:
-          type: string
-          description: Short-lived upload credential, returned only on creation
-        upload_expires_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    TaskEventsTicket:
+        schema_version: {type: string, enum: [gantry.copilot.snapshot/v1]}
+        session: {$ref: "#/components/schemas/Session"}
+        runs: {type: array, items: {$ref: "#/components/schemas/RunSummary"}}
+        approvals: {type: array, items: {$ref: "#/components/schemas/CopilotApproval"}}
+        cursor: {type: string}
+    SessionEventFrame:
       type: object
-      required: [ticket, task_id, websocket_url, expires_at]
+      required: [schema_version, session_id, session_sequence, cursor, event]
       properties:
-        ticket:
-          type: string
-        task_id:
-          type: string
-        websocket_url:
-          type: string
-          format: uri
-        expires_at:
-          $ref: "#/components/schemas/Timestamp"
-
-    TaskEventsTicketRequest:
-      type: object
-      properties:
-        last_cursor:
-          type: string
-
-    TaskEventSnapshot:
-      type: object
-      required: [schema_version, task, runs, approvals, cursor]
-      properties:
-        schema_version:
-          type: string
-          enum: [gantry.copilot.snapshot/v1]
-        task:
-          $ref: "#/components/schemas/TaskResponse"
-        runs:
-          type: array
-          items:
-            $ref: "#/components/schemas/RunAttempt"
-        approvals:
-          type: array
-          items:
-            $ref: "#/components/schemas/CopilotApproval"
-        cursor:
-          type: string
-
-    TaskEventFrame:
-      type: object
-      required: [schema_version, task_id, task_sequence, cursor, event]
-      properties:
-        schema_version:
-          type: string
-          enum: [gantry.copilot.event/v1]
-        task_id:
-          type: string
-        run_id:
-          type: string
-          nullable: true
-        task_sequence:
-          type: integer
-          format: int64
-          minimum: 1
-        run_sequence:
-          type: integer
-          format: int64
-          nullable: true
-        cursor:
-          type: string
+        schema_version: {type: string, enum: [gantry.copilot.event/v1]}
+        session_id: {type: string}
+        run_id: {type: [string, "null"]}
+        session_sequence: {type: integer, format: int64, minimum: 1}
+        run_sequence: {type: [integer, "null"], format: int64, minimum: 1}
+        cursor: {type: string}
         event:
           oneOf:
-            - $ref: "#/components/schemas/MessageCommittedEvent"
-            - $ref: "#/components/schemas/ContentSegmentEvent"
-            - $ref: "#/components/schemas/RunStateChangedEvent"
-            - $ref: "#/components/schemas/ApprovalChangedEvent"
-            - $ref: "#/components/schemas/ArtifactChangedEvent"
-          discriminator:
-            propertyName: type
-            mapping:
-              message_committed: "#/components/schemas/MessageCommittedEvent"
-              content_segment: "#/components/schemas/ContentSegmentEvent"
-              run_state_changed: "#/components/schemas/RunStateChangedEvent"
-              approval_changed: "#/components/schemas/ApprovalChangedEvent"
-              artifact_changed: "#/components/schemas/ArtifactChangedEvent"
-
+            - {$ref: "#/components/schemas/MessageCommittedEvent"}
+            - {$ref: "#/components/schemas/ContentSegmentEvent"}
+            - {$ref: "#/components/schemas/RunStateChangedEvent"}
+            - {$ref: "#/components/schemas/SessionChangedEvent"}
+            - {$ref: "#/components/schemas/ApprovalChangedEvent"}
+            - {$ref: "#/components/schemas/ArtifactChangedEvent"}
     MessageCommittedEvent:
       type: object
       required: [type, message]
-      properties:
-        type:
-          type: string
-          enum: [message_committed]
-        message:
-          $ref: "#/components/schemas/TaskMessage"
-
+      properties: {type: {type: string, enum: [message_committed]}, message: {$ref: "#/components/schemas/SessionMessage"}}
     ContentSegmentEvent:
       type: object
       required: [type, message_id, segment_index, text]
-      properties:
-        type:
-          type: string
-          enum: [content_segment]
-        message_id:
-          type: string
-        segment_index:
-          type: integer
-          minimum: 0
-        text:
-          type: string
-        final:
-          type: boolean
-
+      properties: {type: {type: string, enum: [content_segment]}, message_id: {type: string}, segment_index: {type: integer, minimum: 0}, text: {type: string}, final: {type: boolean}}
     RunStateChangedEvent:
       type: object
       required: [type, run]
+      properties: {type: {type: string, enum: [run_state_changed]}, run: {$ref: "#/components/schemas/RunSummary"}}
+    SessionChangedEvent:
+      type: object
+      required: [type, state, mode, conversation_revision, queued_run_count]
       properties:
-        type:
-          type: string
-          enum: [run_state_changed]
-        run:
-          $ref: "#/components/schemas/RunAttempt"
-
+        type: {type: string, enum: [session_changed]}
+        state: {$ref: "#/components/schemas/SessionState"}
+        mode: {$ref: "#/components/schemas/SessionMode"}
+        conversation_revision: {type: integer, format: int64, minimum: 1}
+        queued_run_count: {type: integer, minimum: 0}
+        members: {type: array, items: {$ref: "#/components/schemas/SessionMember"}}
     ApprovalChangedEvent:
       type: object
       required: [type, approval]
-      properties:
-        type:
-          type: string
-          enum: [approval_changed]
-        approval:
-          $ref: "#/components/schemas/CopilotApproval"
-
+      properties: {type: {type: string, enum: [approval_changed]}, approval: {$ref: "#/components/schemas/CopilotApproval"}}
     ArtifactChangedEvent:
       type: object
       required: [type, artifact]
-      properties:
-        type:
-          type: string
-          enum: [artifact_changed]
-        artifact:
-          $ref: "#/components/schemas/ArtifactResponse"
+      properties: {type: {type: string, enum: [artifact_changed]}, artifact: {$ref: "#/components/schemas/Artifact"}}

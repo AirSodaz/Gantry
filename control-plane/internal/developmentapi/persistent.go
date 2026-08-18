@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/development"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/sessions"
 )
 
 type persistentDispatcher interface {
@@ -74,7 +74,7 @@ func (h handler) create(w http.ResponseWriter, r *http.Request) {
 }
 func (h handler) get(w http.ResponseWriter, r *http.Request) {
 	run, err := h.lifecycle.Get(r.Context(), r.PathValue("runID"))
-	if errors.Is(err, tasks.ErrNotFound) {
+	if errors.Is(err, sessions.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "development run not found")
 		return
 	}
@@ -86,7 +86,7 @@ func (h handler) get(w http.ResponseWriter, r *http.Request) {
 }
 func (h handler) cancel(w http.ResponseWriter, r *http.Request) {
 	result, err := h.lifecycle.Cancel(r.Context(), r.PathValue("runID"))
-	if errors.Is(err, tasks.ErrNotFound) {
+	if errors.Is(err, sessions.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "development run not found")
 		return
 	}

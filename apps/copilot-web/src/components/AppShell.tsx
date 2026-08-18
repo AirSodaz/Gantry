@@ -47,7 +47,8 @@ export function AppShell() {
 
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
-  const isNewTaskActive = location.pathname === "/" || location.pathname === "";
+  const isNewSessionActive =
+    location.pathname === "/" || location.pathname === "";
   const approvals = useQuery({
     queryKey: ["approvals", "shell"],
     queryFn: () => api.listApprovals(),
@@ -95,7 +96,7 @@ export function AppShell() {
           </IconButton>
         </div>
 
-        {/* ChatGPT "+ New task" Action Button */}
+        {/* New Session action */}
         <div className="sidebar-action-wrap">
           {!isCollapsed ? (
             <button
@@ -104,22 +105,22 @@ export function AppShell() {
                 navigate("/");
                 closeMobile();
               }}
-              className={`chatgpt-new-task-btn ${isNewTaskActive ? "chatgpt-new-task-btn-active" : ""}`}
+              className={`chatgpt-new-session-btn ${isNewSessionActive ? "chatgpt-new-session-btn-active" : ""}`}
             >
-              <div className="chatgpt-new-task-icon">
+              <div className="chatgpt-new-session-icon">
                 <Plus size={15} strokeWidth={2.5} />
               </div>
-              <span>New task</span>
+              <span>New session</span>
             </button>
           ) : (
             <IconButton
-              label="New task"
+              label="New session"
               onClick={() => {
                 navigate("/");
                 closeMobile();
               }}
-              className={`chatgpt-new-task-btn-collapsed ${
-                isNewTaskActive ? "chatgpt-new-task-collapsed-active" : ""
+              className={`chatgpt-new-session-btn-collapsed ${
+                isNewSessionActive ? "chatgpt-new-session-collapsed-active" : ""
               }`}
             >
               <Plus size={18} strokeWidth={2.5} />
@@ -149,9 +150,9 @@ export function AppShell() {
           </NavLink>
 
           <NavLink
-            to="/tasks"
+            to="/sessions"
             onClick={closeMobile}
-            title={isCollapsed ? "My tasks" : undefined}
+            title={isCollapsed ? "My sessions" : undefined}
             className={({ isActive }) =>
               `nav-link ${isActive ? "nav-link-active" : ""} ${
                 isCollapsed ? "nav-link-collapsed" : ""
@@ -159,7 +160,7 @@ export function AppShell() {
             }
           >
             <ListTodo size={17} aria-hidden="true" className="nav-link-icon" />
-            {!isCollapsed ? <span>My tasks</span> : null}
+            {!isCollapsed ? <span>My sessions</span> : null}
           </NavLink>
 
           {!isCollapsed ? (

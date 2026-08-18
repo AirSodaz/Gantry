@@ -5,9 +5,9 @@ import { LoadingState } from "./components/AsyncState";
 import { useAuth } from "./auth/AuthProvider";
 import { AppShell } from "./components/AppShell";
 import { AgentsPage } from "./features/catalog/AgentsPage";
-import { NewTaskPage } from "./features/tasks/NewTaskPage";
-import { MyTasksPage } from "./features/tasks/MyTasksPage";
-import { TaskPage } from "./features/tasks/TaskPage";
+import { NewSessionPage } from "./features/sessions/NewSessionPage";
+import { SessionsPage } from "./features/sessions/SessionsPage";
+import { SessionPage } from "./features/sessions/SessionPage";
 import { ApprovalsPage } from "./features/approvals/ApprovalsPage";
 import { ApprovalDetailPage } from "./features/approvals/ApprovalDetailPage";
 import { ArtifactDetailPage } from "./features/artifacts/ArtifactDetailPage";
@@ -21,15 +21,15 @@ function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<NewTaskPage />} />
+        <Route index element={<NewSessionPage />} />
         <Route path="agents" element={<AgentsPage />} />
-        <Route path="tasks" element={<MyTasksPage />} />
-        <Route path="tasks/:taskId" element={<TaskPage />} />
+        <Route path="sessions" element={<SessionsPage />} />
+        <Route path="sessions/:sessionId" element={<SessionPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="approvals/:approvalId" element={<ApprovalDetailPage />} />
         <Route path="artifacts" element={<ArtifactsPage />} />
         <Route path="artifacts/:artifactId" element={<ArtifactDetailPage />} />
-        <Route path="*" element={<NewTaskPage />} />
+        <Route path="*" element={<NewSessionPage />} />
       </Route>
     </Routes>
   );
@@ -61,7 +61,7 @@ function SignInScreen({
         </div>
         <h1>Your work, in motion.</h1>
         <p>
-          Sign in to discover approved capabilities and follow your task runs in
+          Sign in to discover approved capabilities and follow your session runs in
           real time.
         </p>
         {error ? (

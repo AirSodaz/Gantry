@@ -13,8 +13,8 @@ import (
 
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/policy"
-	"github.com/AirSodaz/gantry/internal/taskevents"
-	"github.com/AirSodaz/gantry/internal/taskmessage"
+	"github.com/AirSodaz/gantry/internal/sessionevents"
+	"github.com/AirSodaz/gantry/internal/sessionmessage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -35,33 +35,63 @@ type Service struct{ pool *pgxpool.Pool }
 func NewService(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
 type Request struct {
-	ID               string    `json:"id"`
-	RunID            string    `json:"run_id"`
-	ActionID         string    `json:"action_id"`
-	ActionDigest     string    `json:"action_digest"`
-	Revision         int64     `json:"approval_revision"`
-	ToolName         string    `json:"tool_name"`
-	Operation        string    `json:"operation"`
-	Target           string    `json:"target,omitempty"`
-	Effect           string    `json:"effect"`
-	ActionPreview    any       `json:"action_preview"`
-	RiskClass        string    `json:"risk_class"`
-	Status           string    `json:"status"`
-	RequestedBy      string    `json:"requested_by"`
-	AssignedTo       string    `json:"assigned_to"`
-	ExpiresAt        time.Time `json:"expires_at"`
-	CreatedAt        time.Time `json:"created_at"`
-	TaskID           string    `json:"task_id,omitempty"`
-	AgentDisplayName string    `json:"agent_display_name"`
-	PolicyVersion    string    `json:"policy_version,omitempty"`
-	Decision         *Decision `json:"latest_decision,omitempty"`
+	ID               string
+	RunID            string
+	ActionID         string
+	ActionDigest     string
+	Revision         int64
+	ToolName         string
+	Operation        string
+	Target           string
+	Effect           string
+	ActionPreview    any
+	RiskClass        string
+	Status           string
+	RequestedBy      string
+	AssignedTo       string
+	ExpiresAt        time.Time
+	CreatedAt        time.Time
+	SessionID        string
+	AgentDisplayName string
+	PolicyVersion    string
+	Decision         *Decision
 }
 
 type Decision struct {
-	Decision  string    `json:"decision"`
-	Reason    string    `json:"reason,omitempty"`
-	DecidedBy string    `json:"decided_by"`
-	CreatedAt time.Time `json:"created_at"`
+	Decision  string
+	Reason    string
+	DecidedBy string
+	CreatedAt time.Time
+}
+
+// MarshalJSON is the Copilot approval projection. Internal persistence names
+// deliberately remain unavailable on the employee API.
+func (r Request) MarshalJSON() ([]byte, error) {
+	state := map[string]string{"satisfied": "approved"}[r.Status]
+	if state == "" {
+		state = r.Status
+	}
+	preview := map[string]any{"summary": strings.TrimSpace(r.ToolName + " " + r.Operation), "effect": r.Effect, "risk_class": r.RiskClass, "target": nullableString(r.Target)}
+	if r.ToolName != "" {
+		preview["tool_display_name"] = r.ToolName
+	}
+	if r.Operation != "" {
+		preview["operation_display_name"] = r.Operation
+	}
+	if details, ok := r.ActionPreview.(map[string]any); ok {
+		preview["redacted_details"] = details
+	}
+	var decision any
+	if r.Decision != nil {
+		decision = map[string]any{"decision": r.Decision.Decision, "reason": nullableString(r.Decision.Reason), "decided_by_current_requester": true, "decided_at": r.Decision.CreatedAt}
+	}
+	return json.Marshal(map[string]any{"id": r.ID, "session_id": r.SessionID, "run_id": r.RunID, "requester_id": r.RequestedBy, "action_id": r.ActionID, "action_digest": r.ActionDigest, "approval_revision": r.Revision, "state": state, "preview": preview, "decision": decision, "expires_at": r.ExpiresAt, "created_at": r.CreatedAt})
+}
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 type Resolution struct {
@@ -153,9 +183,6 @@ func (s *Service) expire(ctx context.Context, principalID string) ([]Resolution,
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
 			return nil, err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status='awaiting_requester_input', conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, resolution.RunID); err != nil {
-			return nil, err
-		}
 		if err := appendActionSummary(ctx, tx, resolution.RunID, resolution.ActionID, "rejected"); err != nil {
 			return nil, err
 		}
@@ -217,7 +244,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, state stri
 	if after != nil {
 		afterCreatedAt, afterID = &after.CreatedAt, after.ID
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.status=$2 AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) AND ($3::timestamptz IS NULL OR ar.created_at > $3 OR (ar.created_at = $3 AND ar.id > $4)) ORDER BY ar.created_at, ar.id LIMIT $5`, actor.ID, state, afterCreatedAt, afterID, limit+1)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, ar.assigned_principal_id, ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.sessions t ON t.id=r.session_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.status=$2 AND (ar.assigned_principal_id=$1 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$1)) AND ($3::timestamptz IS NULL OR ar.created_at > $3 OR (ar.created_at = $3 AND ar.id > $4)) ORDER BY ar.created_at, ar.id LIMIT $5`, actor.ID, state, afterCreatedAt, afterID, limit+1)
 	if err != nil {
 		return Page{}, err
 	}
@@ -226,7 +253,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, state stri
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.SessionID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
 			return Page{}, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
@@ -244,14 +271,14 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, state stri
 	return page, nil
 }
 
-// ListTask returns the full requester-authorized approval history for one
-// task. It is used only by that Task's event snapshot, not by the pending-work
+// ListSession returns the full member-authorized approval history for one
+// task. It is used only by that Session's event snapshot, not by the pending-work
 // queue, which intentionally remains limited to pending approvals.
-func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID string, limit int) ([]Request, error) {
+func (s *Service) ListSession(ctx context.Context, actor identity.Principal, sessionID string, limit int) ([]Request, error) {
 	if limit < 1 || limit > 100 {
 		limit = 25
 	}
-	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE t.id=$1 AND t.requester_principal_id=$2 ORDER BY ar.created_at, ar.id LIMIT $3`, taskID, actor.ID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, s.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.sessions s ON s.id=r.session_id JOIN gantry.session_members m ON m.session_id=s.id AND m.principal_id=$2 JOIN gantry.agents agent ON agent.id=s.agent_id WHERE s.id=$1 ORDER BY ar.created_at, ar.id LIMIT $3`, sessionID, actor.ID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +287,7 @@ func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID
 	for rows.Next() {
 		var item Request
 		var previewJSON []byte
-		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
+		if err := rows.Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.SessionID, &item.PolicyVersion, &item.AgentDisplayName); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(previewJSON, &item.ActionPreview); err != nil {
@@ -283,7 +310,7 @@ func (s *Service) ListTask(ctx context.Context, actor identity.Principal, taskID
 func (s *Service) Get(ctx context.Context, actor identity.Principal, approvalID string) (Request, error) {
 	var item Request
 	var previewJSON []byte
-	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.tasks t ON t.id=r.task_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.TaskID, &item.PolicyVersion, &item.AgentDisplayName)
+	err := s.pool.QueryRow(ctx, `SELECT ar.id, ar.run_id, ar.action_id, ar.action_digest, a.revision, ar.action_preview, ar.risk_class, ar.status, ar.requested_by_principal_id, COALESCE(ar.assigned_principal_id,''), ar.expires_at, ar.created_at, a.tool_name, a.operation, a.target, a.effect, t.id, a.policy_version, agent.display_name FROM gantry.approval_requests ar JOIN gantry.actions a ON a.id=ar.action_id JOIN gantry.runs r ON r.id=ar.run_id JOIN gantry.sessions t ON t.id=r.session_id JOIN gantry.agents agent ON agent.id=t.agent_id WHERE ar.id=$1 AND (ar.assigned_principal_id=$2 OR (ar.assigned_principal_id IS NULL AND ar.requested_by_principal_id=$2))`, approvalID, actor.ID).Scan(&item.ID, &item.RunID, &item.ActionID, &item.ActionDigest, &item.Revision, &previewJSON, &item.RiskClass, &item.Status, &item.RequestedBy, &item.AssignedTo, &item.ExpiresAt, &item.CreatedAt, &item.ToolName, &item.Operation, &item.Target, &item.Effect, &item.SessionID, &item.PolicyVersion, &item.AgentDisplayName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Request{}, ErrNotFound
 	}
@@ -394,13 +421,6 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 	if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='accepted' WHERE id=$1 AND status='awaiting_approval'`, runID); err != nil {
 		return Resolution{}, err
 	}
-	taskStatus := "awaiting_requester_input"
-	if input.Decision == "approve" {
-		taskStatus = "running"
-	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.tasks SET status=$2, conversation_revision=conversation_revision+1 WHERE current_run_id=$1 AND status='awaiting_approval'`, runID, taskStatus); err != nil {
-		return Resolution{}, err
-	}
 	if err := appendActionSummary(ctx, tx, runID, actionID, newActionState); err != nil {
 		return Resolution{}, err
 	}
@@ -433,26 +453,26 @@ func (s *Service) Decide(ctx context.Context, actor identity.Principal, input De
 
 func appendActionSummary(ctx context.Context, tx pgx.Tx, runID, actionID, state string) error {
 	var taskID, toolName, operation, target string
-	if err := tx.QueryRow(ctx, `SELECT r.task_id, a.tool_name, a.operation, a.target FROM gantry.actions a JOIN gantry.runs r ON r.id=a.run_id WHERE a.id=$1 AND a.run_id=$2`, actionID, runID).Scan(&taskID, &toolName, &operation, &target); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT r.session_id, a.tool_name, a.operation, a.target FROM gantry.actions a JOIN gantry.runs r ON r.id=a.run_id WHERE a.id=$1 AND a.run_id=$2`, actionID, runID).Scan(&taskID, &toolName, &operation, &target); err != nil {
 		return err
 	}
 	summary := strings.TrimSpace(toolName + " " + operation)
 	if target = strings.TrimSpace(target); target != "" {
 		summary += " for " + target
 	}
-	return taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.ActionSummary(actionID, summary, state))
+	return sessionmessage.Append(ctx, tx, taskID, runID, "system_summary", sessionmessage.ActionSummary(actionID, summary, state))
 }
 
 func appendApprovalStatus(ctx context.Context, tx pgx.Tx, runID, code, message string) error {
 	var taskID string
-	if err := tx.QueryRow(ctx, `SELECT task_id FROM gantry.runs WHERE id=$1`, runID).Scan(&taskID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT session_id FROM gantry.runs WHERE id=$1`, runID).Scan(&taskID); err != nil {
 		return err
 	}
-	return taskmessage.Append(ctx, tx, taskID, runID, "system_summary", taskmessage.Status(code, message))
+	return sessionmessage.Append(ctx, tx, taskID, runID, "system_summary", sessionmessage.Status(code, message))
 }
 
 func appendEvent(ctx context.Context, tx pgx.Tx, runID, eventType string, payload any) error {
-	return taskevents.Append(ctx, tx, runID, eventType, payload)
+	return sessionevents.Append(ctx, tx, runID, eventType, payload)
 }
 
 func preview(action policy.Action) []byte {

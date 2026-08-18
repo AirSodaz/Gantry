@@ -54,21 +54,21 @@ export function ApprovalsPage() {
           <FileCheck2 size={24} />
           <strong>No pending actions</strong>
           <p>
-            New approval requests will appear here when a task reaches a
+            New approval requests will appear here when a session reaches a
             governed write step.
           </p>
         </div>
       ) : (
         <div className="approval-list">
           {items.map((item) => {
-            const target = item.target ?? "No external target declared";
+            const target = item.preview.target ?? "No external target declared";
             const expiresAt = item.expires_at ?? new Date().toISOString();
-            const agentName = item.agent_display_name ?? "Agent";
+            const agentName = "Agent";
             const digest = item.action_digest ?? "";
             const id = item.id ?? "";
-            const toolName = item.tool_name ?? "Tool action";
-            const operation = item.operation ?? "operation";
-            const riskClass = item.risk_class ?? "write";
+            const toolName = item.preview.tool_display_name ?? "Tool action";
+            const operation = item.preview.operation_display_name ?? "operation";
+            const riskClass = item.preview.risk_class;
             return (
               <div className="approval-row" key={id}>
                 <Link
@@ -93,12 +93,12 @@ export function ApprovalsPage() {
                   </div>
                   <ArrowUpRight size={17} aria-hidden="true" />
                 </Link>
-                {item.task_id ? (
+                {item.session_id ? (
                   <Link
-                    className="approval-task-link"
-                    to={`/tasks/${encodeURIComponent(item.task_id)}`}
+                    className="approval-session-link"
+                    to={`/sessions/${encodeURIComponent(item.session_id)}`}
                   >
-                    Open task
+                    Open session
                   </Link>
                 ) : null}
               </div>

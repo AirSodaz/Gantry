@@ -55,31 +55,32 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   are persisted and rendered read-only in catalog detail views.
 - Plugin workspace enablement now supports explicit, audited disablement; each
   exact Plugin Version remains independently enabled or disabled per workspace.
-- Copilot catalog, task submission, requester follow-up messages after a
-  rejected action, idempotency for submission/follow-up/cancel/retry commands,
-  Task message projection, intent-oriented Task history rows (first request,
-  last activity, requester action, and Artifact availability), compact paged
-  Run history, server-authorized Task history filters (status, Agent, time,
-  requester action), cancellation, retry, live
-  task events, requester-scoped approval list/detail/decision, Artifact
-  browse/detail, artifact download, requester-owned attachment upload and
-  validation before Task binding, and URL-preserved Agent search/category filters
-  with an owner projection.
-- Schema-versioned Task event snapshots and requester-bound cursors now carry
-  complete Task conversations, Run history, and approval history. Continuous
+- Copilot catalog with requester-owned favorites/recent use, Session creation,
+  fixed owner/contributor/viewer membership, owner transfer, requester follow-up
+  messages after a rejected action, and idempotency for creation, follow-up,
+  cancel, retry, favorite, attachment, and approval commands. Session history
+  exposes first request, last activity, requester action, Artifact availability,
+  compact paged Run history, server-authorized filters, cancellation, retry,
+  and live Session events.
+- Requester-scoped approval list/detail/decision, Artifact browse/detail and
+  audited download, requester-owned attachment upload and validation before
+  Session binding, and URL-preserved Agent collection/search/category filters
+  with owner projections.
+- Schema-versioned Session event snapshots and requester-bound cursors carry
+  complete Session conversations, Run history, membership, and approval history. Continuous
   frames expose only typed committed-message, content-segment, Run-state,
-  approval, and Artifact projections; internal Runner event payloads remain
+  Session-state, approval, and Artifact projections; internal Runner event payloads remain
   private to the control plane.
 - Approval decisions now return the requester-authorized winning approval
   projection. Concurrent, stale, expired, and idempotency-conflicting decisions
   include that same projection in their error envelope, so the Copilot page
-  replaces local controls with durable server evidence. Approval queue and Task
-  stream projections include the Agent display name and Task context.
-- Copilot Task, Run, approval, Artifact, and Agent lists use requester- and
+  replaces local controls with durable server evidence. Approval queue and Session
+  stream projections include the Agent display name and Session context.
+- Copilot Session, Run, approval, Artifact, and Agent lists use requester- and
   filter-bound signed keyset cursors, with stable ordering and incremental
   loading in the Web client. Artifact and approval APIs support their current
   persisted-state filters; the approval queue remains pending-only by design.
-- Persistent tasks, runs, ordered semantic events, bounded content segments,
+- Persistent Sessions, Runs, ordered semantic events, bounded content segments,
   artifacts, durable action records, approval requests, and approval decisions.
 - Runner V1 agent loop with deterministic and development provider adapters,
   native workspace tools, shell and PTY support, streamed rule interception,
@@ -99,14 +100,13 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 - **Model routing:** Direct OpenAI-compatible and Anthropic adapters are allowed
   only for development. The production LLM gateway, credential mediation,
   budgets, route policy, and provider governance are not complete.
-- **Authorization:** Workspace membership and initial Admin roles exist. The
-  Agent ACL typed resource, subject model, owner transfer, collection/grant
-  concurrency, recovery invariant, and policy intersection are now documented
-  in [Agent Access Contracts](../architecture/agent-access-contracts.md); the
-  Admin routes, persistence, group/service-identity resolution, and complete
-  revocation behavior remain incomplete.
+- **Authorization:** Workspace membership, initial Admin roles, direct-principal
+  Agent grants, and `metadata.read`/`execute` checks on catalog and new Run paths
+  exist. The complete ACL subject model, Admin management routes, group and
+  service-identity resolution, recovery invariant, policy intersection, and
+  complete revocation behavior remain incomplete.
 - **Action approval:** One durable, digest-bound approval loop is implemented.
-  Requester-visible reads expire elapsed approvals and open Task follow-up input;
+  Requester-visible reads expire elapsed approvals and keep Session follow-up input available;
   cancellation/retry and rejection/expiry continuation are idempotent. A
   background expiry worker reconciles all elapsed requests and delivers their
   durable resolution to an active Runner when present. Retained suspension,
@@ -119,12 +119,12 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   unavailable to an Agent. Production malware scanning, preview isolation,
   retention, compaction, backpressure evidence, and object-store failure
   handling remain.
-- **Copilot Agent projection:** Search/category filters and published owner
-  projection exist. The target contract now defines Revision-frozen typical
-  input/output metadata and disclosures, Deployment-bound availability, and
-  Workspace-scoped principal favorites/recent use (eight successful Session
-  creations). The projection fields, preference persistence, and favorite
-  route are not implemented yet.
+- **Copilot Agent projection:** Search/category/collection filters, published
+  owner projection, Workspace-scoped principal favorites, and the eight most
+  recent successful Session creations are persisted and callable. Revision-frozen
+  typical input/output metadata and disclosures are still represented by a
+  schema-valid generic projection, and Deployment-bound temporary availability
+  is not yet sourced from published Admin data.
 
 - **Scheduling and isolation:** Runner registration, assignment, leases,
   cancellation, and runner-loss handling exist. Production runner pools,
@@ -165,16 +165,15 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
 
 ### Designed, Not Yet Implemented
 
-- **Session collaboration and Run requester model:** ADR-037 replaces the target
-  Task-as-conversation aggregate with personal, shared, and channel-bound
-  Sessions; fixed owner/contributor/viewer membership; one executing Run with an
-  ordered queue; and Run-scoped requester approvals. Trigger configuration may
-  create a new Session or bind one exact owner-owned Session, with occurrence
-  idempotency committed before queueing. None of this Session API, membership,
-  channel binding, Trigger binding, or queue migration is implemented. The
-  checked-in `/tasks` OpenAPI, handlers, persistence, generated clients, and UI
-  remain the current pre-ADR-037 product slice and must migrate together without
-  a permanent compatibility layer.
+- **Automation and remaining Session edges:** Trigger configuration may create a
+  new Session or bind one exact owner-owned Session, with occurrence idempotency
+  committed before queueing. Trigger persistence/runtime, schedule delivery,
+  webhook occurrence admission, channel binding, and disabling bound Triggers
+  on owner transfer are not implemented; Trigger ownership is never transferred
+  implicitly. External business-approval callbacks and same-Run resume remain
+  pending. Agent action rejection and expiry already end the current Run as
+  `completed` with `requester_input_required`; the Session stays active for a
+  new requester instruction and the denied approval is not reused.
 - Package-content ingestion and inspection, Plugin asset expansion, Tool Server
   health/discovery, descriptor schema compatibility, broader Tool Binding
   constraints, and CLI Command Profile catalogs described in
@@ -203,12 +202,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   streaming, digest verification, failure semantics, and recovery. The target
   protobuf extension, broker implementation, persistence, and sandbox
   materialization remain unimplemented.
-- Published Copilot Agent metadata and personal-use preferences are now defined
-  in [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md):
-  Admin Draft authoring, immutable Revision projection, Deployment-bound
-  availability, Workspace-scoped favorite/recent-use persistence, route
-  semantics, and acceptance tests. OpenAPI implementation, generated clients,
-  preference storage, and Admin authoring UI remain incomplete.
+- Revision-frozen Copilot Agent catalog metadata still needs Admin Draft
+  authoring, immutable Revision storage/projection, and Deployment-bound
+  availability. Favorite/recent-use OpenAPI, generated clients, storage, HTTP
+  routes, and Copilot controls are implemented; Admin catalog-metadata authoring
+  remains incomplete.
 - Enterprise Agent Invocation API execution, signed webhook delivery workers,
   usage projections, required delegated-user token exchange, and owner-bound
   scheduled/Webhook triggers. Integration registration, client metadata,

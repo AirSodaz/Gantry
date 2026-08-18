@@ -6,6 +6,7 @@ api_url="${GANTRY_COPILOT_SMOKE_API_URL:-http://localhost:8080}"
 dex_url="${GANTRY_DEX_SMOKE_URL:-http://localhost:5556/dex}"
 response_body=""
 response_status=""
+response_etag=""
 access_token=""
 
 cleanup() {
@@ -19,8 +20,11 @@ cleanup() {
 trap cleanup EXIT
 
 json_value() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body" | head -n1; }
-task_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
-task_run_id() { sed -n 's/.*"current_run":{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
+session_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
+session_state() { sed -n 's/.*"state":"\([^"]*\)","conversation_revision":[0-9][0-9]*.*/\1/p' <<<"$response_body"; }
+run_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
+first_item_value() { sed -n "s/^{\"items\":\[{[^}]*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body"; }
+first_item_number() { sed -n "s/^{\"items\":\[{[^}]*\"$1\":\([0-9][0-9]*\).*/\1/p" <<<"$response_body"; }
 
 token_for() {
   local username=$1 password=$2 body
@@ -34,30 +38,47 @@ token_for() {
 }
 
 request() {
-  local method=$1 path=$2 payload=${3:-} output
+  local method=$1 path=$2 payload=${3:-} idempotency_key=${4:-} if_match=${5:-} output headers
   output=$(mktemp)
-  local args=(-sS -o "$output" -w '%{http_code}' -X "$method" -H "Authorization: Bearer ${access_token}")
+  headers=$(mktemp)
+  local args=(-sS -D "$headers" -o "$output" -w '%{http_code}' -X "$method" -H "Authorization: Bearer ${access_token}")
   if [[ -n $payload ]]; then args+=(-H 'Content-Type: application/json' --data "$payload"); fi
+  if [[ -n $idempotency_key ]]; then args+=(-H "Idempotency-Key: ${idempotency_key}"); fi
+  if [[ -n $if_match ]]; then args+=(-H "If-Match: ${if_match}"); fi
   response_status=$(curl --noproxy '*' "${args[@]}" "${api_url}${path}")
   response_body=$(<"$output")
-  rm -f "$output"
+  response_etag=$(tr -d '\r' <"$headers" | sed -n 's/^[Ee][Tt][Aa][Gg]:[[:space:]]*//p' | tail -n1)
+  rm -f "$output" "$headers"
 }
 
-wait_task_status() {
-  local task_id=$1 expected=$2
+wait_latest_run_state() {
+  local session_id=$1 expected_state=$2 expected_outcome=$3 expected_run_id=${4:-}
   for _ in $(seq 1 80); do
-    request GET "/api/copilot/v1/tasks/${task_id}"
-    if [[ $response_status == 200 && $(json_value status) == "$expected" ]]; then return 0; fi
+    request GET "/api/copilot/v1/sessions/${session_id}/runs"
+    local current_run_id current_state current_outcome
+    current_run_id=$(first_item_value id)
+    current_state=$(first_item_value state)
+    current_outcome=$(first_item_value outcome)
+    if [[ $response_status == 200 && -n $current_run_id && $current_state == "$expected_state" && $current_outcome == "$expected_outcome" && ( -z $expected_run_id || $current_run_id == "$expected_run_id" ) ]]; then
+      printf '%s\n' "$current_run_id"
+      return 0
+    fi
     sleep 0.25
   done
-  echo "task ${task_id} did not reach ${expected}: ${response_status} ${response_body}" >&2
+  echo "latest Run for Session ${session_id} did not reach ${expected_state}/${expected_outcome}: ${response_status} ${response_body}" >&2
   return 1
 }
 
-submit() {
+assert_session_active() {
+  local session_id=$1
+  request GET "/api/copilot/v1/sessions/${session_id}"
+  [[ $response_status == 200 && $(session_state) == active ]]
+}
+
+submit_session() {
   local key=$1 payload=$2 output
   output=$(mktemp)
-  response_status=$(curl --noproxy '*' -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/tasks" \
+  response_status=$(curl --noproxy '*' -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/sessions" \
     -H "Authorization: Bearer ${access_token}" -H "Content-Type: application/json" -H "Idempotency-Key: ${key}" --data "$payload")
   response_body=$(<"$output")
   rm -f "$output"
@@ -70,14 +91,14 @@ assert_action_projection() {
 }
 
 wait_artifact() {
-  local task_id=$1
+  local session_id=$1
   for _ in $(seq 1 80); do
     local value
-    value=$("${compose[@]}" exec -T postgres psql -U gantry -d gantry -Atqc "SELECT id FROM gantry.artifacts WHERE task_id='${task_id}' AND state='available' AND scan_status='passed' LIMIT 1")
+    value=$("${compose[@]}" exec -T postgres psql -U gantry -d gantry -Atqc "SELECT id FROM gantry.artifacts WHERE session_id='${session_id}' AND state='available' AND scan_status='passed' LIMIT 1")
     [[ -n $value ]] && { printf '%s\n' "$value"; return 0; }
     sleep 0.25
   done
-  echo "artifact for task ${task_id} did not become available" >&2
+  echo "artifact for Session ${session_id} did not become available" >&2
   return 1
 }
 
@@ -93,105 +114,106 @@ done
 
 request GET /api/copilot/v1/agents
 [[ $response_status == 200 ]]
-agent_id=$(json_value id)
+agent_id=$(first_item_value id)
 [[ $agent_id == agt_lifecycle_complete ]]
 await_cancel_agent_id=agt_lifecycle_await_cancel
 await_approval_agent_id=agt_lifecycle_await_approval
 
 complete_key="complete-${RANDOM}-${RANDOM}"
-submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
+submit_session "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
 [[ $response_status == 201 ]]
-complete_task=$(task_id)
-[[ -n $complete_task ]]
-wait_task_status "$complete_task" completed
-request POST "/api/copilot/v1/tasks/${complete_task}/events:ticket" '{}'
+complete_session=$(session_id)
+[[ -n $complete_session ]]
+complete_run=$(wait_latest_run_state "$complete_session" completed succeeded)
+request POST "/api/copilot/v1/sessions/${complete_session}/events:ticket" '{}'
 [[ $response_status == 200 && -n $(json_value ticket) && -n $(json_value websocket_url) ]]
-artifact_id=$(wait_artifact "$complete_task")
+artifact_id=$(wait_artifact "$complete_session")
 request POST "/api/copilot/v1/artifacts/${artifact_id}:download" '{}'
 [[ $response_status == 200 ]]
 artifact_url=$(json_value download_url)
 [[ -n $artifact_url ]]
 artifact_content=$(curl --noproxy '*' -sS "$artifact_url")
 [[ $artifact_content == 'Gantry deterministic artifact' ]]
-submit "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
-[[ $response_status == 200 && $(task_id) == "$complete_task" ]]
+assert_session_active "$complete_session"
+submit_session "$complete_key" "{\"agent_id\":\"${agent_id}\",\"message\":\"complete\"}"
+[[ $response_status == 200 && $(session_id) == "$complete_session" ]]
 
 approval_key="approval-${RANDOM}-${RANDOM}"
-submit "$approval_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
+submit_session "$approval_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
 [[ $response_status == 201 ]]
-approval_task=$(task_id)
-wait_task_status "$approval_task" awaiting_approval
-request GET "/api/copilot/v1/tasks/${approval_task}"
-[[ $response_status == 200 ]]
-approval_run=$(task_run_id)
+approval_session=$(session_id)
+approval_run=$(wait_latest_run_state "$approval_session" awaiting_approval '')
 [[ -n $approval_run ]]
 request GET /api/copilot/v1/approvals
 [[ $response_status == 200 ]]
-approval_id=$(json_value id)
-approval_digest=$(json_value action_digest)
-[[ -n $approval_id && -n $approval_digest ]]
-request POST "/api/copilot/v1/approvals/${approval_id}:decide" "{\"decision\":\"approve\",\"action_digest\":\"${approval_digest}\",\"idempotency_key\":\"${approval_key}\"}"
+approval_id=$(first_item_value id)
+approval_digest=$(first_item_value action_digest)
+approval_revision=$(first_item_number approval_revision)
+[[ -n $approval_id && -n $approval_digest && -n $approval_revision ]]
+request POST "/api/copilot/v1/approvals/${approval_id}:decide" "{\"decision\":\"approve\",\"action_digest\":\"${approval_digest}\",\"approval_revision\":${approval_revision}}" "$approval_key"
 [[ $response_status == 200 ]]
-wait_task_status "$approval_task" completed
+wait_latest_run_state "$approval_session" completed succeeded "$approval_run" >/dev/null
 assert_action_projection "$approval_run" "succeeded|true|printf approval|1|true"
 
 rejection_key="rejection-${RANDOM}-${RANDOM}"
-submit "$rejection_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
+submit_session "$rejection_key" "{\"agent_id\":\"${await_approval_agent_id}\",\"message\":\"write\"}"
 [[ $response_status == 201 ]]
 
-rejection_task=$(task_id)
-wait_task_status "$rejection_task" awaiting_approval
-request GET "/api/copilot/v1/tasks/${rejection_task}"
-[[ $response_status == 200 ]]
-rejection_run=$(task_run_id)
+rejection_session=$(session_id)
+rejection_run=$(wait_latest_run_state "$rejection_session" awaiting_approval '')
 [[ -n $rejection_run ]]
 request GET /api/copilot/v1/approvals
 [[ $response_status == 200 ]]
-rejection_id=$(json_value id)
-rejection_digest=$(json_value action_digest)
-[[ -n $rejection_id && -n $rejection_digest ]]
-request POST "/api/copilot/v1/approvals/${rejection_id}:decide" "{\"decision\":\"reject\",\"action_digest\":\"${rejection_digest}\",\"idempotency_key\":\"${rejection_key}\"}"
+rejection_id=$(first_item_value id)
+rejection_digest=$(first_item_value action_digest)
+rejection_revision=$(first_item_number approval_revision)
+[[ -n $rejection_id && -n $rejection_digest && -n $rejection_revision ]]
+request POST "/api/copilot/v1/approvals/${rejection_id}:decide" "{\"decision\":\"reject\",\"action_digest\":\"${rejection_digest}\",\"approval_revision\":${rejection_revision}}" "$rejection_key"
 [[ $response_status == 200 ]]
-wait_task_status "$rejection_task" failed
+wait_latest_run_state "$rejection_session" completed requester_input_required "$rejection_run" >/dev/null
+assert_session_active "$rejection_session"
 assert_action_projection "$rejection_run" "rejected|true|printf approval|0|false"
 
 other_token=$(token_for copilot-other gantry_other_password)
 access_token=$other_token
-request GET "/api/copilot/v1/tasks/${complete_task}"
+request GET "/api/copilot/v1/sessions/${complete_session}"
 [[ $response_status == 404 ]]
 access_token=$(token_for copilot-demo gantry_demo_password)
 
 cancel_key="cancel-${RANDOM}-${RANDOM}"
-submit "$cancel_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"wait\"}"
+submit_session "$cancel_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"wait\"}"
 [[ $response_status == 201 ]]
-cancel_task=$(task_id)
-cancel_run=$(task_run_id)
-wait_task_status "$cancel_task" running
-request POST "/api/copilot/v1/tasks/${cancel_task}/runs/${cancel_run}:cancel" '{}'
-[[ $response_status == 200 ]]
-wait_task_status "$cancel_task" canceled
+cancel_session=$(session_id)
+cancel_run=$(wait_latest_run_state "$cancel_session" running '')
+request POST "/api/copilot/v1/sessions/${cancel_session}/runs/${cancel_run}:cancel" '{}' "$cancel_key"
+[[ $response_status == 200 || $response_status == 202 ]]
+wait_latest_run_state "$cancel_session" canceled canceled "$cancel_run" >/dev/null
 
 loss_key="loss-${RANDOM}-${RANDOM}"
-submit "$loss_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"loss\"}"
-loss_task=$(task_id)
-wait_task_status "$loss_task" running
+submit_session "$loss_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"loss\"}"
+loss_session=$(session_id)
+loss_run=$(wait_latest_run_state "$loss_session" running '')
 "${compose[@]}" kill runner
-wait_task_status "$loss_task" failed
+wait_latest_run_state "$loss_session" failed failed "$loss_run" >/dev/null
 "${compose[@]}" up --detach runner
 
 restart_key="restart-${RANDOM}-${RANDOM}"
-submit "$restart_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"restart\"}"
-restart_task=$(task_id)
-wait_task_status "$restart_task" running
+submit_session "$restart_key" "{\"agent_id\":\"${await_cancel_agent_id}\",\"message\":\"restart\"}"
+restart_session=$(session_id)
+restart_run=$(wait_latest_run_state "$restart_session" running '')
 "${compose[@]}" restart control-plane
-wait_task_status "$restart_task" failed
-request POST "/api/copilot/v1/tasks/${restart_task}:retry" '{"revision_selection":"original_revision"}'
+wait_latest_run_state "$restart_session" failed failed "$restart_run" >/dev/null
+request GET "/api/copilot/v1/sessions/${restart_session}"
+[[ $response_status == 200 && $(session_state) == active && -n $response_etag ]]
+retry_key="retry-${RANDOM}-${RANDOM}"
+request POST "/api/copilot/v1/sessions/${restart_session}/runs/${restart_run}:retry" '{"revision_selection":"original_revision"}' "$retry_key" "$response_etag"
 [[ $response_status == 201 ]]
-retry_run=$(task_run_id)
+retry_run=$(run_id)
 [[ -n $retry_run ]]
-wait_task_status "$restart_task" running
-request POST "/api/copilot/v1/tasks/${restart_task}/runs/${retry_run}:cancel" '{}'
-[[ $response_status == 200 ]]
-wait_task_status "$restart_task" canceled
+wait_latest_run_state "$restart_session" running '' "$retry_run" >/dev/null
+retry_cancel_key="retry-cancel-${RANDOM}-${RANDOM}"
+request POST "/api/copilot/v1/sessions/${restart_session}/runs/${retry_run}:cancel" '{}' "$retry_cancel_key"
+[[ $response_status == 200 || $response_status == 202 ]]
+wait_latest_run_state "$restart_session" canceled canceled "$retry_run" >/dev/null
 
 echo "Copilot persistent lifecycle smoke test passed."

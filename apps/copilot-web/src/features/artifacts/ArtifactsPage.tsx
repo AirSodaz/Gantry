@@ -24,18 +24,18 @@ const CLASSIFICATION_OPTIONS: SelectOption[] = [
 export function ArtifactsPage() {
   const api = useCopilotApi();
   const [params, setParams] = useSearchParams();
-  const taskId = params.get("task_id") ?? "";
+  const sessionId = params.get("session_id") ?? "";
   const classification = params.get("classification") ?? "";
   const query = useInfiniteQuery({
-    queryKey: ["artifacts", taskId, classification],
+    queryKey: ["artifacts", sessionId, classification],
     initialPageParam: "",
     queryFn: ({ pageParam }) =>
-      api.listArtifacts(taskId, classification, pageParam),
+      api.listArtifacts(sessionId, classification, pageParam),
     getNextPageParam: (page) =>
       page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const setFilter = (name: "task_id" | "classification", value: string) => {
+  const setFilter = (name: "session_id" | "classification", value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(name, value);
     else next.delete(name);
@@ -48,19 +48,19 @@ export function ArtifactsPage() {
         <div>
           <span className="eyebrow">Files</span>
           <h1>Artifacts</h1>
-          <p>Files produced by tasks you started.</p>
+          <p>Files produced in sessions you can access.</p>
         </div>
       </div>
       <div className="artifact-filters">
         <label className="admin-field">
-          <span className="admin-field-label">Task</span>
+          <span className="admin-field-label">Session</span>
           <input
             className="ds-input"
-            value={taskId}
+            value={sessionId}
             onChange={(event) =>
-              setFilter("task_id", event.target.value.trim())
+              setFilter("session_id", event.target.value.trim())
             }
-            placeholder="Filter by task ID"
+            placeholder="Filter by session ID"
           />
         </label>
         <Select
@@ -70,7 +70,7 @@ export function ArtifactsPage() {
           onChange={(value) => setFilter("classification", value)}
           placeholder="All classifications"
         />
-        {taskId || classification ? (
+        {sessionId || classification ? (
           <Button
             variant="quiet"
             size="sm"
@@ -95,12 +95,12 @@ export function ArtifactsPage() {
         <EmptyState
           title="No artifacts found"
           detail={
-            taskId || classification
+            sessionId || classification
               ? "No artifacts match the current filter criteria."
-              : "Files produced by your tasks will appear here."
+              : "Files produced by your sessions will appear here."
           }
           action={
-            taskId || classification ? (
+            sessionId || classification ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -127,7 +127,7 @@ export function ArtifactsPage() {
               <span>
                 {artifact.media_type} · {formatBytes(artifact.size_bytes)}
               </span>
-              <small>{artifact.task_id}</small>
+              <small>{artifact.session_id}</small>
             </span>
             <span className="artifact-browser-states">
               <StatusMark status={artifact.classification ?? "internal"} />

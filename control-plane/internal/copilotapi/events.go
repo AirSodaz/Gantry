@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/identity"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/sessions"
 	"github.com/coder/websocket"
 )
 
@@ -27,15 +27,15 @@ const (
 )
 
 type eventTicketClaims struct {
-	TaskID string `json:"task_id"`
-	Actor  string `json:"actor_id"`
-	Expiry int64  `json:"expiry"`
+	SessionID string `json:"session_id"`
+	Actor     string `json:"actor_id"`
+	Expiry    int64  `json:"expiry"`
 }
 
 type eventCursorClaims struct {
-	TaskID string `json:"task_id"`
-	Actor  string `json:"actor_id"`
-	Seq    uint64 `json:"sequence"`
+	SessionID string `json:"session_id"`
+	Actor     string `json:"actor_id"`
+	Seq       uint64 `json:"sequence"`
 }
 
 func loadEventTicketKey() []byte {
@@ -54,33 +54,33 @@ func (h Handler) issueEventTicket(w http.ResponseWriter, r *http.Request, actor 
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	reader, ok := h.tasks.(eventReader)
+	reader, ok := h.sessions.(eventReader)
 	if !ok {
 		writeInternal(w, errors.New("event service is unavailable"))
 		return
 	}
-	if _, err := reader.Events(r.Context(), actor, r.PathValue("taskID"), 0, 1); err != nil {
-		writeTaskError(w, err)
+	if _, err := reader.Events(r.Context(), actor, r.PathValue("sessionID"), 0, 1); err != nil {
+		writeSessionError(w, err)
 		return
 	}
 	if strings.TrimSpace(request.LastCursor) != "" {
-		if _, ok := parseAfterCursor(h.eventKey, request.LastCursor, r.PathValue("taskID"), actor.ID); !ok {
-			writeError(w, http.StatusUnprocessableEntity, "cursor_invalid", "The event cursor is no longer valid for this task.")
+		if _, ok := parseAfterCursor(h.eventKey, request.LastCursor, r.PathValue("sessionID"), actor.ID); !ok {
+			writeError(w, http.StatusUnprocessableEntity, "cursor_invalid", "The event cursor is no longer valid for this Session.")
 			return
 		}
 	}
 	expiresAt := time.Now().UTC().Add(eventTicketLifetime)
-	ticket := signPayload(h.eventKey, "evt", eventTicketClaims{TaskID: r.PathValue("taskID"), Actor: actor.ID, Expiry: expiresAt.Unix()})
-	writeJSON(w, http.StatusOK, map[string]any{"ticket": ticket, "task_id": r.PathValue("taskID"), "websocket_url": eventWebSocketURL(r, r.PathValue("taskID")), "expires_at": expiresAt})
+	ticket := signPayload(h.eventKey, "evt", eventTicketClaims{SessionID: r.PathValue("sessionID"), Actor: actor.ID, Expiry: expiresAt.Unix()})
+	writeJSON(w, http.StatusOK, map[string]any{"ticket": ticket, "session_id": r.PathValue("sessionID"), "websocket_url": eventWebSocketURL(r, r.PathValue("sessionID")), "expires_at": expiresAt})
 }
 
 func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 	ticket, ok := verifyPayload[eventTicketClaims](h.eventKey, "evt", r.URL.Query().Get("ticket"))
-	if !ok || ticket.Expiry <= time.Now().Unix() || ticket.TaskID != r.PathValue("taskID") {
+	if !ok || ticket.Expiry <= time.Now().Unix() || ticket.SessionID != r.PathValue("sessionID") {
 		writeError(w, http.StatusUnauthorized, "invalid_event_ticket", "The event ticket is invalid or expired.")
 		return
 	}
-	reader, ok := h.tasks.(eventReader)
+	reader, ok := h.sessions.(eventReader)
 	if !ok {
 		writeInternal(w, errors.New("event service is unavailable"))
 		return
@@ -92,12 +92,12 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close(websocket.StatusNormalClosure, "")
 	conn.SetReadLimit(1 << 20)
 	ctx := r.Context()
-	page, err := reader.Events(ctx, identity.Principal{ID: ticket.Actor}, ticket.TaskID, 0, 1)
+	page, err := reader.Events(ctx, identity.Principal{ID: ticket.Actor}, ticket.SessionID, 0, 1)
 	if err != nil {
 		_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "not_found"})
 		return
 	}
-	lastSeq, ok := parseAfterCursor(h.eventKey, r.URL.Query().Get("after"), ticket.TaskID, ticket.Actor)
+	lastSeq, ok := parseAfterCursor(h.eventKey, r.URL.Query().Get("after"), ticket.SessionID, ticket.Actor)
 	if !ok {
 		_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "cursor_invalid"})
 		return
@@ -107,7 +107,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lastSeq = page.CurrentSeq
-	if err := writeEventFrame(ctx, conn, snapshotFrame(h.eventKey, ticket.TaskID, ticket.Actor, page, lastSeq)); err != nil {
+	if err := writeEventFrame(ctx, conn, snapshotFrame(h.eventKey, ticket.SessionID, ticket.Actor, page, lastSeq)); err != nil {
 		return
 	}
 
@@ -131,7 +131,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		case <-readDone:
 			return
 		case <-heartbeat.C:
-			if err := writeEventFrame(ctx, conn, map[string]any{"type": "heartbeat", "cursor": encodeCursor(h.eventKey, ticket.TaskID, ticket.Actor, lastSeq)}); err != nil {
+			if err := writeEventFrame(ctx, conn, map[string]any{"type": "heartbeat", "cursor": encodeCursor(h.eventKey, ticket.SessionID, ticket.Actor, lastSeq)}); err != nil {
 				return
 			}
 		case <-poll.C:
@@ -139,7 +139,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 				_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "event_ticket_expired"})
 				return
 			}
-			page, err := reader.Events(ctx, identity.Principal{ID: ticket.Actor}, ticket.TaskID, lastSeq, 100)
+			page, err := reader.Events(ctx, identity.Principal{ID: ticket.Actor}, ticket.SessionID, lastSeq, 100)
 			if err != nil {
 				return
 			}
@@ -148,9 +148,14 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, event := range page.Events {
+				frame, disposition := sessionEventFrame(h.eventKey, ticket.Actor, page, event)
+				if disposition == eventProjectionBlocked {
+					// Preserve ordering when a projected resource is not visible in
+					// this page. The next consistent page retries this event.
+					break
+				}
 				lastSeq = event.Sequence
-				frame, visible := taskEventFrame(h.eventKey, ticket.Actor, page, event)
-				if !visible {
+				if disposition == eventProjectionSkipped {
 					continue
 				}
 				if err := writeEventFrame(ctx, conn, frame); err != nil {
@@ -161,50 +166,85 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func cursorExpiredFrame(key []byte, page tasks.EventPage, actorID string) map[string]any {
+func cursorExpiredFrame(key []byte, page sessions.EventPage, actorID string) map[string]any {
 	seq := uint64(0)
 	if page.EarliestSeq > 0 {
 		seq = page.EarliestSeq - 1
 	}
-	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Task.ID, actorID, seq), "snapshot": snapshotFrame(key, page.Task.ID, actorID, page, page.CurrentSeq)}
+	return map[string]any{"type": "cursor_expired", "code": "cursor_expired", "earliest_cursor": encodeCursor(key, page.Session.ID, actorID, seq), "snapshot": snapshotFrame(key, page.Session.ID, actorID, page, page.CurrentSeq)}
 }
 
-func snapshotFrame(key []byte, taskID, actorID string, page tasks.EventPage, sequence uint64) map[string]any {
+func snapshotFrame(key []byte, sessionID, actorID string, page sessions.EventPage, sequence uint64) map[string]any {
 	return map[string]any{
 		"type":           "snapshot",
 		"schema_version": snapshotSchemaVersion,
-		"task":           page.Task,
+		"session":        page.Session,
 		"runs":           page.Runs,
 		"approvals":      page.Approvals,
-		"cursor":         encodeCursor(key, taskID, actorID, sequence),
+		"cursor":         encodeCursor(key, sessionID, actorID, sequence),
 	}
 }
 
-func taskEventFrame(key []byte, actorID string, page tasks.EventPage, item tasks.Event) (map[string]any, bool) {
-	publicEvent, ok := projectTaskEvent(page, item)
-	if !ok {
-		return nil, false
+type eventProjectionDisposition uint8
+
+const (
+	eventProjectionSkipped eventProjectionDisposition = iota
+	eventProjectionVisible
+	eventProjectionBlocked
+)
+
+func sessionEventFrame(key []byte, actorID string, page sessions.EventPage, item sessions.Event) (map[string]any, eventProjectionDisposition) {
+	publicEvent, disposition := projectSessionEvent(page, item)
+	if disposition != eventProjectionVisible {
+		return nil, disposition
 	}
 	return map[string]any{
-		"schema_version": eventSchemaVersion,
-		"task_id":        page.Task.ID,
-		"run_id":         item.RunID,
-		"task_sequence":  item.Sequence,
-		"run_sequence":   item.RunSequence,
-		"cursor":         encodeCursor(key, page.Task.ID, actorID, item.Sequence),
-		"event":          publicEvent,
-	}, true
+		"schema_version":   eventSchemaVersion,
+		"session_id":       page.Session.ID,
+		"run_id":           optionalEventString(item.RunID),
+		"session_sequence": item.Sequence,
+		"run_sequence":     optionalEventSequence(item.RunSequence),
+		"cursor":           encodeCursor(key, page.Session.ID, actorID, item.Sequence),
+		"event":            publicEvent,
+	}, eventProjectionVisible
 }
 
-func projectTaskEvent(page tasks.EventPage, item tasks.Event) (map[string]any, bool) {
+func optionalEventString(value *string) any {
+	if value == nil {
+		return nil
+	}
+	return *value
+}
+
+func optionalEventSequence(value *uint64) any {
+	if value == nil {
+		return nil
+	}
+	return *value
+}
+
+func projectSessionEvent(page sessions.EventPage, item sessions.Event) (map[string]any, eventProjectionDisposition) {
 	switch item.Type {
+	case "session.created", "session.owner_transferred":
+		return map[string]any{
+			"type":                  "session_changed",
+			"state":                 page.Session.State,
+			"mode":                  page.Session.Mode,
+			"conversation_revision": page.Session.ConversationRevision,
+			"queued_run_count":      page.Session.QueuedRunCount,
+			"members":               page.Session.Members,
+		}, eventProjectionVisible
 	case "message.committed":
 		messageID := eventPayloadString(item.Payload, "message_id")
-		for _, message := range page.Task.Messages {
+		if messageID == "" {
+			return nil, eventProjectionSkipped
+		}
+		for _, message := range page.Session.Messages {
 			if message.ID == messageID {
-				return map[string]any{"type": "message_committed", "message": message}, true
+				return map[string]any{"type": "message_committed", "message": message}, eventProjectionVisible
 			}
 		}
+		return nil, eventProjectionBlocked
 	case "model.delta":
 		messageID := eventPayloadString(item.Payload, "message_id")
 		text := eventPayloadString(item.Payload, "text")
@@ -214,35 +254,44 @@ func projectTaskEvent(page tasks.EventPage, item tasks.Event) (map[string]any, b
 				"message_id":    messageID,
 				"segment_index": eventPayloadInt(item.Payload, "segment_index"),
 				"text":          text,
-			}, true
+			}, eventProjectionVisible
 		}
+		return nil, eventProjectionSkipped
 	case "approval.requested", "approval.satisfied", "approval.rejected", "approval.expired":
 		approvalID := eventPayloadString(item.Payload, "approval_id")
+		if approvalID == "" {
+			return nil, eventProjectionSkipped
+		}
 		for _, approval := range page.Approvals {
 			if approval.ID == approvalID {
-				return map[string]any{"type": "approval_changed", "approval": approval}, true
+				return map[string]any{"type": "approval_changed", "approval": approval}, eventProjectionVisible
 			}
 		}
+		return nil, eventProjectionBlocked
 	case "artifact.uploaded":
 		artifactID := eventPayloadString(item.Payload, "artifact_id")
-		for _, artifact := range page.Task.Artifacts {
+		if artifactID == "" {
+			return nil, eventProjectionSkipped
+		}
+		for _, artifact := range page.Session.Artifacts {
 			if artifact.ID == artifactID {
-				return map[string]any{"type": "artifact_changed", "artifact": artifact}, true
+				return map[string]any{"type": "artifact_changed", "artifact": artifact}, eventProjectionVisible
 			}
 		}
+		return nil, eventProjectionBlocked
 	default:
 		status, changed := runStatusForEvent(item.Type)
 		if !changed {
-			return nil, false
+			return nil, eventProjectionSkipped
 		}
 		for _, run := range page.Runs {
-			if run.ID == item.RunID {
-				run.Status = status
-				return map[string]any{"type": "run_state_changed", "run": run}, true
+			if item.RunID != nil && run.ID == *item.RunID {
+				run.State = status
+				return map[string]any{"type": "run_state_changed", "run": run}, eventProjectionVisible
 			}
 		}
+		return nil, eventProjectionBlocked
 	}
-	return nil, false
 }
 
 func runStatusForEvent(eventType string) (string, bool) {
@@ -283,24 +332,24 @@ func eventPayloadInt(payload json.RawMessage, key string) int64 {
 	return int64(number)
 }
 
-func parseAfterCursor(key []byte, raw, taskID, actorID string) (uint64, bool) {
+func parseAfterCursor(key []byte, raw, sessionID, actorID string) (uint64, bool) {
 	if strings.TrimSpace(raw) == "" {
 		return 0, true
 	}
 	claims, ok := verifyPayload[eventCursorClaims](key, "cur", raw)
-	return claims.Seq, ok && claims.TaskID == taskID && claims.Actor == actorID
+	return claims.Seq, ok && claims.SessionID == sessionID && claims.Actor == actorID
 }
 
-func encodeCursor(key []byte, taskID, actorID string, seq uint64) string {
-	return signPayload(key, "cur", eventCursorClaims{TaskID: taskID, Actor: actorID, Seq: seq})
+func encodeCursor(key []byte, sessionID, actorID string, seq uint64) string {
+	return signPayload(key, "cur", eventCursorClaims{SessionID: sessionID, Actor: actorID, Seq: seq})
 }
 
-func eventWebSocketURL(r *http.Request, taskID string) string {
+func eventWebSocketURL(r *http.Request, sessionID string) string {
 	scheme := "ws"
 	if r.TLS != nil || strings.EqualFold(strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0]), "https") {
 		scheme = "wss"
 	}
-	return scheme + "://" + r.Host + "/api/copilot/v1/tasks/" + url.PathEscape(taskID) + "/events"
+	return scheme + "://" + r.Host + "/api/copilot/v1/sessions/" + url.PathEscape(sessionID) + "/events"
 }
 
 func signPayload[T any](key []byte, prefix string, value T) string {

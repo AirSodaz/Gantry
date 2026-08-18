@@ -781,8 +781,8 @@ All routes are relative to `/api/copilot/v1`.
 | `POST /artifacts/{id}:download` | none | `200 ArtifactDownloadGrant` | Rechecks auth, scan, retention; audited access |
 
 The checked-in contract uses the explicit audited Artifact download command.
-Approval idempotency remains carried in the request body until that distinct
-command shape is aligned with the common command header.
+Approval decisions use the common `Idempotency-Key` command header; the request
+body carries only the decision evidence for the exact action.
 
 ## 6. State and Command Semantics
 

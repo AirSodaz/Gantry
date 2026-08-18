@@ -316,7 +316,7 @@ func (s *Service) Redeliver(ctx context.Context, actor identity.Principal, endpo
 	}
 	var item Delivery
 	var t *time.Time
-	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.webhook_deliveries(id,endpoint_id,event_id,delivery_id,attempt,state,response_class,next_attempt_at) SELECT $1,d.endpoint_id,d.event_id,d.delivery_id,d.attempt+1,'queued',NULL,NULL FROM gantry.webhook_deliveries d JOIN gantry.webhook_endpoints w ON w.id=d.endpoint_id JOIN gantry.integrations i ON i.id=w.integration_id WHERE d.endpoint_id=$2 AND d.delivery_id=$3 AND i.organization_id=$4 ORDER BY d.attempt DESC LIMIT 1 RETURNING id,endpoint_id,event_id,delivery_id,attempt,state,response_class,next_attempt_at`, newID("wdel"), endpointID, deliveryID, actor.OrganizationID).Scan(&item.ID, &item.EndpointID, &item.EventID, &item.DeliveryID, &item.Attempt, &item.State, &item.ResponseClass, &t)
+	err := s.pool.QueryRow(ctx, `INSERT INTO gantry.webhook_deliveries(id,endpoint_id,event_id,delivery_id,attempt,state,response_class,next_attempt_at) SELECT $1,d.endpoint_id,d.event_id,d.delivery_id,d.attempt+1,'queued',NULL,NULL FROM gantry.webhook_deliveries d JOIN gantry.webhook_endpoints w ON w.id=d.endpoint_id JOIN gantry.integrations i ON i.id=w.integration_id WHERE d.endpoint_id=$2 AND d.delivery_id=$3 AND i.organization_id=$4 ORDER BY d.attempt DESC LIMIT 1 RETURNING id,endpoint_id,event_id,delivery_id,attempt,state,response_class,next_attempt_at`, newID("wdel"), endpointID, deliveryID, actor.OrganizationID).Scan(&item.ID, &item.EndpointID, &item.EventID, &item.DeliveryID, &item.SessionSequence, &item.State, &item.ResponseClass, &t)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, ErrNotFound
 	}
@@ -325,7 +325,7 @@ func (s *Service) Redeliver(ctx context.Context, actor identity.Principal, endpo
 	}
 	if t != nil {
 		v := t.UTC().Format(time.RFC3339)
-		item.NextAttemptAt = &v
+		item.NextSessionSequenceAt = &v
 	}
 	return item, nil
 }

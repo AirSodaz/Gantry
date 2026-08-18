@@ -2020,10 +2020,10 @@ components:
         recent_activity: {type: array, items: {$ref: "#/components/schemas/ActivityItem"}}
     AdminRun:
       type: object
-      required: [id, task_id, workspace_id, workspace_name, agent_id, agent_name, revision_hash, requester_id, requester_name, status, attempt_number, action_count, approval_count, created_at]
+      required: [id, session_id, workspace_id, workspace_name, agent_id, agent_name, revision_hash, requester_id, requester_name, status, session_sequence, action_count, approval_count, created_at]
       properties:
         id: {type: string}
-        task_id: {type: string}
+        session_id: {type: string}
         workspace_id: {type: string}
         workspace_name: {type: string}
         agent_id: {type: string}
@@ -2033,10 +2033,10 @@ components:
         deployment_name: {type: string}
         requester_id: {type: string}
         requester_name: {type: string}
-        status: {type: string, enum: [queued, assigned, accepted, awaiting_approval, canceling, completed, failed, canceled]}
+        status: {type: string, enum: [queued, assigned, accepted, awaiting_approval, suspended, canceling, completed, failed, canceled, expired]}
         status_reason: {type: string}
         runner_id: {type: string}
-        attempt_number: {type: integer, minimum: 1}
+        session_sequence: {type: integer, format: int64, minimum: 1}
         manifest_digest: {type: string}
         action_count: {type: integer, minimum: 0}
         approval_count: {type: integer, minimum: 0}

@@ -1,95 +1,72 @@
 package copilotapi
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
 	"github.com/AirSodaz/gantry/internal/identity"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/runs"
 )
 
 func (h Handler) getArtifact(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	reader, ok := h.tasks.(artifactReader)
-	if !ok {
+	if h.artifacts == nil {
 		writeInternal(w, errors.New("artifact service is unavailable"))
 		return
 	}
-	artifact, err := reader.GetArtifact(r.Context(), actor, r.PathValue("artifactID"))
+	item, err := h.artifacts.GetArtifact(r.Context(), actor, r.PathValue("artifactID"))
 	if err != nil {
-		if errors.Is(err, tasks.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Artifact was not found.")
-			return
-		}
-		writeInternal(w, err)
+		writeArtifactError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, artifact)
+	writeJSON(w, http.StatusOK, item)
 }
-
 func (h Handler) downloadArtifact(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	reader, ok := h.tasks.(artifactDownloadService)
-	if !ok {
+	if h.artifacts == nil {
 		writeInternal(w, errors.New("artifact service is unavailable"))
 		return
 	}
-	artifactID, ok := operationTarget(r.PathValue("operation"), ":download")
+	id, ok := operationTarget(r.PathValue("operation"), ":download")
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	grant, err := reader.DownloadArtifact(r.Context(), actor, artifactID)
-	if errors.Is(err, tasks.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "not_found", "Artifact was not found.")
-		return
-	}
-	if errors.Is(err, tasks.ErrInvalidState) {
-		writeError(w, http.StatusConflict, "artifact_unavailable", "The artifact is not available for download.")
-		return
-	}
+	grant, err := h.artifacts.DownloadArtifact(r.Context(), actor, id)
 	if err != nil {
-		writeInternal(w, err)
+		writeArtifactError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, grant)
 }
-
 func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
-	reader, ok := h.tasks.(artifactListReader)
-	if !ok {
+	if h.artifacts == nil {
 		writeInternal(w, errors.New("artifact service is unavailable"))
 		return
 	}
-	taskID, classification, state := r.URL.Query().Get("task_id"), r.URL.Query().Get("classification"), r.URL.Query().Get("state")
-	after, ok := h.parseArtifactListCursor(r.URL.Query().Get("cursor"), actor, taskID, classification, state)
+	sessionID, classification, state := r.URL.Query().Get("session_id"), r.URL.Query().Get("classification"), r.URL.Query().Get("state")
+	after, ok := h.parseArtifactListCursor(r.URL.Query().Get("cursor"), actor, sessionID, classification, state)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "cursor_invalid", "The artifact cursor is not valid for this requester or filter.")
+		writeError(w, http.StatusBadRequest, "cursor_invalid", "The artifact cursor is not valid for this Session member or filter.")
 		return
 	}
-	page, err := reader.ListMyArtifacts(r.Context(), actor, taskID, classification, state, after, limit(r))
+	page, err := h.artifacts.ListMyArtifacts(r.Context(), actor, sessionID, classification, state, after, limit(r))
 	if err != nil {
-		writeInternal(w, err)
+		writeArtifactError(w, err)
 		return
 	}
-	pageInfo := map[string]any{"has_more": page.HasMore}
+	info := map[string]any{"has_more": page.HasMore}
 	if page.HasMore {
 		last := page.Items[len(page.Items)-1]
-		pageInfo["next_cursor"] = h.encodeArtifactListCursor(actor, taskID, classification, state, tasks.ArtifactCursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		info["next_cursor"] = h.encodeArtifactListCursor(actor, sessionID, classification, state, runs.ArtifactCursor{CreatedAt: last.CreatedAt, ID: last.ID})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
+	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": info})
 }
-
-var _ interface {
-	GetArtifact(context.Context, identity.Principal, string) (tasks.Artifact, error)
-} = (*tasks.Service)(nil)
-
-type artifactListReader interface {
-	ListMyArtifacts(context.Context, identity.Principal, string, string, string, *tasks.ArtifactCursor, int) (tasks.ArtifactPage, error)
+func writeArtifactError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, runs.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Artifact was not found.")
+	case errors.Is(err, runs.ErrInvalidState):
+		writeError(w, http.StatusConflict, "artifact_unavailable", "The artifact is not available for download.")
+	default:
+		writeInternal(w, err)
+	}
 }
-
-type artifactDownloadService interface {
-	DownloadArtifact(context.Context, identity.Principal, string) (tasks.ArtifactDownloadGrant, error)
-}
-
-var _ artifactListReader = (*tasks.Service)(nil)
-var _ artifactDownloadService = (*tasks.Service)(nil)

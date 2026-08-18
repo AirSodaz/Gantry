@@ -37,7 +37,7 @@ describe("RunPages", () => {
       items: [
         {
           id: "run_101",
-          task_id: "tsk_202",
+          session_id: "ses_202",
           workspace_id: "wsp_1",
           workspace_name: "Engineering",
           agent_id: "agt_1",
@@ -46,7 +46,7 @@ describe("RunPages", () => {
           requester_id: "prn_1",
           requester_name: "Alice Developer",
           status: "completed",
-          attempt_number: 1,
+          session_sequence: 1,
           action_count: 4,
           approval_count: 1,
           created_at: "2026-08-17T08:00:00Z",
@@ -57,6 +57,7 @@ describe("RunPages", () => {
     renderRuns();
 
     expect(await screen.findByText("run_101")).toBeInTheDocument();
+    expect(screen.getByText("Session ses_202")).toBeInTheDocument();
     expect(screen.getByText("Code Reviewer")).toBeInTheDocument();
     expect(screen.getByText("Alice Developer")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();

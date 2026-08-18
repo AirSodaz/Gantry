@@ -8,18 +8,18 @@ import (
 	"strings"
 
 	"github.com/AirSodaz/gantry/internal/identity"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/sessions"
 )
 
 type attachmentService interface {
-	CreateAttachment(context.Context, identity.Principal, tasks.CreateAttachmentRequest) (tasks.Attachment, error)
-	GetAttachment(context.Context, identity.Principal, string) (tasks.Attachment, error)
+	CreateAttachment(context.Context, identity.Principal, string, sessions.CreateAttachmentRequest) (sessions.Attachment, bool, error)
+	GetAttachment(context.Context, identity.Principal, string) (sessions.Attachment, error)
 	UploadAttachment(context.Context, identity.Principal, string, string, io.Reader) error
-	CompleteAttachment(context.Context, identity.Principal, string) (tasks.Attachment, error)
+	CompleteAttachment(context.Context, identity.Principal, string, string) (sessions.Attachment, bool, error)
 }
 
 func (h Handler) attachments() (attachmentService, bool) {
-	service, ok := h.tasks.(attachmentService)
+	service, ok := h.sessions.(attachmentService)
 	return service, ok
 }
 
@@ -29,17 +29,21 @@ func (h Handler) createAttachment(w http.ResponseWriter, r *http.Request, actor 
 		writeInternal(w, errors.New("attachment service is unavailable"))
 		return
 	}
-	var request tasks.CreateAttachmentRequest
+	var request sessions.CreateAttachmentRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON.")
 		return
 	}
-	item, err := service.CreateAttachment(r.Context(), actor, request)
+	item, duplicate, err := service.CreateAttachment(r.Context(), actor, r.Header.Get("Idempotency-Key"), request)
 	if err != nil {
 		writeAttachmentError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, item)
+	status := http.StatusCreated
+	if duplicate {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, sessions.AttachmentUploadGrant{Attachment: item, UploadPath: "/api/copilot/v1/attachments/" + item.ID + "/content", UploadToken: item.UploadToken, ExpiresAt: item.UploadExpires})
 }
 
 func (h Handler) getAttachment(w http.ResponseWriter, r *http.Request, actor identity.Principal) {
@@ -85,22 +89,28 @@ func (h Handler) completeAttachment(w http.ResponseWriter, r *http.Request, acto
 		http.NotFound(w, r)
 		return
 	}
-	item, err := service.CompleteAttachment(r.Context(), actor, attachmentID)
+	item, duplicate, err := service.CompleteAttachment(r.Context(), actor, attachmentID, r.Header.Get("Idempotency-Key"))
 	if err != nil {
 		writeAttachmentError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, item)
+	status := http.StatusAccepted
+	if duplicate {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, item)
 }
 
 func writeAttachmentError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, tasks.ErrNotFound):
+	case errors.Is(err, sessions.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Attachment was not found.")
-	case errors.Is(err, tasks.ErrInvalidInput):
+	case errors.Is(err, sessions.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "invalid_attachment", "Attachment metadata or content is invalid.")
-	case errors.Is(err, tasks.ErrInvalidState):
+	case errors.Is(err, sessions.ErrInvalidState):
 		writeError(w, http.StatusConflict, "attachment_not_ready", "Attachment is not ready for this operation.")
+	case errors.Is(err, sessions.ErrIdempotencyConflict):
+		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was used for a different attachment command.")
 	default:
 		writeInternal(w, err)
 	}

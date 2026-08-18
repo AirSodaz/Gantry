@@ -3,19 +3,18 @@ package runnersession
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
 
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/runs"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// PersistentScheduler keeps only live streams in memory. Task and run state is
+// PersistentScheduler keeps only live streams in memory. Session and run state is
 // owned by the task service's PostgreSQL transactions.
 type PersistentScheduler struct {
 	mu      sync.Mutex
@@ -27,19 +26,8 @@ type PersistentScheduler struct {
 
 // runCoordinator is the durable lifecycle contract required by runner
 // sessions. It keeps stream protocol handling independent of PostgreSQL.
-type runCoordinator interface {
-	ClaimNext(context.Context, string) (tasks.Assignment, bool, error)
-	Accept(context.Context, string, string, uint64, string) error
-	RecordEvents(context.Context, string, string, uint64, []tasks.RunnerEvent) (tasks.RecordEventsResult, error)
-	RecordControlEvent(context.Context, string, string, uint64, string, string) error
-	Finish(context.Context, string, string, uint64, string, string) error
-	FailActive(context.Context, string, string, string) error
-}
-
-type artifactCoordinator interface {
-	DeclareArtifact(context.Context, string, string, uint64, tasks.Artifact) (tasks.Artifact, string, time.Time, error)
-	UploadArtifact(context.Context, string, string, io.Reader) error
-}
+type runCoordinator = runs.Coordinator
+type artifactCoordinator = runs.ArtifactCoordinator
 
 type persistentRunner struct {
 	sessionID     string
@@ -130,7 +118,7 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 		if runner.activeRunID != batch.GetRunId() || runner.activeEpoch != batch.GetLeaseEpoch() {
 			return fmt.Errorf("invalid run event lease")
 		}
-		events := make([]tasks.RunnerEvent, 0, len(batch.GetEvents()))
+		events := make([]runs.RunnerEvent, 0, len(batch.GetEvents()))
 		for _, event := range batch.GetEvents() {
 			payload := "{}"
 			if event.GetPayload() != nil {
@@ -140,7 +128,7 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 				}
 				payload = string(serialized)
 			}
-			events = append(events, tasks.RunnerEvent{ClientSequence: event.GetClientSequence(), Type: event.GetEventType(), Payload: payload})
+			events = append(events, runs.RunnerEvent{ClientSequence: event.GetClientSequence(), Type: event.GetEventType(), Payload: payload})
 		}
 		result, err := s.tasks.RecordEvents(context.Background(), runnerID, batch.GetRunId(), batch.GetLeaseEpoch(), events)
 		if err != nil {
@@ -169,7 +157,7 @@ func (s *PersistentScheduler) Handle(runnerID, sessionID string, message *runner
 		if !ok {
 			return fmt.Errorf("artifact coordinator is unavailable")
 		}
-		artifact, token, expiresAt, err := coordinator.DeclareArtifact(context.Background(), runnerID, declaration.GetRunId(), declaration.GetLeaseEpoch(), tasks.Artifact{ID: declaration.GetArtifactId(), RunID: declaration.GetRunId(), Filename: declaration.GetFilename(), MediaType: declaration.GetMediaType(), SizeBytes: int64(declaration.GetSizeBytes()), Digest: declaration.GetDigest()})
+		artifact, token, expiresAt, err := coordinator.DeclareArtifact(context.Background(), runnerID, declaration.GetRunId(), declaration.GetLeaseEpoch(), runs.Artifact{ID: declaration.GetArtifactId(), RunID: declaration.GetRunId(), Filename: declaration.GetFilename(), MediaType: declaration.GetMediaType(), SizeBytes: int64(declaration.GetSizeBytes()), Digest: declaration.GetDigest()})
 		if err != nil {
 			return err
 		}

@@ -1,13 +1,19 @@
 import { useDeferredValue, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Check, Search, Tag } from "lucide-react";
+import { Check, Search, Star, Tag } from "lucide-react";
 import {
   Button,
+  IconButton,
   Select,
   type SelectOption,
   TextInput,
 } from "@gantry/design-system";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCopilotApi } from "../../api/ApiProvider";
 import type { Agent } from "../../api/types";
 import {
@@ -27,19 +33,28 @@ export function AgentPicker({
   const [params, setParams] = useSearchParams();
   const search = params.get("search") ?? "";
   const category = params.get("category") ?? "";
+  const collectionParam = params.get("collection");
+  const collection =
+    collectionParam === "favorites" || collectionParam === "recent"
+      ? collectionParam
+      : "all";
   const deferredSearch = useDeferredValue(search);
-  const setFilter = (key: "search" | "category", value: string) => {
+  const queryClient = useQueryClient();
+  const setFilter = (
+    key: "search" | "category" | "collection",
+    value: string,
+  ) => {
     const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
+    if (value && !(key === "collection" && value === "all")) next.set(key, value);
     else next.delete(key);
     setParams(next, { replace: true });
   };
 
   const query = useInfiniteQuery({
-    queryKey: ["agents", deferredSearch, category],
+    queryKey: ["agents", deferredSearch, category, collection],
     initialPageParam: "",
     queryFn: ({ pageParam }) =>
-      api.listAgents(deferredSearch, category, pageParam),
+      api.listAgents(deferredSearch, category, pageParam, collection),
     getNextPageParam: (page) =>
       page.page_info?.has_more ? page.page_info.next_cursor : undefined,
   });
@@ -49,6 +64,14 @@ export function AgentPicker({
     queryKey: ["agent-categories"],
     queryFn: () => api.listAgents(),
     staleTime: 60_000,
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: ({ id, isFavorite }: { id: string; isFavorite: boolean }) =>
+      api.setAgentFavorite(id, isFavorite),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["agents"] });
+    },
   });
 
   useEffect(() => {
@@ -105,6 +128,25 @@ export function AgentPicker({
         </div>
       </div>
 
+      <div className="agent-collection-tabs" role="tablist" aria-label="Agent collection">
+        {([
+          ["all", "All"],
+          ["favorites", "Favorites"],
+          ["recent", "Recent"],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={collection === value}
+            className={collection === value ? "agent-collection-tab-active" : ""}
+            onClick={() => setFilter("collection", value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {query.isLoading ? <LoadingState label="Loading agents" /> : null}
       {query.isError ? (
         <ErrorState
@@ -122,35 +164,58 @@ export function AgentPicker({
           detail="Try another search term or clear category filter."
         />
       ) : null}
+      {favoriteMutation.isError ? (
+        <p className="inline-error" role="alert">
+          The favorite preference could not be updated.
+        </p>
+      ) : null}
 
       <div className="agent-list">
         {items.map((agent) => {
           const isSelected = selectedId === agent.id;
           return (
-            <button
-              type="button"
+            <div
               key={agent.id}
               className={`agent-option ${isSelected ? "agent-option-selected" : ""}`}
-              onClick={() => onSelect(agent)}
             >
-              <span className="agent-symbol" aria-hidden="true">
-                {agent.display_name.slice(0, 1).toUpperCase()}
-              </span>
-              <span className="agent-option-copy">
-                <strong>{agent.display_name}</strong>
-                <span>{agent.description}</span>
-                {agent.owner_name ? (
-                  <small>Owner: {agent.owner_name}</small>
+              <button
+                type="button"
+                className="agent-option-main"
+                onClick={() => onSelect(agent)}
+              >
+                <span className="agent-symbol" aria-hidden="true">
+                  {agent.display_name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="agent-option-copy">
+                  <strong>{agent.display_name}</strong>
+                  <span>{agent.description}</span>
+                  {agent.owner?.display_name ? (
+                    <small>Owner: {agent.owner.display_name}</small>
+                  ) : null}
+                </span>
+                {isSelected ? (
+                  <Check
+                    size={18}
+                    className="agent-check-icon"
+                    aria-label="Selected"
+                  />
                 ) : null}
-              </span>
-              {isSelected ? (
-                <Check
-                  size={18}
-                  className="agent-check-icon"
-                  aria-label="Selected"
-                />
-              ) : null}
-            </button>
+              </button>
+              <IconButton
+                label={agent.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                size="sm"
+                variant={agent.is_favorite ? "active" : "quiet"}
+                disabled={favoriteMutation.isPending}
+                onClick={() =>
+                  favoriteMutation.mutate({
+                    id: agent.id,
+                    isFavorite: !agent.is_favorite,
+                  })
+                }
+              >
+                <Star size={16} fill={agent.is_favorite ? "currentColor" : "none"} />
+              </IconButton>
+            </div>
           );
         })}
       </div>

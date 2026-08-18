@@ -16,7 +16,7 @@ vi.mock("../../api/ApiProvider", () => ({ useCopilotApi: () => mocked.api }));
 
 const artifact = {
   id: "art_1",
-  task_id: "tsk_1",
+  session_id: "ses_1",
   run_id: "run_1",
   filename: "report.pdf",
   media_type: "application/pdf",
@@ -24,7 +24,8 @@ const artifact = {
   digest: "sha256:artifact",
   classification: "internal",
   state: "available",
-  scan_status: "passed",
+  scan_state: "passed",
+  created_at: "2026-08-16T08:00:00Z",
 };
 
 function renderRoute(path: string, element: ReactNode) {
@@ -49,13 +50,13 @@ describe("Artifact pages", () => {
   it("lists only the API-projected artifacts", async () => {
     mocked.api.listArtifacts.mockResolvedValue({ items: [artifact] });
     renderRoute(
-      "/artifacts?task_id=tsk_1&classification=internal",
+      "/artifacts?session_id=ses_1&classification=internal",
       <ArtifactsPage />,
     );
 
     expect(await screen.findByText("report.pdf")).toBeInTheDocument();
     expect(mocked.api.listArtifacts).toHaveBeenCalledWith(
-      "tsk_1",
+      "ses_1",
       "internal",
       "",
     );
@@ -69,7 +70,7 @@ describe("Artifact pages", () => {
     mocked.api.getArtifact.mockResolvedValue({
       ...artifact,
       state: "declared",
-      scan_status: "pending",
+      scan_state: "pending",
     });
     renderRoute("/artifacts/art_1", <ArtifactDetailPage />);
 

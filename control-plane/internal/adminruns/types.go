@@ -14,28 +14,28 @@ type ListOptions struct {
 }
 
 type Run struct {
-	ID             string `json:"id"`
-	TaskID         string `json:"task_id"`
-	WorkspaceID    string `json:"workspace_id"`
-	WorkspaceName  string `json:"workspace_name"`
-	AgentID        string `json:"agent_id"`
-	AgentName      string `json:"agent_name"`
-	RevisionHash   string `json:"revision_hash"`
-	DeploymentID   string `json:"deployment_id,omitempty"`
-	DeploymentName string `json:"deployment_name,omitempty"`
-	RequesterID    string `json:"requester_id"`
-	RequesterName  string `json:"requester_name"`
-	Status         string `json:"status"`
-	StatusReason   string `json:"status_reason,omitempty"`
-	RunnerID       string `json:"runner_id,omitempty"`
-	AttemptNumber  int    `json:"attempt_number"`
-	ManifestDigest string `json:"manifest_digest,omitempty"`
-	ActionCount    int    `json:"action_count"`
-	ApprovalCount  int    `json:"approval_count"`
-	CreatedAt      string `json:"created_at"`
-	StartedAt      string `json:"started_at,omitempty"`
-	CompletedAt    string `json:"completed_at,omitempty"`
-	LastEventAt    string `json:"last_event_at,omitempty"`
+	ID              string `json:"id"`
+	SessionID       string `json:"session_id"`
+	WorkspaceID     string `json:"workspace_id"`
+	WorkspaceName   string `json:"workspace_name"`
+	AgentID         string `json:"agent_id"`
+	AgentName       string `json:"agent_name"`
+	RevisionHash    string `json:"revision_hash"`
+	DeploymentID    string `json:"deployment_id,omitempty"`
+	DeploymentName  string `json:"deployment_name,omitempty"`
+	RequesterID     string `json:"requester_id"`
+	RequesterName   string `json:"requester_name"`
+	Status          string `json:"status"`
+	StatusReason    string `json:"status_reason,omitempty"`
+	RunnerID        string `json:"runner_id,omitempty"`
+	SessionSequence int64  `json:"session_sequence"`
+	ManifestDigest  string `json:"manifest_digest,omitempty"`
+	ActionCount     int    `json:"action_count"`
+	ApprovalCount   int    `json:"approval_count"`
+	CreatedAt       string `json:"created_at"`
+	StartedAt       string `json:"started_at,omitempty"`
+	CompletedAt     string `json:"completed_at,omitempty"`
+	LastEventAt     string `json:"last_event_at,omitempty"`
 }
 
 type Event struct {

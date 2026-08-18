@@ -5,21 +5,21 @@ import (
 	"testing"
 
 	runnerv1 "github.com/AirSodaz/gantry/gen/gantry/runner/v1"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/runs"
 )
 
 type fakeRunCoordinator struct {
-	assignment tasks.Assignment
+	assignment runs.Assignment
 	claimed    bool
 	accepted   bool
-	events     []tasks.RunnerEvent
+	events     []runs.RunnerEvent
 	finished   string
 	failedRun  string
 }
 
-func (c *fakeRunCoordinator) ClaimNext(context.Context, string) (tasks.Assignment, bool, error) {
+func (c *fakeRunCoordinator) ClaimNext(context.Context, string) (runs.Assignment, bool, error) {
 	if c.claimed {
-		return tasks.Assignment{}, false, nil
+		return runs.Assignment{}, false, nil
 	}
 	c.claimed = true
 	return c.assignment, true, nil
@@ -30,9 +30,9 @@ func (c *fakeRunCoordinator) Accept(_ context.Context, _ string, _ string, _ uin
 	return nil
 }
 
-func (c *fakeRunCoordinator) RecordEvents(_ context.Context, _ string, _ string, _ uint64, events []tasks.RunnerEvent) (tasks.RecordEventsResult, error) {
+func (c *fakeRunCoordinator) RecordEvents(_ context.Context, _ string, _ string, _ uint64, events []runs.RunnerEvent) (runs.RecordEventsResult, error) {
 	c.events = append(c.events, events...)
-	return tasks.RecordEventsResult{Sequence: events[len(events)-1].ClientSequence}, nil
+	return runs.RecordEventsResult{Sequence: events[len(events)-1].ClientSequence}, nil
 }
 
 func (c *fakeRunCoordinator) RecordControlEvent(context.Context, string, string, uint64, string, string) error {
@@ -50,7 +50,7 @@ func (c *fakeRunCoordinator) FailActive(_ context.Context, _ string, runID, _ st
 }
 
 func TestPersistentSchedulerAcknowledgesEventsAndFinishes(t *testing.T) {
-	store := &fakeRunCoordinator{assignment: tasks.Assignment{RunID: "run_1", LeaseEpoch: 4, Manifest: []byte(`{}`), ManifestDigest: "sha256:demo"}}
+	store := &fakeRunCoordinator{assignment: runs.Assignment{RunID: "run_1", LeaseEpoch: 4, Manifest: []byte(`{}`), ManifestDigest: "sha256:demo"}}
 	scheduler := NewPersistentScheduler(nil, store)
 	outbound, err := scheduler.Register("runner_1", "session_1", 1)
 	if err != nil {
@@ -79,7 +79,7 @@ func TestPersistentSchedulerAcknowledgesEventsAndFinishes(t *testing.T) {
 }
 
 func TestPersistentSchedulerRejectsStaleLeaseAndFailsOnDisconnect(t *testing.T) {
-	store := &fakeRunCoordinator{assignment: tasks.Assignment{RunID: "run_1", LeaseEpoch: 4, Manifest: []byte(`{}`), ManifestDigest: "sha256:demo"}}
+	store := &fakeRunCoordinator{assignment: runs.Assignment{RunID: "run_1", LeaseEpoch: 4, Manifest: []byte(`{}`), ManifestDigest: "sha256:demo"}}
 	scheduler := NewPersistentScheduler(nil, store)
 	outbound, err := scheduler.Register("runner_1", "session_1", 1)
 	if err != nil {

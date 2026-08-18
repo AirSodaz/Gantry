@@ -20,7 +20,7 @@ export function AgentsPage() {
           <p>Approved capabilities available to you.</p>
         </div>
         <Button variant="secondary" onClick={() => navigate("/")}>
-          <Bot size={16} /> New task <ArrowRight size={15} />
+          <Bot size={16} /> New session <ArrowRight size={15} />
         </Button>
       </div>
       <AgentPicker selectedId="" onSelect={selectAgent} />

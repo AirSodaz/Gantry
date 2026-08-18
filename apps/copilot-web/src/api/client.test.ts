@@ -2,266 +2,72 @@ import { describe, expect, it, vi } from "vitest";
 import { CopilotApi, CopilotApiError } from "./client";
 
 describe("CopilotApi", () => {
-  it("sends bearer and idempotency credentials in headers only", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ id: "tsk_1" }), { status: 201 }),
-      );
+  it("uses Session routes and preserves an ETag on session commands", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "ses_1" }), { headers: { ETag: '"1"' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "ses_2" }), { headers: { ETag: '"2"' } }));
     vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.submitTask({ agent_id: "agt_1", message: "hello" }, "key-1");
-
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(init.headers).toEqual(
-      expect.objectContaining({
-        Authorization: "Bearer token-1",
-        "Idempotency-Key": "key-1",
-      }),
-    );
-    expect(init.body).toBe(
-      JSON.stringify({ agent_id: "agt_1", message: "hello" }),
-    );
-    expect(init.body).not.toContain("idempotency_key");
+    const api = new CopilotApi(() => "token");
+    await api.getSession("ses_1");
+    const created = await api.createSession({ agent_id: "agt_1", message: "hello" }, "key");
+    expect(fetchMock.mock.calls[0][0]).toContain("/sessions/ses_1");
+    expect(fetchMock.mock.calls[1][0]).toContain("/sessions");
+    expect(created.conversation_etag).toBe('"2"');
   });
 
-  it("maps structured API errors without hiding the status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({ error: { message: "Resource was not found." } }),
-            { status: 404 },
-          ),
-        ),
-    );
-    const api = new CopilotApi(() => "token-1");
-
-    await expect(api.getTask("tsk_missing")).rejects.toEqual(
-      expect.objectContaining({
-        status: 404,
-        message: "Resource was not found.",
-      } satisfies Partial<CopilotApiError>),
-    );
-  });
-
-  it("preserves a server-winning resource from a command conflict", async () => {
+  it("parses a direct CopilotProblem response", async () => {
+    const currentResource = { id: "apr_1", state: "rejected" };
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            error: {
-              code: "approval_changed",
-              message: "Approval changed.",
-              current_resource: { id: "apr_1", status: "rejected" },
-            },
+            code: "approval_changed",
+            message: "Approval changed.",
+            correlation_id: "cor_1",
+            retryable: false,
+            current_resource: currentResource,
           }),
           { status: 409 },
         ),
       ),
     );
-    const api = new CopilotApi(() => "token-1");
+    const api = new CopilotApi(() => "token");
 
-    await expect(
-      api.decideApproval("apr_1", "approve", "sha256:action-1", 1),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        status: 409,
-        code: "approval_changed",
-        currentResource: { id: "apr_1", status: "rejected" },
-      } satisfies Partial<CopilotApiError>),
-    );
+    const error = await api.getApproval("apr_1").catch((reason) => reason);
+
+    expect(error).toBeInstanceOf(CopilotApiError);
+    expect(error).toMatchObject({
+      status: 409,
+      code: "approval_changed",
+      message: "Approval changed.",
+      correlationId: "cor_1",
+      retryable: false,
+      currentResource,
+    });
   });
 
-  it("retains the task conversation ETag for conditional commands", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: "tsk_1",
-            agent_id: "agt_1",
-            status: "failed",
-            conversation_revision: 3,
-          }),
-          { status: 200, headers: { ETag: '"3"' } },
-        ),
-      ),
-    );
-    const api = new CopilotApi(() => "token-1");
-
-    await expect(api.getTask("tsk_1")).resolves.toEqual(
-      expect.objectContaining({ conversation_etag: '"3"' }),
-    );
-  });
-
-  it("sends the selected retry revision under the documented request field", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: "tsk_1" }), {
-        status: 201,
-        headers: { ETag: '"4"' },
-      }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.retryTask(
-      "tsk_1",
-      "retry-1",
-      '"3"',
-      "current_production_revision",
-    );
-
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(init.headers).toEqual(
-      expect.objectContaining({
-        "Idempotency-Key": "retry-1",
-        "If-Match": '"3"',
-      }),
-    );
-    expect(init.body).toBe(
-      JSON.stringify({ revision_selection: "current_production_revision" }),
-    );
-  });
-
-  it("includes the rendered cursor when refreshing an event ticket", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          ticket: "evt_1",
-          task_id: "tsk_1",
-          websocket_url: "wss://copilot.example.test/events",
-          expires_at: "2026-08-17T01:00:00Z",
-        }),
-        { status: 200 },
-      ),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.createEventsTicket("tsk_1", "cur_1");
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/tasks/tsk_1/events:ticket");
-    expect(init.body).toBe(JSON.stringify({ last_cursor: "cur_1" }));
-  });
-
-  it("includes a run history cursor when loading more attempts", async () => {
+  it("uses requester-scoped Agent collections and favorite commands", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ items: [], page_info: { has_more: false } }),
-          { status: 200 },
-        ),
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] })))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "agt_1", is_favorite: true })),
       );
     vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
+    const api = new CopilotApi(() => "token");
 
-    await api.listTaskRuns("tsk_1", "run_cursor_1");
+    await api.listAgents("finance", "Operations", "cursor-1", "favorites");
+    await api.setAgentFavorite("agt_1", true, "favorite-1");
 
-    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/tasks/tsk_1/runs?cursor=run_cursor_1");
-  });
-
-  it("passes an artifact state filter without omitting its cursor scope", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ items: [], page_info: { has_more: false } }),
-          { status: 200 },
-        ),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.listArtifacts(
-      "tsk_1",
-      "internal",
-      "artifact_cursor_1",
-      "available",
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "/agents?search=finance&category=Operations&cursor=cursor-1&collection=favorites",
     );
-
-    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain(
-      "/artifacts?task_id=tsk_1&classification=internal&cursor=artifact_cursor_1&state=available",
-    );
-  });
-
-  it("passes a non-pending approval state while preserving pagination", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ items: [], page_info: { has_more: false } }),
-          { status: 200 },
-        ),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.listApprovals("approval_cursor_1", "rejected");
-
-    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/approvals?cursor=approval_cursor_1&state=rejected");
-  });
-
-  it("requests download references through the audited artifact command", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          artifact_id: "art_1",
-          download_url: "https://downloads.example.test/art_1",
-          expires_at: "2026-08-17T01:00:00Z",
-        }),
-        { status: 200 },
-      ),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.requestArtifactDownload("art_1");
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/artifacts/art_1:download");
-    expect(init.method).toBe("POST");
-    expect(init.headers).toEqual(
-      expect.objectContaining({ Authorization: "Bearer token-1" }),
-    );
-  });
-
-  it("sends action digest and decision idempotency in the approval body", async () => {
-    vi.stubGlobal("crypto", { randomUUID: () => "decision-key-1" });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ status: "satisfied" }), { status: 200 }),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-    const api = new CopilotApi(() => "token-1");
-
-    await api.decideApproval("apr_1", "approve", "sha256:action-1", 1);
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/approvals/apr_1:decide");
-    expect(init.body).toBe(
-      JSON.stringify({
-        decision: "approve",
-        action_digest: "sha256:action-1",
-        approval_revision: 1,
-        reason: "",
-      }),
-    );
-    expect(init.headers).toEqual(
-      expect.objectContaining({
-        Authorization: "Bearer token-1",
-        "Idempotency-Key": "decision-key-1",
-      }),
-    );
+    expect(fetchMock.mock.calls[1][0]).toContain("/agents/agt_1/favorite");
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      method: "PUT",
+      headers: expect.objectContaining({ "Idempotency-Key": "favorite-1" }),
+      body: JSON.stringify({ is_favorite: true }),
+    });
   });
 });

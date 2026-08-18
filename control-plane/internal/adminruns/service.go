@@ -91,18 +91,18 @@ const accessibleRun = `
 	)`
 
 const runSelect = `
-	SELECT r.id, r.task_id, t.workspace_id, workspace.display_name, t.agent_id, agent.display_name, revision.revision_hash,
+	SELECT r.id, r.session_id, t.workspace_id, workspace.display_name, t.agent_id, agent.display_name, revision.revision_hash,
 		COALESCE(deployment.id, ''), COALESCE(deployment.name, ''), requester.id, requester.display_name,
-		r.status, r.status_reason, COALESCE(r.runner_id, ''), r.attempt_number, r.manifest_digest,
+		r.status, r.status_reason, COALESCE(r.runner_id, ''), r.session_sequence, r.manifest_digest,
 		(SELECT count(*) FROM gantry.actions action WHERE action.run_id=r.id),
 		(SELECT count(*) FROM gantry.approval_requests approval WHERE approval.run_id=r.id),
 		r.created_at, r.started_at, r.completed_at, last_event.created_at
 	FROM gantry.runs r
-	JOIN gantry.tasks t ON t.id=r.task_id
+	JOIN gantry.sessions t ON t.id=r.session_id
 	JOIN gantry.workspaces workspace ON workspace.id=t.workspace_id
 	JOIN gantry.agents agent ON agent.id=t.agent_id
 	JOIN gantry.agent_revisions revision ON revision.id=r.agent_revision_id
-	JOIN gantry.principals requester ON requester.id=t.requester_principal_id
+	JOIN gantry.principals requester ON requester.id=r.requester_principal_id
 	LEFT JOIN gantry.agent_deployments deployment ON deployment.id=r.deployment_id
 	LEFT JOIN LATERAL (
 		SELECT created_at FROM gantry.run_events event WHERE event.run_id=r.id ORDER BY sequence DESC LIMIT 1
@@ -190,9 +190,9 @@ func scanRun(row rowScanner) (Run, error) {
 	var item Run
 	var createdAt time.Time
 	var startedAt, completedAt, lastEventAt *time.Time
-	err := row.Scan(&item.ID, &item.TaskID, &item.WorkspaceID, &item.WorkspaceName, &item.AgentID, &item.AgentName, &item.RevisionHash,
+	err := row.Scan(&item.ID, &item.SessionID, &item.WorkspaceID, &item.WorkspaceName, &item.AgentID, &item.AgentName, &item.RevisionHash,
 		&item.DeploymentID, &item.DeploymentName, &item.RequesterID, &item.RequesterName, &item.Status, &item.StatusReason, &item.RunnerID,
-		&item.AttemptNumber, &item.ManifestDigest, &item.ActionCount, &item.ApprovalCount, &createdAt, &startedAt, &completedAt, &lastEventAt)
+		&item.SessionSequence, &item.ManifestDigest, &item.ActionCount, &item.ApprovalCount, &createdAt, &startedAt, &completedAt, &lastEventAt)
 	if err != nil {
 		return Run{}, err
 	}
@@ -224,7 +224,7 @@ func normalizeOptions(options ListOptions) ListOptions {
 }
 
 func validStatus(value string) bool {
-	for _, status := range []string{"queued", "assigned", "accepted", "awaiting_approval", "canceling", "completed", "failed", "canceled"} {
+	for _, status := range []string{"queued", "assigned", "accepted", "awaiting_approval", "suspended", "canceling", "completed", "failed", "canceled", "expired"} {
 		if value == status {
 			return true
 		}

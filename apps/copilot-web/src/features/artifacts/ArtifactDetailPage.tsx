@@ -37,7 +37,7 @@ export function ArtifactDetailPage() {
     );
   const artifact = query.data;
   const available =
-    artifact.state === "available" && artifact.scan_status === "passed";
+    artifact.state === "available" && artifact.scan_state === "passed";
   const download = async () => {
     setDownloading(true);
     setDownloadError(false);
@@ -70,7 +70,7 @@ export function ArtifactDetailPage() {
         </div>
         <div>
           <span>Scan</span>
-          <StatusMark status={artifact.scan_status} />
+          <StatusMark status={artifact.scan_state} />
         </div>
         <div>
           <span>Classification</span>
@@ -81,8 +81,8 @@ export function ArtifactDetailPage() {
           <strong>{formatBytes(artifact.size_bytes)}</strong>
         </div>
         <div>
-          <span>Task</span>
-          <Link to={`/tasks/${artifact.task_id}`}>{artifact.task_id}</Link>
+          <span>Session</span>
+          <Link to={`/sessions/${artifact.session_id}`}>{artifact.session_id}</Link>
         </div>
         <div>
           <span>Digest</span>

@@ -49,14 +49,14 @@ type Webhook struct {
 }
 
 type Delivery struct {
-	ID            string  `json:"id"`
-	EndpointID    string  `json:"endpoint_id"`
-	EventID       string  `json:"event_id"`
-	DeliveryID    string  `json:"delivery_id"`
-	Attempt       int     `json:"attempt"`
-	State         string  `json:"state"`
-	ResponseClass *string `json:"response_class"`
-	NextAttemptAt *string `json:"next_attempt_at"`
+	ID                    string  `json:"id"`
+	EndpointID            string  `json:"endpoint_id"`
+	EventID               string  `json:"event_id"`
+	DeliveryID            string  `json:"delivery_id"`
+	SessionSequence       int     `json:"attempt"`
+	State                 string  `json:"state"`
+	ResponseClass         *string `json:"response_class"`
+	NextSessionSequenceAt *string `json:"next_attempt_at"`
 }
 
 type CreateIntegrationRequest struct {

@@ -20,7 +20,9 @@ cleanup() {
 trap cleanup EXIT
 
 json_value() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body" | head -n1; }
-task_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
+session_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p' <<<"$response_body"; }
+session_state() { sed -n 's/.*"state":"\([^"]*\)","conversation_revision":[0-9][0-9]*.*/\1/p' <<<"$response_body"; }
+first_item_value() { sed -n "s/^{\"items\":\[{[^}]*\"$1\":\"\([^\"]*\)\".*/\1/p" <<<"$response_body"; }
 
 token_for() {
   local client_id=$1 client_secret=$2 username=$3 password=$4 body
@@ -49,23 +51,30 @@ request() {
   rm -f "$output"
 }
 
-submit_task() {
+submit_session() {
   local payload=$1 key=$2 output
   output=$(mktemp)
-  response_status=$(curl -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/tasks" \
+  response_status=$(curl -sS -o "$output" -w '%{http_code}' -X POST "${api_url}/api/copilot/v1/sessions" \
     -H "Authorization: Bearer ${copilot_token}" -H 'Content-Type: application/json' -H "Idempotency-Key: ${key}" --data "$payload")
   response_body=$(<"$output")
   rm -f "$output"
 }
 
-wait_task_status() {
-  local task_id=$1 expected=$2
+wait_latest_run_state() {
+  local session_id=$1 expected_state=$2 expected_outcome=$3
   for _ in $(seq 1 80); do
-    request "$copilot_token" GET "/api/copilot/v1/tasks/${task_id}"
-    if [[ $response_status == 200 && $(json_value status) == "$expected" ]]; then return 0; fi
+    request "$copilot_token" GET "/api/copilot/v1/sessions/${session_id}/runs"
+    local current_run_id current_state current_outcome
+    current_run_id=$(first_item_value id)
+    current_state=$(first_item_value state)
+    current_outcome=$(first_item_value outcome)
+    if [[ $response_status == 200 && -n $current_run_id && $current_state == "$expected_state" && $current_outcome == "$expected_outcome" ]]; then
+      printf '%s\n' "$current_run_id"
+      return 0
+    fi
     sleep 0.25
   done
-  echo "task ${task_id} did not reach ${expected}: ${response_status} ${response_body}" >&2
+  echo "latest Run for Session ${session_id} did not reach ${expected_state}/${expected_outcome}: ${response_status} ${response_body}" >&2
   return 1
 }
 
@@ -120,11 +129,24 @@ rm -f "$output"
 [[ $response_status == 201 ]]
 
 request "$copilot_token" GET /api/copilot/v1/agents
+[[ $response_status == 200 && $response_body != *"${agent_id}"* ]]
+
+# The access-management Admin API is not implemented yet. Seed the explicit
+# direct-principal grant needed by this smoke without restoring implicit
+# workspace-membership authorization.
+grant_id="aag_admin_smoke_${RANDOM}_${RANDOM}"
+"${compose[@]}" exec -T postgres psql -U gantry -d gantry -v ON_ERROR_STOP=1 \
+  -c "INSERT INTO gantry.agent_access_grants (id, agent_id, subject_type, subject_id, state, created_by_principal_id, updated_by_principal_id) VALUES ('${grant_id}', '${agent_id}', 'principal', 'prn_copilot_development', 'active', 'prn_admin_demo', 'prn_admin_demo')" \
+  -c "INSERT INTO gantry.agent_access_grant_capabilities (grant_id, capability) VALUES ('${grant_id}', 'metadata.read'), ('${grant_id}', 'execute')"
+
+request "$copilot_token" GET /api/copilot/v1/agents
 [[ $response_status == 200 && $response_body == *"${agent_id}"* ]]
-submit_task "{\"agent_id\":\"${agent_id}\",\"message\":\"published by Admin\"}" "admin-published-${RANDOM}-${RANDOM}"
+submit_session "{\"agent_id\":\"${agent_id}\",\"message\":\"published by Admin\"}" "admin-published-${RANDOM}-${RANDOM}"
 [[ $response_status == 201 ]]
-task_id=$(task_id)
-wait_task_status "$task_id" completed
+published_session=$(session_id)
+wait_latest_run_state "$published_session" completed succeeded >/dev/null
+request "$copilot_token" GET "/api/copilot/v1/sessions/${published_session}"
+[[ $response_status == 200 && $(session_state) == active ]]
 
 request "$admin_token" POST "/api/admin/v1/agents/${agent_id}:retire" '{}'
 [[ $response_status == 204 ]]

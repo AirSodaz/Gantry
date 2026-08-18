@@ -133,7 +133,7 @@ func (s *Service) loadMetrics(ctx context.Context, actor identity.Principal, wor
 			count(*) FILTER (WHERE r.status='awaiting_approval'),
 			count(*) FILTER (WHERE r.status='failed' AND r.completed_at >= now() - interval '24 hours')
 		FROM gantry.runs r
-		JOIN gantry.tasks t ON t.id=r.task_id
+		JOIN gantry.sessions t ON t.id=r.session_id
 		JOIN gantry.agents a ON a.id=t.agent_id
 		WHERE `+accessibleAgent, actor.OrganizationID, workspaceID, actor.ID).Scan(
 		&metrics.ActiveRuns, &metrics.AwaitingApprovals, &metrics.FailedRuns24Hours)
@@ -151,11 +151,11 @@ func (s *Service) loadAttention(ctx context.Context, actor identity.Principal, w
 			WHERE `+accessibleAgent+` AND r.status='pending'
 			UNION ALL
 			SELECT 'approval:' || ar.id AS id, 'approval' AS kind, 'high' AS severity, a.display_name || ' has a requester approval pending' AS title, 'The requester must decide the exact action before this run continues.' AS description, '/agents/' || a.id AS href, ar.created_at AS created_at
-			FROM gantry.approval_requests ar JOIN gantry.runs run ON run.id=ar.run_id JOIN gantry.tasks t ON t.id=run.task_id JOIN gantry.agents a ON a.id=t.agent_id
+			FROM gantry.approval_requests ar JOIN gantry.runs run ON run.id=ar.run_id JOIN gantry.sessions t ON t.id=run.session_id JOIN gantry.agents a ON a.id=t.agent_id
 			WHERE `+accessibleAgent+` AND ar.status='pending'
 			UNION ALL
 			SELECT 'failed-run:' || run.id AS id, 'failed_run' AS kind, 'high' AS severity, a.display_name || ' has a failed run' AS title, COALESCE(NULLIF(run.status_reason, ''), 'Inspect the run status before retrying.') AS description, '/agents/' || a.id AS href, COALESCE(run.completed_at, run.created_at) AS created_at
-			FROM gantry.runs run JOIN gantry.tasks t ON t.id=run.task_id JOIN gantry.agents a ON a.id=t.agent_id
+			FROM gantry.runs run JOIN gantry.sessions t ON t.id=run.session_id JOIN gantry.agents a ON a.id=t.agent_id
 			WHERE `+accessibleAgent+` AND run.status='failed' AND run.completed_at >= now() - interval '24 hours'
 		) attention
 		ORDER BY CASE severity WHEN 'high' THEN 0 ELSE 1 END, created_at DESC

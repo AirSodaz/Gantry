@@ -4,1204 +4,1647 @@
  */
 
 export interface paths {
-  "/agents": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published agents visible to the current employee */
+        get: operations["listPublishedAgents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List agents published to the current user */
-    get: operations["listPublishedAgents"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/attachments": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/agents/{agent_id}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the caller's favorite preference for an authorized Agent */
+        put: operations["setAgentFavorite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Create a requester-owned attachment upload grant */
-    post: operations["createAttachment"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/attachments/{attachment_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a requester-owned attachment upload grant */
+        post: operations["createAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get requester-authorized attachment metadata and scan state */
-    get: operations["getAttachment"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/attachments/{attachment_id}/content": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get requester-authorized attachment metadata */
+        get: operations["getAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    /** Upload attachment bytes with a short-lived grant */
-    put: operations["uploadAttachmentContent"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/attachments/{attachment_id}:complete": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/attachments/{attachment_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upload attachment bytes with a short-lived grant */
+        put: operations["uploadAttachmentContent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Validate and complete a quarantined attachment upload */
-    post: operations["completeAttachment"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/attachments/{attachment_id}:complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify attachment bytes and schedule a scan */
+        post: operations["completeAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List tasks for the current user */
-    get: operations["listMyTasks"];
-    put?: never;
-    /** Submit a new task */
-    post: operations["submitTask"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions for which the caller is currently a member */
+        get: operations["listSessions"];
+        put?: never;
+        /** Create a personal Session and its first queued Run */
+        post: operations["createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get task details */
-    get: operations["getTask"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}/messages": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a member-authorized Session conversation projection */
+        get: operations["getSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Add requester input and start the next task run */
-    post: operations["appendTaskMessage"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}/runs": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append an instruction and create a queued Run */
+        post: operations["appendSessionMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List compact run attempts for one task */
-    get: operations["listTaskRuns"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}/events:ticket": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List current Session members */
+        get: operations["listSessionMembers"];
+        put?: never;
+        /** Add a contributor or viewer to a Session */
+        post: operations["addSessionMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Create a short-lived WebSocket event ticket */
-    post: operations["createTaskEventsTicket"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}/runs/{run_id}:cancel": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/members/{principal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a non-owner Session member */
+        delete: operations["removeSessionMember"];
+        options?: never;
+        head?: never;
+        /** Change a non-owner Session member role */
+        patch: operations["updateSessionMember"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Cancel a run */
-    post: operations["cancelRun"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/tasks/{task_id}:retry": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}:transfer-owner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer a Session to an eligible current contributor */
+        post: operations["transferSessionOwner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Retry a task */
-    post: operations["retryTask"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/approvals": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}:archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a Session and block new instructions */
+        post: operations["archiveSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List approvals assigned to the current user */
-    get: operations["listMyApprovals"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/approvals/{approval_id}:decide": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List compact Run history for a Session member */
+        get: operations["listSessionRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Approve or reject an action */
-    post: operations["decideApproval"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/approvals/{approval_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a Run as its requester or the current Session owner */
+        post: operations["cancelSessionRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get requester-authorized approval detail and decision evidence */
-    get: operations["getApproval"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/artifacts/{artifact_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/runs/{run_id}:retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a queued retry Run in the same Session */
+        post: operations["retrySessionRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get artifact metadata */
-    get: operations["getArtifact"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/artifacts/{artifact_id}:download": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/sessions/{session_id}/events:ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a short-lived, member-bound Session event-stream ticket */
+        post: operations["createSessionEventsTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Authorize and issue a short-lived artifact download reference */
-    post: operations["createArtifactDownloadGrant"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/artifacts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List approvals decidable by the current Run requester */
+        get: operations["listMyApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List requester-scoped artifacts across tasks */
-    get: operations["listMyArtifacts"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get requester-authorized approval detail and evidence */
+        get: operations["getApproval"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/approvals/{approval_id}:decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a Run requester's decision for one exact action */
+        post: operations["decideApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List artifacts authorized through Session membership */
+        get: operations["listArtifacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artifacts/{artifact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get member-authorized artifact metadata */
+        get: operations["getArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artifacts/{artifact_id}:download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize and issue a short-lived artifact download reference */
+        post: operations["createArtifactDownloadGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    PageInfo: {
-      next_cursor?: string;
-      has_more: boolean;
-    };
-    /** Format: date-time */
-    Timestamp: string;
-    CopilotAgent: {
-      id: string;
-      display_name: string;
-      description: string;
-      category?: string;
-      owner_name?: string;
-      capability_summary?: string;
-      data_scope?: string;
-      is_favorite?: boolean;
-    };
-    CopilotAgentList: {
-      items: components["schemas"]["CopilotAgent"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    SubmitTaskRequest: {
-      agent_id: string;
-      message?: string;
-      structured_input?: Record<string, never>;
-      attachment_ids?: string[];
-    };
-    TaskResponse: {
-      id: string;
-      requester_id: string;
-      agent_id: string;
-      agent_display_name?: string;
-      title?: string;
-      /** @enum {string} */
-      status:
-        | "queued"
-        | "provisioning"
-        | "running"
-        | "awaiting_approval"
-        | "awaiting_requester_input"
-        | "suspended"
-        | "canceling"
-        | "completed"
-        | "failed"
-        | "canceled";
-      /** @enum {string} */
-      requester_action: "none" | "approval" | "input";
-      /** Format: int64 */
-      conversation_revision: number;
-      current_run?: components["schemas"]["RunStatus"];
-      artifacts?: components["schemas"]["ArtifactResponse"][];
-      messages?: components["schemas"]["TaskMessage"][];
-      created_at: components["schemas"]["Timestamp"];
-      updated_at: components["schemas"]["Timestamp"];
-    };
-    TaskMessage: {
-      id: string;
-      run_id?: string;
-      /** Format: int64 */
-      task_sequence: number;
-      /** @enum {string} */
-      role: "requester" | "agent" | "system_summary";
-      parts: (
-        | components["schemas"]["TextPart"]
-        | components["schemas"]["ArtifactPart"]
-        | components["schemas"]["ActionSummaryPart"]
-        | components["schemas"]["StatusPart"]
-      )[];
-      created_at: components["schemas"]["Timestamp"];
-    };
-    TextPart: {
-      /** @enum {string} */
-      type: "text";
-      text: string;
-    };
-    ArtifactPart: {
-      /** @enum {string} */
-      type: "artifact";
-      artifact_id: string;
-      label: string;
-    };
-    ActionSummaryPart: {
-      /** @enum {string} */
-      type: "action_summary";
-      action_id: string;
-      summary: string;
-      state: string;
-    };
-    StatusPart: {
-      /** @enum {string} */
-      type: "status";
-      code: string;
-      message: string;
-    };
-    AppendTaskMessageRequest: {
-      message: string;
-      attachment_ids?: string[];
-    };
-    RunAttempt: {
-      id: string;
-      attempt_number: number;
-      status: string;
-      status_reason?: string;
-      created_at: components["schemas"]["Timestamp"];
-      started_at?: components["schemas"]["Timestamp"];
-      completed_at?: components["schemas"]["Timestamp"];
-    };
-    RunAttemptList: {
-      items: components["schemas"]["RunAttempt"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    TaskList: {
-      items: components["schemas"]["TaskResponse"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    RunStatus: {
-      id: string;
-      status: string;
-      status_reason?: string;
-    };
-    RetryTaskRequest: {
-      /** @enum {string} */
-      revision_selection: "original_revision" | "current_production_revision";
-    };
-    CopilotApproval: {
-      id: string;
-      run_id: string;
-      action_id: string;
-      action_digest: string;
-      /** Format: int64 */
-      approval_revision: number;
-      tool_name: string;
-      operation: string;
-      target?: string;
-      agent_display_name: string;
-      /** @description Human-readable action summary */
-      action_preview: {
-        tool_name?: string;
-        operation?: string;
-        target?: string;
-        effect?: string;
-        credential_mode?: string;
-      };
-      risk_class?: string;
-      /** @enum {string} */
-      status: "pending" | "satisfied" | "rejected" | "expired";
-      expires_at?: components["schemas"]["Timestamp"];
-      created_at?: components["schemas"]["Timestamp"];
-      task_id?: string;
-      effect?: string;
-      policy_version?: string;
-      latest_decision?: components["schemas"]["ApprovalDecisionEvidence"];
-    };
-    CopilotApprovalList: {
-      items: components["schemas"]["CopilotApproval"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    ApprovalDecisionRequest: {
-      /** @enum {string} */
-      decision: "approve" | "reject";
-      reason?: string;
-      action_digest: string;
-      /** Format: int64 */
-      approval_revision: number;
-    };
-    ApprovalDecisionConflict: {
-      error: {
+    schemas: {
+        /** Format: date-time */
+        Timestamp: string;
+        PageInfo: {
+            next_cursor?: string | null;
+            has_more: boolean;
+        };
+        CopilotProblem: {
+            code: string;
+            message: string;
+            correlation_id: string;
+            retryable: boolean;
+            retry_after_seconds?: number | null;
+            current_resource?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        SupportContact: {
+            display_name: string;
+            /** Format: uri */
+            contact_uri?: string | null;
+        };
+        CatalogInputExample: {
+            label: string;
+            description: string;
+            /** @default false */
+            required: boolean;
+        };
+        ExpectedOutput: {
+            /** @enum {string} */
+            kind: "text" | "structured" | "artifact" | "mixed";
+            description: string;
+            schema?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        DataDisclosure: {
+            input_classifications: string[];
+            output_classifications: string[];
+            summary: string;
+            retention_notice?: string | null;
+        };
+        ActionDisclosure: {
+            /** @enum {string} */
+            effect_level: "none" | "read_only" | "writes_or_external_effects";
+            summary: string;
+            /** @enum {string} */
+            approval_behavior: "never" | "may_be_requested" | "always_before_effect";
+        };
+        PublishedCatalogMetadata: {
+            typical_inputs: components["schemas"]["CatalogInputExample"][];
+            expected_output: components["schemas"]["ExpectedOutput"];
+            capability_summary: string;
+            data_disclosure: components["schemas"]["DataDisclosure"];
+            action_disclosure: components["schemas"]["ActionDisclosure"];
+        };
+        PublicationAvailability: {
+            /** @enum {string} */
+            state: "available" | "temporarily_unavailable";
+            /** @enum {string|null} */
+            reason_code?: "maintenance" | "dependency" | "policy" | "capacity" | null;
+            message?: string | null;
+            /** Format: date-time */
+            effective_until?: string | null;
+        };
+        CopilotAgent: {
+            id: string;
+            display_name: string;
+            description: string;
+            category: string;
+            owner: components["schemas"]["SupportContact"];
+            /** @description Published structured-input JSON Schema */
+            input_contract: {
+                [key: string]: unknown;
+            };
+            published_metadata: components["schemas"]["PublishedCatalogMetadata"];
+            availability: components["schemas"]["PublicationAvailability"];
+            is_favorite: boolean;
+            /** Format: date-time */
+            last_used_at?: string | null;
+        };
+        CopilotAgentList: {
+            items: components["schemas"]["CopilotAgent"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        SetAgentFavoriteRequest: {
+            is_favorite: boolean;
+        };
         /** @enum {string} */
-        code:
-          | "action_changed"
-          | "already_decided"
-          | "approval_changed"
-          | "approval_expired"
-          | "idempotency_key_reused";
-        message: string;
-        current_resource: components["schemas"]["CopilotApproval"];
-      };
+        SessionMode: "personal" | "shared" | "channel";
+        /** @enum {string} */
+        SessionState: "active" | "archived";
+        /** @enum {string} */
+        SessionMemberRole: "owner" | "contributor" | "viewer";
+        /** @enum {string} */
+        RunState: "queued" | "provisioning" | "running" | "awaiting_approval" | "suspended" | "canceling" | "completed" | "failed" | "canceled" | "expired";
+        SessionAgentSnapshot: {
+            agent_id: string;
+            display_name: string;
+            support_contact?: components["schemas"]["SupportContact"];
+        };
+        SessionMember: {
+            principal_id: string;
+            display_name?: string;
+            role: components["schemas"]["SessionMemberRole"];
+            joined_at: components["schemas"]["Timestamp"];
+        };
+        TextPart: {
+            /** @enum {string} */
+            type: "text";
+            text: string;
+        };
+        ArtifactPart: {
+            /** @enum {string} */
+            type: "artifact";
+            artifact_id: string;
+            label: string;
+        };
+        ActionSummaryPart: {
+            /** @enum {string} */
+            type: "action_summary";
+            action_id: string;
+            summary: string;
+            state: string;
+        };
+        StatusPart: {
+            /** @enum {string} */
+            type: "status";
+            code: string;
+            message: string;
+        };
+        SessionMessage: {
+            id: string;
+            run_id?: string | null;
+            /** Format: int64 */
+            session_sequence: number;
+            /** @enum {string} */
+            author_kind: "principal" | "trigger" | "agent" | "system_summary";
+            author_principal_id?: string | null;
+            trigger_id?: string | null;
+            parts: (components["schemas"]["TextPart"] | components["schemas"]["ArtifactPart"] | components["schemas"]["ActionSummaryPart"] | components["schemas"]["StatusPart"])[];
+            created_at: components["schemas"]["Timestamp"];
+        };
+        UserFacingReason: {
+            code: string;
+            message: string;
+            /** @enum {string} */
+            next_action?: "none" | "wait" | "approve" | "provide_input" | "retry" | "contact_support";
+            correlation_id?: string | null;
+        };
+        RunSummary: {
+            id: string;
+            /** Format: int64 */
+            session_sequence: number;
+            requester_id: string;
+            state: components["schemas"]["RunState"];
+            /** @enum {string|null} */
+            outcome?: "succeeded" | "requester_input_required" | "failed" | "canceled" | "expired" | null;
+            state_reason?: components["schemas"]["UserFacingReason"];
+            retry_of_run_id?: string | null;
+            trigger_occurrence_id?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            completed_at?: string | null;
+        };
+        Session: {
+            id: string;
+            owner_principal_id: string;
+            mode: components["schemas"]["SessionMode"];
+            source_tags?: ("webhook" | "schedule" | "channel")[];
+            agent: components["schemas"]["SessionAgentSnapshot"];
+            title?: string | null;
+            state: components["schemas"]["SessionState"];
+            /** Format: int64 */
+            conversation_revision: number;
+            /** @enum {string} */
+            my_action?: "none" | "approval";
+            executing_run?: components["schemas"]["RunSummary"] | null;
+            queued_run_count: number;
+            members: components["schemas"]["SessionMember"][];
+            messages: components["schemas"]["SessionMessage"][];
+            artifacts?: components["schemas"]["Artifact"][];
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+        };
+        SessionList: {
+            items: components["schemas"]["Session"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        SessionMemberList: {
+            items: components["schemas"]["SessionMember"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        RunSummaryList: {
+            items: components["schemas"]["RunSummary"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        CreateSessionRequest: {
+            agent_id: string;
+            message?: string;
+            /** @description Agent input-contract validated JSON object */
+            structured_input?: {
+                [key: string]: unknown;
+            };
+            attachment_ids?: string[];
+        } & ({
+            message: string;
+            structured_input?: never;
+        } | {
+            message?: never;
+            /** @description Agent input-contract validated JSON object */
+            structured_input: {
+                [key: string]: unknown;
+            };
+        });
+        AppendSessionMessageRequest: {
+            message: string;
+            attachment_ids?: string[];
+        };
+        AddSessionMemberRequest: {
+            principal_id: string;
+            /** @enum {string} */
+            role: "contributor" | "viewer";
+        };
+        UpdateSessionMemberRequest: {
+            /** @enum {string} */
+            role: "contributor" | "viewer";
+        };
+        TransferSessionOwnerRequest: {
+            new_owner_principal_id: string;
+        };
+        RetryRunRequest: {
+            /** @enum {string} */
+            revision_selection: "original_revision" | "current_production_revision";
+        };
+        ApprovalDecisionEvidence: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            reason?: string | null;
+            /** @enum {boolean} */
+            decided_by_current_requester?: true;
+            decided_at: components["schemas"]["Timestamp"];
+        };
+        CopilotApproval: {
+            id: string;
+            session_id: string;
+            run_id: string;
+            requester_id: string;
+            action_id: string;
+            action_digest: string;
+            /** Format: int64 */
+            approval_revision: number;
+            /** @enum {string} */
+            state: "pending" | "approved" | "rejected" | "expired" | "superseded" | "revoked";
+            preview: {
+                summary: string;
+                tool_display_name?: string;
+                operation_display_name?: string;
+                target?: string | null;
+                effect: string;
+                risk_class: string;
+                redacted_details?: {
+                    [key: string]: unknown;
+                };
+                policy_reason?: string | null;
+            };
+            decision?: components["schemas"]["ApprovalDecisionEvidence"];
+            expires_at: components["schemas"]["Timestamp"];
+            created_at: components["schemas"]["Timestamp"];
+        };
+        CopilotApprovalList: {
+            items: components["schemas"]["CopilotApproval"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        ApprovalDecisionRequest: {
+            /** @enum {string} */
+            decision: "approve" | "reject";
+            reason?: string | null;
+            action_digest: string;
+            /** Format: int64 */
+            approval_revision: number;
+        };
+        Attachment: {
+            id: string;
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+            /** @enum {string} */
+            state: "declared" | "uploading" | "quarantined" | "available" | "bound" | "rejected" | "expired" | "deleted";
+            /** @enum {string} */
+            scan_state: "pending" | "passed" | "failed" | "unavailable";
+            rejection_reason?: components["schemas"]["UserFacingReason"];
+            bound_session_id?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        AttachmentUploadGrant: {
+            attachment: components["schemas"]["Attachment"];
+            upload_path: string;
+            /** @description Returned only when the grant is created */
+            upload_token: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        CreateAttachmentRequest: {
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+        };
+        Artifact: {
+            id: string;
+            session_id: string;
+            run_id: string;
+            filename: string;
+            media_type: string;
+            /** Format: int64 */
+            size_bytes: number;
+            digest: string;
+            classification: string;
+            /** @enum {string} */
+            state: "declared" | "uploading" | "quarantined" | "available" | "rejected" | "expired" | "deleted";
+            /** @enum {string} */
+            scan_state: "pending" | "passed" | "failed" | "unavailable";
+            retention?: {
+                [key: string]: unknown;
+            };
+            created_at: components["schemas"]["Timestamp"];
+        };
+        ArtifactList: {
+            items: components["schemas"]["Artifact"][];
+            page_info: components["schemas"]["PageInfo"];
+        };
+        ArtifactDownloadGrant: {
+            artifact_id: string;
+            /**
+             * Format: uri
+             * @description Returned only by the download command
+             */
+            download_url: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        SessionEventsTicketRequest: {
+            last_cursor?: string;
+        };
+        SessionEventsTicket: {
+            /** @description Returned only when the ticket is created */
+            ticket: string;
+            session_id: string;
+            /** Format: uri */
+            websocket_url: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        SessionEventSnapshot: {
+            /** @enum {string} */
+            schema_version: "gantry.copilot.snapshot/v1";
+            session: components["schemas"]["Session"];
+            runs: components["schemas"]["RunSummary"][];
+            approvals: components["schemas"]["CopilotApproval"][];
+            cursor: string;
+        };
+        SessionEventFrame: {
+            /** @enum {string} */
+            schema_version: "gantry.copilot.event/v1";
+            session_id: string;
+            run_id?: string | null;
+            /** Format: int64 */
+            session_sequence: number;
+            /** Format: int64 */
+            run_sequence?: number | null;
+            cursor: string;
+            event: components["schemas"]["MessageCommittedEvent"] | components["schemas"]["ContentSegmentEvent"] | components["schemas"]["RunStateChangedEvent"] | components["schemas"]["SessionChangedEvent"] | components["schemas"]["ApprovalChangedEvent"] | components["schemas"]["ArtifactChangedEvent"];
+        };
+        MessageCommittedEvent: {
+            /** @enum {string} */
+            type: "message_committed";
+            message: components["schemas"]["SessionMessage"];
+        };
+        ContentSegmentEvent: {
+            /** @enum {string} */
+            type: "content_segment";
+            message_id: string;
+            segment_index: number;
+            text: string;
+            final?: boolean;
+        };
+        RunStateChangedEvent: {
+            /** @enum {string} */
+            type: "run_state_changed";
+            run: components["schemas"]["RunSummary"];
+        };
+        SessionChangedEvent: {
+            /** @enum {string} */
+            type: "session_changed";
+            state: components["schemas"]["SessionState"];
+            mode: components["schemas"]["SessionMode"];
+            /** Format: int64 */
+            conversation_revision: number;
+            queued_run_count: number;
+            members?: components["schemas"]["SessionMember"][];
+        };
+        ApprovalChangedEvent: {
+            /** @enum {string} */
+            type: "approval_changed";
+            approval: components["schemas"]["CopilotApproval"];
+        };
+        ArtifactChangedEvent: {
+            /** @enum {string} */
+            type: "artifact_changed";
+            artifact: components["schemas"]["Artifact"];
+        };
     };
-    ApprovalDecisionEvidence: {
-      /** @enum {string} */
-      decision: "approve" | "reject";
-      reason?: string;
-      decided_by: string;
-      created_at: components["schemas"]["Timestamp"];
+    responses: {
+        /** @description Employee-safe command or projection error. */
+        Problem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CopilotProblem"];
+            };
+        };
     };
-    ArtifactResponse: {
-      id: string;
-      task_id: string;
-      run_id: string;
-      filename: string;
-      media_type: string;
-      /** Format: int64 */
-      size_bytes: number;
-      digest: string;
-      classification?: string;
-      /** @enum {string} */
-      state: "declared" | "uploaded" | "available" | "rejected";
-      /** @enum {string} */
-      scan_status: "pending" | "passed" | "failed";
+    parameters: {
+        CursorParam: string;
+        LimitParam: number;
+        IdempotencyKeyParam: string;
+        IfMatchParam: string;
+        AgentIdParam: string;
+        SessionIdParam: string;
+        RunIdParam: string;
+        PrincipalIdParam: string;
+        ApprovalIdParam: string;
+        ArtifactIdParam: string;
+        AttachmentIdParam: string;
     };
-    ArtifactDownloadGrant: {
-      artifact_id: string;
-      /** Format: uri */
-      download_url: string;
-      expires_at: components["schemas"]["Timestamp"];
+    requestBodies: never;
+    headers: {
+        /** @description Current Session conversation ETag. */
+        ConversationETag: string;
     };
-    ArtifactList: {
-      items: components["schemas"]["ArtifactResponse"][];
-      page_info: components["schemas"]["PageInfo"];
-    };
-    CreateAttachmentRequest: {
-      filename: string;
-      media_type: string;
-      /** Format: int64 */
-      size_bytes: number;
-      /** @description SHA-256 digest in sha256:<hex> form */
-      digest: string;
-      classification?: string;
-    };
-    AttachmentResponse: {
-      id: string;
-      filename: string;
-      media_type: string;
-      /** Format: int64 */
-      size_bytes: number;
-      digest: string;
-      classification: string;
-      /** @enum {string} */
-      state: "declared" | "uploaded" | "available" | "rejected";
-      /** @enum {string} */
-      scan_status: "pending" | "passed" | "failed";
-      /** @description Short-lived request path for the content upload */
-      upload_url?: string;
-      /** @description Short-lived upload credential, returned only on creation */
-      upload_token?: string;
-      upload_expires_at?: components["schemas"]["Timestamp"];
-    };
-    TaskEventsTicket: {
-      ticket: string;
-      task_id: string;
-      /** Format: uri */
-      websocket_url: string;
-      expires_at: components["schemas"]["Timestamp"];
-    };
-    TaskEventsTicketRequest: {
-      last_cursor?: string;
-    };
-    TaskEventSnapshot: {
-      /** @enum {string} */
-      schema_version: "gantry.copilot.snapshot/v1";
-      task: components["schemas"]["TaskResponse"];
-      runs: components["schemas"]["RunAttempt"][];
-      approvals: components["schemas"]["CopilotApproval"][];
-      cursor: string;
-    };
-    TaskEventFrame: {
-      /** @enum {string} */
-      schema_version: "gantry.copilot.event/v1";
-      task_id: string;
-      run_id?: string | null;
-      /** Format: int64 */
-      task_sequence: number;
-      /** Format: int64 */
-      run_sequence?: number | null;
-      cursor: string;
-      event:
-        | components["schemas"]["MessageCommittedEvent"]
-        | components["schemas"]["ContentSegmentEvent"]
-        | components["schemas"]["RunStateChangedEvent"]
-        | components["schemas"]["ApprovalChangedEvent"]
-        | components["schemas"]["ArtifactChangedEvent"];
-    };
-    MessageCommittedEvent: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: "message_committed";
-      message: components["schemas"]["TaskMessage"];
-    };
-    ContentSegmentEvent: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: "content_segment";
-      message_id: string;
-      segment_index: number;
-      text: string;
-      final?: boolean;
-    };
-    RunStateChangedEvent: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: "run_state_changed";
-      run: components["schemas"]["RunAttempt"];
-    };
-    ApprovalChangedEvent: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: "approval_changed";
-      approval: components["schemas"]["CopilotApproval"];
-    };
-    ArtifactChangedEvent: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      type: "artifact_changed";
-      artifact: components["schemas"]["ArtifactResponse"];
-    };
-  };
-  responses: never;
-  parameters: {
-    CursorParam: string;
-    LimitParam: number;
-    TaskIdParam: string;
-    AttachmentIdParam: string;
-  };
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  listPublishedAgents: {
-    parameters: {
-      query?: {
-        cursor?: components["parameters"]["CursorParam"];
-        limit?: components["parameters"]["LimitParam"];
-        category?: string;
-        search?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    listPublishedAgents: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+                category?: string;
+                search?: string;
+                collection?: "all" | "favorites" | "recent";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Employee-safe Agent projections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotAgentList"];
+                };
+            };
+            400: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Published agents visible to the employee */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    setAgentFavorite: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path: {
+                agent_id: components["parameters"]["AgentIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["CopilotAgentList"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAgentFavoriteRequest"];
+            };
         };
-      };
+        responses: {
+            /** @description Updated Agent projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotAgent"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  createAttachment: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    createAttachment: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttachmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Original upload grant returned for an idempotent retry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUploadGrant"];
+                };
+            };
+            /** @description Quarantined attachment and upload grant */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentUploadGrant"];
+                };
+            };
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAttachmentRequest"];
-      };
+    getAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment metadata without upload credentials */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
     };
-    responses: {
-      /** @description Quarantined attachment with a short-lived upload grant */
-      201: {
-        headers: {
-          [name: string]: unknown;
+    uploadAttachmentContent: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Gantry-Upload-Token": string;
+            };
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AttachmentResponse"];
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
         };
-      };
+        responses: {
+            /** @description Bytes stored in quarantine */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  getAttachment: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        attachment_id: components["parameters"]["AttachmentIdParam"];
-      };
-      cookie?: never;
+    completeAttachment: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path: {
+                attachment_id: components["parameters"]["AttachmentIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original completion projection returned for an idempotent retry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            /** @description Attachment accepted for scanning */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Attachment metadata */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    listSessions: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+                state?: components["schemas"]["SessionState"];
+                mode?: components["schemas"]["SessionMode"];
+                agent_id?: string;
+                my_action?: "approval";
+                updated_after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AttachmentResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description Member-authorized Session list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            400: components["responses"]["Problem"];
         };
-      };
     };
-  };
-  uploadAttachmentContent: {
-    parameters: {
-      query?: never;
-      header: {
-        "X-Gantry-Upload-Token": string;
-      };
-      path: {
-        attachment_id: components["parameters"]["AttachmentIdParam"];
-      };
-      cookie?: never;
+    createSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Original Session returned for an idempotent retry */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Personal Session and first Run created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody: {
-      content: {
-        "application/octet-stream": string;
-      };
+    getSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session conversation projection */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
     };
-    responses: {
-      /** @description Bytes stored in quarantine */
-      204: {
-        headers: {
-          [name: string]: unknown;
+    appendSessionMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
         };
-        content?: never;
-      };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppendSessionMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Original Session returned for an idempotent retry */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Instruction committed and Run queued */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  completeAttachment: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        attachment_id: components["parameters"]["AttachmentIdParam"];
-      };
-      cookie?: never;
+    listSessionMembers: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+            };
+            header?: never;
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current member list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionMemberList"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Attachment state after validation */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    addSessionMember: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AttachmentResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSessionMemberRequest"];
+            };
         };
-      };
+        responses: {
+            /** @description Updated Session after member creation */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  listMyTasks: {
-    parameters: {
-      query?: {
-        cursor?: components["parameters"]["CursorParam"];
-        limit?: components["parameters"]["LimitParam"];
-        status?: string;
-        agent_id?: string;
-        requester_action?: "approval" | "input";
-        created_after?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    removeSessionMember: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+                principal_id: components["parameters"]["PrincipalIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated Session after member removal */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description List of user's tasks */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    updateSessionMember: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+                principal_id: components["parameters"]["PrincipalIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TaskList"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSessionMemberRequest"];
+            };
         };
-      };
+        responses: {
+            /** @description Updated Session after member role change */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  submitTask: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path?: never;
-      cookie?: never;
+    transferSessionOwner: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferSessionOwnerRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated Session after owner transfer */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SubmitTaskRequest"];
-      };
+    archiveSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived Session */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ConversationETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+        };
     };
-    responses: {
-      /** @description Original task returned for an idempotent retry */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    listSessionRuns: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+            };
+            header?: never;
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description Member-authorized Run history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummaryList"];
+                };
+            };
+            404: components["responses"]["Problem"];
         };
-      };
-      /** @description Task accepted */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
-        };
-      };
     };
-  };
-  getTask: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-      };
-      cookie?: never;
+    cancelSessionRun: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+                run_id: components["parameters"]["RunIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Terminal or replayed Run state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Cancellation reconciliation accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Task details */
-      200: {
-        headers: {
-          ETag: string;
-          [name: string]: unknown;
+    retrySessionRun: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+                "If-Match": components["parameters"]["IfMatchParam"];
+            };
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+                run_id: components["parameters"]["RunIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetryRunRequest"];
+            };
         };
-      };
+        responses: {
+            /** @description Original retry Run returned for an idempotent retry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Queued retry Run */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-  };
-  appendTaskMessage: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-        "If-Match": string;
-      };
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-      };
-      cookie?: never;
+    createSessionEventsTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: components["parameters"]["SessionIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SessionEventsTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Short-lived event-stream ticket */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionEventsTicket"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["AppendTaskMessageRequest"];
-      };
+    listMyApprovals: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+                state?: "pending" | "approved" | "rejected" | "expired" | "superseded" | "revoked";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requester-bound approval list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotApprovalList"];
+                };
+            };
+            400: components["responses"]["Problem"];
+        };
     };
-    responses: {
-      /** @description Original task returned for an idempotent retry */
-      200: {
-        headers: {
-          ETag: string;
-          [name: string]: unknown;
+    getApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: components["parameters"]["ApprovalIdParam"];
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description Approval detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotApproval"];
+                };
+            };
+            404: components["responses"]["Problem"];
         };
-      };
-      /** @description Follow-up accepted and next run queued */
-      201: {
-        headers: {
-          ETag: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
-        };
-      };
     };
-  };
-  listTaskRuns: {
-    parameters: {
-      query?: {
-        cursor?: components["parameters"]["CursorParam"];
-        limit?: components["parameters"]["LimitParam"];
-      };
-      header?: never;
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-      };
-      cookie?: never;
+    decideApproval: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyParam"];
+            };
+            path: {
+                approval_id: components["parameters"]["ApprovalIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Approval projection after decision or replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotApproval"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            412: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Requester-authorized run attempt history */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    listArtifacts: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["CursorParam"];
+                limit?: components["parameters"]["LimitParam"];
+                session_id?: string;
+                classification?: string;
+                state?: "declared" | "uploading" | "quarantined" | "available" | "rejected" | "expired" | "deleted";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["RunAttemptList"];
+        requestBody?: never;
+        responses: {
+            /** @description Session-member artifact list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactList"];
+                };
+            };
+            400: components["responses"]["Problem"];
         };
-      };
     };
-  };
-  createTaskEventsTicket: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-      };
-      cookie?: never;
+    getArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: components["parameters"]["ArtifactIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Artifact metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Artifact"];
+                };
+            };
+            404: components["responses"]["Problem"];
+        };
     };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["TaskEventsTicketRequest"];
-      };
+    createArtifactDownloadGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: components["parameters"]["ArtifactIdParam"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized short-lived download reference */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactDownloadGrant"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+        };
     };
-    responses: {
-      /** @description Short-lived ticket for the task event stream */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskEventsTicket"];
-        };
-      };
-      /** @description Task was not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  cancelRun: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Cancellation accepted or already terminal */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RunStatus"];
-        };
-      };
-    };
-  };
-  retryTask: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-        "If-Match": string;
-      };
-      path: {
-        task_id: components["parameters"]["TaskIdParam"];
-      };
-      cookie?: never;
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["RetryTaskRequest"];
-      };
-    };
-    responses: {
-      /** @description New run created */
-      201: {
-        headers: {
-          ETag: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskResponse"];
-        };
-      };
-    };
-  };
-  listMyApprovals: {
-    parameters: {
-      query?: {
-        cursor?: components["parameters"]["CursorParam"];
-        limit?: components["parameters"]["LimitParam"];
-        state?: "pending" | "satisfied" | "rejected" | "expired" | "superseded";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Pending approvals */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CopilotApprovalList"];
-        };
-      };
-    };
-  };
-  decideApproval: {
-    parameters: {
-      query?: never;
-      header: {
-        "Idempotency-Key": string;
-      };
-      path: {
-        approval_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ApprovalDecisionRequest"];
-      };
-    };
-    responses: {
-      /** @description Requester-authorized approval projection after the decision */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CopilotApproval"];
-        };
-      };
-      /** @description The current principal cannot decide this action */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Approval request was not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description The approval is expired or already decided */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ApprovalDecisionConflict"];
-        };
-      };
-      /** @description The action digest is stale */
-      412: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ApprovalDecisionConflict"];
-        };
-      };
-    };
-  };
-  getApproval: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        approval_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Approval detail */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CopilotApproval"];
-        };
-      };
-      /** @description Approval request was not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  getArtifact: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        artifact_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Artifact metadata */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ArtifactResponse"];
-        };
-      };
-    };
-  };
-  createArtifactDownloadGrant: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        artifact_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Authorized short-lived download reference */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ArtifactDownloadGrant"];
-        };
-      };
-      /** @description Artifact was not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Artifact is not available for download */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  listMyArtifacts: {
-    parameters: {
-      query?: {
-        cursor?: components["parameters"]["CursorParam"];
-        limit?: components["parameters"]["LimitParam"];
-        task_id?: string;
-        classification?: string;
-        state?:
-          | "declared"
-          | "uploading"
-          | "quarantined"
-          | "available"
-          | "rejected"
-          | "expired"
-          | "deleted";
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Requester-scoped artifact list */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ArtifactList"];
-        };
-      };
-    };
-  };
 }

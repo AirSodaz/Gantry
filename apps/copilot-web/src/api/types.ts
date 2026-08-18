@@ -4,34 +4,21 @@ type components = CopilotApiComponents;
 
 export type Agent = components["schemas"]["CopilotAgent"];
 export type AgentList = components["schemas"]["CopilotAgentList"];
-export type Task = components["schemas"]["TaskResponse"] & {
-  conversation_etag?: string;
-};
-export type TaskList = components["schemas"]["TaskList"];
-export type TaskStatus = Task["status"];
-export type RunStatus = components["schemas"]["RunStatus"];
-export type RunAttempt = components["schemas"]["RunAttempt"];
-export type RunAttemptList = components["schemas"]["RunAttemptList"];
-export type TaskMessage = components["schemas"]["TaskMessage"];
+export type Session = components["schemas"]["Session"] & { conversation_etag?: string };
+export type SessionList = components["schemas"]["SessionList"];
+export type SessionMessage = components["schemas"]["SessionMessage"];
+export type RunSummary = components["schemas"]["RunSummary"];
+export type RunSummaryList = components["schemas"]["RunSummaryList"];
 export type Approval = components["schemas"]["CopilotApproval"];
 export type ApprovalList = components["schemas"]["CopilotApprovalList"];
-export type Artifact = components["schemas"]["ArtifactResponse"];
+export type Artifact = components["schemas"]["Artifact"];
 export type ArtifactList = components["schemas"]["ArtifactList"];
-export type ArtifactDownloadGrant =
-  components["schemas"]["ArtifactDownloadGrant"];
-export type Attachment = components["schemas"]["AttachmentResponse"];
-export type CreateAttachmentInput =
-  components["schemas"]["CreateAttachmentRequest"];
-export type EventsTicket = components["schemas"]["TaskEventsTicket"];
-export type TaskEventSnapshot = components["schemas"]["TaskEventSnapshot"];
-export type TaskEventFrame = components["schemas"]["TaskEventFrame"];
-
-export type SubmitTaskInput = {
-  agent_id: string;
-  message?: string;
-  structured_input?: Record<string, unknown>;
-  attachment_ids?: string[];
-};
-
-export type AppendTaskMessageInput =
-  components["schemas"]["AppendTaskMessageRequest"];
+export type ArtifactDownloadGrant = components["schemas"]["ArtifactDownloadGrant"];
+export type Attachment = components["schemas"]["Attachment"];
+export type AttachmentUploadGrant = components["schemas"]["AttachmentUploadGrant"];
+export type CreateAttachmentInput = components["schemas"]["CreateAttachmentRequest"];
+export type SessionEventsTicket = components["schemas"]["SessionEventsTicket"];
+export type SessionEventSnapshot = components["schemas"]["SessionEventSnapshot"];
+export type SessionEventFrame = components["schemas"]["SessionEventFrame"];
+export type CreateSessionInput = components["schemas"]["CreateSessionRequest"];
+export type AppendSessionMessageInput = components["schemas"]["AppendSessionMessageRequest"];

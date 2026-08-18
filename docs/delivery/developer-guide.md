@@ -116,7 +116,7 @@ token:
 
 - `POST /internal/development/runs` with `{"mode":"complete"}` or
   `{"mode":"await_cancel"}` creates a deterministic run on the durable
-  development task path.
+  development Run path.
 - `GET /internal/development/runs/{runID}` returns its lifecycle status, lease epoch,
   and acknowledged event sequence.
 - `POST /internal/development/runs/{runID}/cancel` requests asynchronous cancellation.
@@ -130,7 +130,7 @@ moon run deploy-compose:smoke
 The task starts a disposable stack, proves completion, cancellation, and
 runner-disconnect failure, prints relevant logs if it fails, then removes its
 containers and volumes. It proves the deterministic runner lifecycle through
-the durable development task path; it does not prove sandbox cleanup or durable
+the durable development Run path; it does not prove sandbox cleanup or durable
 process recovery.
 
 ### Persistent Copilot slice
@@ -154,9 +154,9 @@ so browser login does not depend on cross-origin discovery. The requested Dex
 cross-client audience scope preserves the API audience boundary. Start the
 frontend with `pnpm dev:copilot` after the Compose stack is ready and sign in
 with `copilot-demo@example.test` and password `gantry_demo_password`. The
-Approvals page is available for action-time approvals. Inline Task artifact
-metadata and download are available through the current artifact API; the
-standalone artifact browser remains a later target route.
+Approvals page is available for action-time approvals. Session artifact metadata
+and audited downloads are available inline and through the standalone Artifacts
+page.
 
 For a natively started control plane or a different browser origin, override
 the Vite settings before starting the app:
@@ -189,15 +189,15 @@ declared in `deploy/compose/dex/config.yaml`; use its gRPC API instead of adding
 application-level user management when development users must be changed at
 runtime.
 
-Run the full durable task flow on a Docker-capable machine with Git Bash:
+Run the full durable Session/Run flow on a Docker-capable machine with Git Bash:
 
 ```sh
 moon run deploy-compose:copilot-smoke
 ```
 
 It validates catalog visibility, OIDC authentication, header-based idempotency,
-private task reads, completion, cancellation, action-time approval, runner loss,
-control-plane restart, and safe retry. `POST /api/copilot/v1/tasks` requires `Idempotency-Key`; the
+private Session reads, completion, cancellation, action-time approval, runner loss,
+control-plane restart, and safe retry. `POST /api/copilot/v1/sessions` requires `Idempotency-Key`; the
 first request returns `201`, an identical retry returns `200`, and a changed
 request using the same key returns `409`. Retry creates a new immutable run only
 after the current run has failed or been canceled; it cannot replace active work.
@@ -212,7 +212,7 @@ hand-edited. `pnpm contracts:check` regenerates and fails if tracked generated
 outputs differ.
 
 The persistent Copilot slice includes the development Dex browser login,
-catalog, task submission, WebSocket event replay, cancellation, retry, artifact
+catalog, Session creation and collaboration, WebSocket event replay, cancellation, retry, artifact
 download, and action-time
 approval. The `lifecycle-await-approval` fixture proposes a policy-controlled
 shell action, pauses in `awaiting_approval`, and resumes only after a matching
@@ -247,9 +247,9 @@ agent creation, draft read/update, review and semantic diff, version history,
 publication, rollback, and retirement. Draft updates and publication require
 an `If-Match` draft revision; publication also requires an approved review for
 that exact revision. Publication validates, freezes, and digests the canonical
-`gantry.agent/v1` manifest before it becomes visible to Copilot. The
-The immutable version owns the complete execution manifest. Retirement hides the
-agent from the catalog without deleting historical versions, tasks, or runs.
+`gantry.agent/v1` manifest before it becomes visible to Copilot. The immutable
+version owns the complete execution manifest. Retirement hides the Agent from
+the catalog without deleting historical versions, Sessions, or Runs.
 
 The Admin workbench is desktop-first. Start it after Compose is ready:
 
@@ -280,9 +280,9 @@ revision preconditions, publishes an immutable version, observes catalog
 visibility and successful execution, then retires the agent. It prints relevant
 service logs and removes its Compose project on failure.
 
-The Admin schema is an intentionally clean pre-release replacement, not a
-forward migration. Reset a local Compose database created by an older build
-before starting this version:
+The Gantry bootstrap schema is an intentionally clean pre-release replacement,
+not a forward migration. Reset a local Compose database created by an older
+build before starting this version:
 
 ```sh
 docker compose -f deploy/compose/docker-compose.yml down --volumes

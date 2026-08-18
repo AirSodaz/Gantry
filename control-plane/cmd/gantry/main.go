@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -35,7 +34,8 @@ import (
 	"github.com/AirSodaz/gantry/internal/identity"
 	"github.com/AirSodaz/gantry/internal/objectstore"
 	"github.com/AirSodaz/gantry/internal/runnersession"
-	"github.com/AirSodaz/gantry/internal/tasks"
+	"github.com/AirSodaz/gantry/internal/runs"
+	"github.com/AirSodaz/gantry/internal/sessions"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -75,7 +75,8 @@ func main() {
 		}
 	}
 	approvalService := approvals.NewService(databasePool)
-	taskService := tasks.NewServiceWithStore(databasePool, approvalService, store)
+	runService := runs.NewService(databasePool, approvalService, store)
+	sessionService := sessions.NewService(databasePool, approvalService, store, runService)
 	authorizer := authorization.NewService(databasePool)
 	assetService := configassets.NewService(databasePool, authorizer)
 	policyService := adminpolicy.NewService(databasePool, authorizer)
@@ -83,7 +84,7 @@ func main() {
 	integrationService := adminintegration.NewService(databasePool, authorizer)
 	platformService := adminplatform.NewService(databasePool, authorizer)
 	agentService := agentlifecycle.NewService(databasePool, authorizer)
-	failedRuns, err := taskService.FailInFlight(context.Background(), "control plane restarted while a run was active")
+	failedRuns, err := runService.FailInFlight(context.Background(), "control plane restarted while a run was active")
 	if err != nil {
 		logger.Error("could not recover interrupted runs", "error", err)
 		os.Exit(1)
@@ -91,8 +92,8 @@ func main() {
 	if failedRuns != 0 {
 		logger.Warn("marked interrupted runs as failed", "count", failedRuns)
 	}
-	developmentLifecycle := development.NewLifecycle(taskService)
-	persistentScheduler := runnersession.NewPersistentScheduler(logger, taskService)
+	developmentLifecycle := development.NewLifecycle(sessionService)
+	persistentScheduler := runnersession.NewPersistentScheduler(logger, runService)
 	var copilotAuth *identity.Authenticator
 	if cfg.CopilotOIDC.Issuer != "" {
 		verifier, err := identity.NewOIDCVerifier(context.Background(), cfg.CopilotOIDC.Issuer, cfg.CopilotOIDC.Audience)
@@ -112,7 +113,7 @@ func main() {
 		adminAuth = identity.NewAuthenticator(verifier, identity.NewResolver(databasePool))
 	}
 
-	public := publicServer(cfg, store, databasePool, developmentLifecycle, taskService, approvalService, agentService, assetService, policyService, evaluationService, integrationService, platformService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
+	public := publicServer(cfg, store, databasePool, developmentLifecycle, sessionService, runService, approvalService, agentService, assetService, policyService, evaluationService, integrationService, platformService, authorizer, persistentScheduler, copilotAuth, adminAuth, logger)
 	runner := runnerServer(cfg, logger, persistentScheduler)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -149,7 +150,7 @@ func serve(errCh chan<- error, name string, server *http.Server) {
 	}
 }
 
-func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, taskService *tasks.Service, approvalService *approvals.Service, agentService *agentlifecycle.Service, assetService *configassets.Service, policyService *adminpolicy.Service, evaluationService *adminevaluation.Service, integrationService *adminintegration.Service, platformService *adminplatform.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
+func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool *pgxpool.Pool, developmentLifecycle *development.Lifecycle, sessionService *sessions.Service, runService *runs.Service, approvalService *approvals.Service, agentService *agentlifecycle.Service, assetService *configassets.Service, policyService *adminpolicy.Service, evaluationService *adminevaluation.Service, integrationService *adminintegration.Service, platformService *adminplatform.Service, authorizer *authorization.Service, scheduler *runnersession.PersistentScheduler, copilotAuth, adminAuth *identity.Authenticator, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -169,22 +170,15 @@ func publicServer(cfg config.Config, store objectstore.ObjectStore, databasePool
 		mux.Handle("/internal/development/", developmentapi.NewHandler(cfg.Development.Token, developmentLifecycle, scheduler, logger))
 	}
 	mux.HandleFunc("POST /internal/runner/artifacts/{artifactID}", func(w http.ResponseWriter, r *http.Request) {
-		uploader, ok := any(taskService).(interface {
-			UploadArtifact(context.Context, string, string, io.Reader) error
-		})
-		if !ok {
-			writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "artifact upload is unavailable"})
-			return
-		}
 		r.Body = http.MaxBytesReader(w, r.Body, 64<<20+1)
-		if err := uploader.UploadArtifact(r.Context(), r.PathValue("artifactID"), r.Header.Get("X-Gantry-Artifact-Token"), r.Body); err != nil {
+		if err := runService.UploadArtifact(r.Context(), r.PathValue("artifactID"), r.Header.Get("X-Gantry-Artifact-Token"), r.Body); err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "artifact upload rejected"})
 			return
 		}
 		writeJSON(w, http.StatusCreated, map[string]string{"status": "available", "artifact_id": r.PathValue("artifactID")})
 	})
 	if copilotAuth != nil {
-		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, taskService, approvalService, scheduler, logger)))
+		mux.Handle("/api/copilot/v1/", http.StripPrefix("/api/copilot/v1", copilotapi.New(copilotAuth, sessionService, approvalService, scheduler, logger, runService)))
 	}
 	if adminAuth != nil {
 		overviewService := adminoverview.NewService(databasePool, authorizer)
