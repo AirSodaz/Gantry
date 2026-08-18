@@ -407,6 +407,9 @@ func TestCreateAttachmentReturnsOnlyTheRequestersUploadGrant(t *testing.T) {
 	if !strings.Contains(response.Body.String(), `"upload_token":"short-lived"`) {
 		t.Fatalf("body=%s", response.Body.String())
 	}
+	if !strings.Contains(response.Body.String(), `"upload_path":"/attachments/att_1/content"`) {
+		t.Fatalf("upload path=%s", response.Body.String())
+	}
 }
 
 func TestCompleteAttachmentParsesColonSuffix(t *testing.T) {

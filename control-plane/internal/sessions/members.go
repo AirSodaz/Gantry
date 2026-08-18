@@ -192,8 +192,10 @@ func (s *Service) mutateMembers(ctx context.Context, actor identity.Principal, s
 			return Session{}, err
 		}
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1,updated_at=now() WHERE id=$1`, sessionID); err != nil {
-		return Session{}, err
+	if op != "transfer" {
+		if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1,updated_at=now() WHERE id=$1`, sessionID); err != nil {
+			return Session{}, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Session{}, err

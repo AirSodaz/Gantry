@@ -230,9 +230,6 @@ func (s *Service) UploadArtifact(ctx context.Context, artifactID, token string, 
 	}
 	var runID, sessionID, filename string
 	if err := tx.QueryRow(ctx, `SELECT run_id, session_id, filename FROM gantry.artifacts WHERE id=$1`, artifactID).Scan(&runID, &sessionID, &filename); err == nil {
-		if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1 WHERE id=$1`, sessionID); err != nil {
-			return err
-		}
 		if err := sessionmessage.Append(ctx, tx, sessionID, runID, "system_summary", sessionmessage.Artifact(artifactID, filename)); err != nil {
 			return err
 		}

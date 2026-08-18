@@ -53,6 +53,7 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, sessionI
 		return CancelResult{}, err
 	}
 	result := CancelResult{Run: Run{ID: runID, Status: publicStatus(status), LeaseEpoch: epoch, AcknowledgedEventSequence: acknowledgedSequence}}
+	result.Run.State = publicState(status)
 	switch status {
 	case "queued":
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='canceled', outcome='canceled', status_reason='canceled before assignment', completed_at=now() WHERE id=$1`, runID); err != nil {
@@ -65,6 +66,7 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, sessionI
 			return CancelResult{}, err
 		}
 		result.Run.Status = "canceled"
+		result.Run.State = publicState(result.Run.Status)
 	case "assigned", "accepted", "awaiting_approval", "suspended":
 		if _, err := tx.Exec(ctx, `UPDATE gantry.runs SET status='canceling' WHERE id=$1`, runID); err != nil {
 			return CancelResult{}, err
@@ -82,8 +84,10 @@ func (s *Service) Cancel(ctx context.Context, actor identity.Principal, sessionI
 			return CancelResult{}, err
 		}
 		result.Run.Status, result.Deliver = "canceling", true
+		result.Run.State = publicState(result.Run.Status)
 	case "canceling", "completed", "failed", "canceled":
 		result.Run.Status = publicStatus(status)
+		result.Run.State = publicState(status)
 	default:
 		return CancelResult{}, fmt.Errorf("unknown run status %q", status)
 	}
@@ -190,9 +194,6 @@ func (s *Service) retry(ctx context.Context, actor identity.Principal, sessionID
 		return RetryResult{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE gantry.idempotency_tombstones SET run_id=$4 WHERE principal_id=$1 AND route=$2 AND idempotency_key=$3`, actor.ID, retryRoute, key, runID); err != nil {
-		return RetryResult{}, err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1, updated_at=now() WHERE id=$1`, sessionID); err != nil {
 		return RetryResult{}, err
 	}
 	if err := appendEvent(ctx, tx, runID, "run.queued"); err != nil {

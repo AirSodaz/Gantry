@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CopilotApi, CopilotApiError } from "./client";
 
 describe("CopilotApi", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("uses Session routes and preserves an ETag on session commands", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ id: "ses_1" }), { headers: { ETag: '"1"' } }))
@@ -69,5 +73,37 @@ describe("CopilotApi", () => {
       headers: expect.objectContaining({ "Idempotency-Key": "favorite-1" }),
       body: JSON.stringify({ is_favorite: true }),
     });
+  });
+
+  it("uploads attachments with the bearer token and a single API prefix", async () => {
+    class MockXHR {
+      static instances: MockXHR[] = [];
+      readonly upload = {};
+      readonly headers = new Map<string, string>();
+      status = 204;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      open = vi.fn();
+      setRequestHeader = vi.fn((name: string, value: string) => {
+        this.headers.set(name, value);
+      });
+      send = vi.fn(() => this.onload?.());
+
+      constructor() {
+        MockXHR.instances.push(this);
+      }
+    }
+    vi.stubGlobal("XMLHttpRequest", MockXHR);
+    const api = new CopilotApi(() => "access-token");
+
+    await api.uploadAttachment(
+      { upload_path: "/attachments/att_1/content", upload_token: "upload-token" } as never,
+      new File(["hello"], "hello.txt", { type: "text/plain" }),
+    );
+
+    const xhr = MockXHR.instances[0];
+    expect(xhr.open).toHaveBeenCalledWith("PUT", "/api/copilot/v1/attachments/att_1/content");
+    expect(xhr.headers.get("Authorization")).toBe("Bearer access-token");
+    expect(xhr.headers.get("X-Gantry-Upload-Token")).toBe("upload-token");
   });
 });

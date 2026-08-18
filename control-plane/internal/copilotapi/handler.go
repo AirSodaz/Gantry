@@ -225,7 +225,7 @@ func (h Handler) listSessions(w http.ResponseWriter, r *http.Request, actor iden
 	pageInfo := map[string]any{"has_more": page.HasMore}
 	if page.HasMore {
 		last := page.Items[len(page.Items)-1]
-		pageInfo["next_cursor"] = h.encodeSessionListCursor(actor, filter, sessions.SessionCursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		pageInfo["next_cursor"] = h.encodeSessionListCursor(actor, filter, sessions.SessionCursor{UpdatedAt: last.UpdatedAt, ID: last.ID})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": page.Items, "page_info": pageInfo})
 }

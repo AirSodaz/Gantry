@@ -14,10 +14,10 @@ func TestSessionListCursorBindsMemberAndFilters(t *testing.T) {
 	handler := Handler{eventKey: []byte("cursor-test-key")}
 	createdAt := time.Date(2026, 8, 17, 2, 0, 0, 0, time.UTC)
 	filter := sessions.ListFilter{State: "active", Mode: "shared", AgentID: "agt_1", MyAction: "approval"}
-	cursor := handler.encodeSessionListCursor(identity.Principal{ID: "prn_1"}, filter, sessions.SessionCursor{CreatedAt: createdAt, ID: "ses_1"})
+	cursor := handler.encodeSessionListCursor(identity.Principal{ID: "prn_1"}, filter, sessions.SessionCursor{UpdatedAt: createdAt, ID: "ses_1"})
 
 	parsed, ok := handler.parseSessionListCursor(cursor, identity.Principal{ID: "prn_1"}, filter)
-	if !ok || parsed == nil || !parsed.CreatedAt.Equal(createdAt) || parsed.ID != "ses_1" {
+	if !ok || parsed == nil || !parsed.UpdatedAt.Equal(createdAt) || parsed.ID != "ses_1" {
 		t.Fatalf("cursor = %#v, ok = %v", parsed, ok)
 	}
 	if _, ok := handler.parseSessionListCursor(cursor, identity.Principal{ID: "prn_2"}, filter); ok {

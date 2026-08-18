@@ -30,12 +30,19 @@ type Service struct {
 	approvals   *approvals.Service
 	attachments AttachmentStore
 	artifacts   ArtifactReader
+	content     ContentReader
 }
 
 // AttachmentStore contains only the object operations owned by Sessions.
 type AttachmentStore interface {
 	Put(context.Context, string, io.Reader, int64, string) error
 	Head(context.Context, string) (int64, error)
+}
+
+// ContentReader supplies Run-owned content segments for the Session event
+// projection. The same object store also owns attachment writes.
+type ContentReader interface {
+	Get(context.Context, string) (io.ReadCloser, error)
 }
 
 // ArtifactReader lets Session projections include Run-owned artifacts without
@@ -45,7 +52,8 @@ type ArtifactReader interface {
 }
 
 func NewService(pool *pgxpool.Pool, approvalService *approvals.Service, attachments AttachmentStore, artifacts ArtifactReader) *Service {
-	return &Service{pool: pool, approvals: approvalService, attachments: attachments, artifacts: artifacts}
+	content, _ := attachments.(ContentReader)
+	return &Service{pool: pool, approvals: approvalService, attachments: attachments, artifacts: artifacts, content: content}
 }
 
 type Agent struct {
@@ -157,7 +165,7 @@ type ListFilter struct {
 }
 
 type SessionCursor struct {
-	CreatedAt time.Time
+	UpdatedAt time.Time
 	ID        string
 }
 

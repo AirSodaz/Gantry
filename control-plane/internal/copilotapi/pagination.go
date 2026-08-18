@@ -15,7 +15,7 @@ import (
 type sessionListCursorClaims struct {
 	Actor     string `json:"actor"`
 	Filter    string `json:"filter"`
-	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 	ID        string `json:"id"`
 }
 
@@ -160,15 +160,15 @@ func (h Handler) parseSessionListCursor(raw string, actor identity.Principal, fi
 	if !ok || claims.Actor != actor.ID || claims.Filter != sessionListFilterHash(filter) {
 		return nil, false
 	}
-	createdAt, err := time.Parse(time.RFC3339Nano, claims.CreatedAt)
+	updatedAt, err := time.Parse(time.RFC3339Nano, claims.UpdatedAt)
 	if err != nil || claims.ID == "" {
 		return nil, false
 	}
-	return &sessions.SessionCursor{CreatedAt: createdAt, ID: claims.ID}, true
+	return &sessions.SessionCursor{UpdatedAt: updatedAt, ID: claims.ID}, true
 }
 
 func (h Handler) encodeSessionListCursor(actor identity.Principal, filter sessions.ListFilter, cursor sessions.SessionCursor) string {
-	return signPayload(h.eventKey, "session-page", sessionListCursorClaims{Actor: actor.ID, Filter: sessionListFilterHash(filter), CreatedAt: cursor.CreatedAt.UTC().Format(time.RFC3339Nano), ID: cursor.ID})
+	return signPayload(h.eventKey, "session-page", sessionListCursorClaims{Actor: actor.ID, Filter: sessionListFilterHash(filter), UpdatedAt: cursor.UpdatedAt.UTC().Format(time.RFC3339Nano), ID: cursor.ID})
 }
 
 func sessionListFilterHash(filter sessions.ListFilter) string {

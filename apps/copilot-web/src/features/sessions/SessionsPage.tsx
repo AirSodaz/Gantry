@@ -234,12 +234,12 @@ function requesterActionLabel(action?: string) {
 }
 
 function artifactAvailability(
-  artifacts?: Array<{ state?: string; scan_status?: string }>,
+  artifacts?: Array<{ state?: string; scan_state?: string }>,
 ) {
   if (!artifacts?.length) return "No artifacts";
   return artifacts.every(
     (artifact) =>
-      artifact.state === "available" && artifact.scan_status === "passed",
+      artifact.state === "available" && artifact.scan_state === "passed",
   )
     ? "Artifacts ready"
     : "Artifacts processing";

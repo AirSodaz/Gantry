@@ -43,7 +43,7 @@ func (h Handler) createAttachment(w http.ResponseWriter, r *http.Request, actor 
 	if duplicate {
 		status = http.StatusOK
 	}
-	writeJSON(w, status, sessions.AttachmentUploadGrant{Attachment: item, UploadPath: "/api/copilot/v1/attachments/" + item.ID + "/content", UploadToken: item.UploadToken, ExpiresAt: item.UploadExpires})
+	writeJSON(w, status, sessions.AttachmentUploadGrant{Attachment: item, UploadPath: "/attachments/" + item.ID + "/content", UploadToken: item.UploadToken, ExpiresAt: item.UploadExpires})
 }
 
 func (h Handler) getAttachment(w http.ResponseWriter, r *http.Request, actor identity.Principal) {

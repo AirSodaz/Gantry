@@ -62,8 +62,13 @@ export function useSessionStream({
         pageParams: [""],
       });
       queryClient.setQueryData(["session-approvals", sessionId], {
-        items: snapshot.approvals,
-        page_info: { has_more: false, next_cursor: null },
+        pages: [
+          {
+            items: snapshot.approvals,
+            page_info: { has_more: false, next_cursor: null },
+          },
+        ],
+        pageParams: [""],
       });
     };
     const connect = async () => {

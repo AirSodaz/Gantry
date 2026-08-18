@@ -21,7 +21,7 @@ func Append(ctx context.Context, tx pgx.Tx, runID, eventType string, payload any
 		return err
 	}
 	var sessionSequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.sessions SET session_event_sequence=session_event_sequence+1 WHERE id=$1 RETURNING session_event_sequence`, sessionID).Scan(&sessionSequence); err != nil {
+	if err := tx.QueryRow(ctx, `UPDATE gantry.sessions SET session_event_sequence=session_event_sequence+1,conversation_revision=conversation_revision+1,updated_at=now() WHERE id=$1 RETURNING session_event_sequence`, sessionID).Scan(&sessionSequence); err != nil {
 		return err
 	}
 	return insert(ctx, tx, runID, runSequence, sessionSequence, eventType, data)
@@ -35,7 +35,7 @@ func AppendSession(ctx context.Context, tx pgx.Tx, sessionID, eventType string, 
 		return err
 	}
 	var sequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.sessions SET session_event_sequence=session_event_sequence+1 WHERE id=$1 RETURNING session_event_sequence`, sessionID).Scan(&sequence); err != nil {
+	if err := tx.QueryRow(ctx, `UPDATE gantry.sessions SET session_event_sequence=session_event_sequence+1,conversation_revision=conversation_revision+1,updated_at=now() WHERE id=$1 RETURNING session_event_sequence`, sessionID).Scan(&sequence); err != nil {
 		return err
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO gantry.session_events (session_id, session_sequence, event_type, payload) VALUES ($1,$2,$3,$4::jsonb)`, sessionID, sequence, eventType, string(data))
@@ -53,7 +53,11 @@ func AppendAtSessionSequence(ctx context.Context, tx pgx.Tx, runID string, sessi
 		return err
 	}
 	var runSequence int64
-	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET event_sequence=event_sequence+1 WHERE id=$1 RETURNING event_sequence`, runID).Scan(&runSequence); err != nil {
+	var sessionID string
+	if err := tx.QueryRow(ctx, `UPDATE gantry.runs SET event_sequence=event_sequence+1 WHERE id=$1 RETURNING session_id,event_sequence`, runID).Scan(&sessionID, &runSequence); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1,updated_at=now() WHERE id=$1`, sessionID); err != nil {
 		return err
 	}
 	return insert(ctx, tx, runID, runSequence, sessionSequence, eventType, data)

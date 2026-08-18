@@ -89,7 +89,7 @@ func (s *Service) List(ctx context.Context, actor identity.Principal, filter Lis
 	var afterUpdatedAt *time.Time
 	var afterID string
 	if after != nil {
-		afterUpdatedAt, afterID = &after.CreatedAt, after.ID
+		afterUpdatedAt, afterID = &after.UpdatedAt, after.ID
 	}
 	pageLimit := boundedLimit(limit)
 	rows, err := s.pool.Query(ctx, `SELECT s.id FROM gantry.sessions s JOIN gantry.session_members m ON m.session_id=s.id AND m.principal_id=$1 WHERE ($2='' OR s.state=$2) AND ($3='' OR s.mode=$3) AND ($4='' OR s.agent_id=$4) AND ($5='' OR ($5='approval' AND EXISTS (SELECT 1 FROM gantry.runs r JOIN gantry.approval_requests ap ON ap.run_id=r.id WHERE r.session_id=s.id AND ap.status='pending' AND r.requester_principal_id=$1))) AND ($6::timestamptz IS NULL OR s.updated_at>=$6) AND ($7::timestamptz IS NULL OR s.updated_at<$7 OR (s.updated_at=$7 AND s.id<$8)) ORDER BY s.updated_at DESC,s.id DESC LIMIT $9`, actor.ID, filter.State, filter.Mode, filter.AgentID, filter.MyAction, filter.UpdatedAfter, afterUpdatedAt, afterID, pageLimit+1)

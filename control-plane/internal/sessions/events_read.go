@@ -2,9 +2,13 @@ package sessions
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/AirSodaz/gantry/internal/approvals"
@@ -100,15 +104,17 @@ func (s *Service) Events(ctx context.Context, actor identity.Principal, sessionI
 		if err := rows.Scan(&event.RunID, &event.Sequence, &event.RunSequence, &event.Type, &event.OccurredAt, &event.Payload); err != nil {
 			return EventPage{}, err
 		}
-		if err := s.hydrateContentSegment(ctx, &event); err != nil {
-			return EventPage{}, err
-		}
 		page.Events = append(page.Events, event)
 	}
 	if err := rows.Err(); err != nil {
 		return EventPage{}, err
 	}
 	rows.Close()
+	for index := range page.Events {
+		if err := s.hydrateContentSegment(ctx, tx, &page.Events[index]); err != nil {
+			return EventPage{}, err
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return EventPage{}, err
 	}
@@ -227,4 +233,43 @@ func eventApprovals(ctx context.Context, tx pgx.Tx, actor identity.Principal, se
 	return items, nil
 }
 
-func (s *Service) hydrateContentSegment(context.Context, *Event) error { return nil }
+func (s *Service) hydrateContentSegment(ctx context.Context, tx pgx.Tx, event *Event) error {
+	if event.Type != "model.segment" || s.content == nil {
+		return nil
+	}
+	var reference struct {
+		SegmentID string `json:"segment_id"`
+		MessageID string `json:"message_id"`
+		StreamID  string `json:"stream_id"`
+		Index     int64  `json:"segment_index"`
+	}
+	if err := json.Unmarshal(event.Payload, &reference); err != nil || strings.TrimSpace(reference.SegmentID) == "" {
+		return ErrInvalidInput
+	}
+	var objectKey, digest string
+	var size int64
+	if err := tx.QueryRow(ctx, `SELECT object_key,digest,size_bytes FROM gantry.run_content_segments WHERE id=$1`, reference.SegmentID).Scan(&objectKey, &digest, &size); err != nil {
+		return err
+	}
+	body, err := s.content.Get(ctx, objectKey)
+	if err != nil {
+		return err
+	}
+	defer body.Close()
+	data, err := io.ReadAll(io.LimitReader(body, size+1))
+	if err != nil || int64(len(data)) != size {
+		return ErrInvalidInput
+	}
+	sum := sha256.Sum256(data)
+	if digest != "sha256:"+hex.EncodeToString(sum[:]) {
+		return ErrInvalidInput
+	}
+	event.Type = "model.delta"
+	event.Payload, _ = json.Marshal(map[string]any{
+		"message_id":    reference.MessageID,
+		"stream_id":     strings.TrimSpace(reference.StreamID),
+		"segment_index": reference.Index,
+		"text":          string(data),
+	})
+	return nil
+}

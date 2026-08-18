@@ -41,9 +41,12 @@ export function SessionPage() {
     getNextPageParam: (page) => page.page_info.has_more ? page.page_info.next_cursor : undefined,
     enabled: Boolean(sessionId),
   });
-  const approvalsQuery = useQuery({
+  const approvalsQuery = useInfiniteQuery({
     queryKey: ["session-approvals", sessionId],
-    queryFn: () => api.listApprovals(),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => api.listApprovals(pageParam, "pending"),
+    getNextPageParam: (page) =>
+      page.page_info.has_more ? page.page_info.next_cursor ?? undefined : undefined,
     enabled: sessionQuery.data?.my_action === "approval",
   });
   const stream = useSessionStream({ api, queryClient, sessionId });
@@ -94,7 +97,8 @@ export function SessionPage() {
   const activeRun = session?.executing_run;
   const canCancel = Boolean(activeRun && cancellableRunStates.has(activeRun.state));
   const retryableRun = latestRetryableRun(runs);
-  const pendingApproval = approvalsQuery.data?.items.find(
+  const approvals = approvalsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const pendingApproval = approvals.find(
     (approval) => approval.state === "pending" && approval.run_id === activeRun?.id,
   );
   const messageRows = useMemo(

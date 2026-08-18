@@ -233,9 +233,15 @@ export class CopilotApi {
     progress?: (percent: number) => void,
   ) {
     return new Promise<void>((resolve, reject) => {
+      const token = this.tokenProvider();
+      if (!token) {
+        reject(new CopilotApiError(401, "Your session has expired."));
+        return;
+      }
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", `${baseUrl}${grant.upload_path}`);
       xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.setRequestHeader("X-Gantry-Upload-Token", grant.upload_token);
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {

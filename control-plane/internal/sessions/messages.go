@@ -88,9 +88,6 @@ func (s *Service) AppendMessage(ctx context.Context, actor identity.Principal, s
 	if err := sessionmessage.Append(ctx, tx, sessionID, runID, "requester", sessionmessage.Text(message)); err != nil {
 		return Session{}, false, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE gantry.sessions SET conversation_revision=conversation_revision+1, updated_at=now() WHERE id=$1`, sessionID); err != nil {
-		return Session{}, false, err
-	}
 	if err := appendEvent(ctx, tx, runID, "run.queued"); err != nil {
 		return Session{}, false, err
 	}

@@ -97,7 +97,8 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "not_found"})
 		return
 	}
-	lastSeq, ok := parseAfterCursor(h.eventKey, r.URL.Query().Get("after"), ticket.SessionID, ticket.Actor)
+	rawAfter := strings.TrimSpace(r.URL.Query().Get("after"))
+	lastSeq, ok := parseAfterCursor(h.eventKey, rawAfter, ticket.SessionID, ticket.Actor)
 	if !ok {
 		_ = writeEventFrame(ctx, conn, map[string]any{"type": "error", "code": "cursor_invalid"})
 		return
@@ -106,9 +107,11 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		_ = writeEventFrame(ctx, conn, cursorExpiredFrame(h.eventKey, page, ticket.Actor))
 		return
 	}
-	lastSeq = page.CurrentSeq
-	if err := writeEventFrame(ctx, conn, snapshotFrame(h.eventKey, ticket.SessionID, ticket.Actor, page, lastSeq)); err != nil {
-		return
+	if rawAfter == "" {
+		lastSeq = page.CurrentSeq
+		if err := writeEventFrame(ctx, conn, snapshotFrame(h.eventKey, ticket.SessionID, ticket.Actor, page, lastSeq)); err != nil {
+			return
+		}
 	}
 
 	readDone := make(chan struct{})
