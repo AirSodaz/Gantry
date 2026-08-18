@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Check, Search, Star, Tag } from "lucide-react";
+import { Bot, Check, Search, Star, Tag } from "lucide-react";
 import {
   Button,
   IconButton,
@@ -45,7 +45,8 @@ export function AgentPicker({
     value: string,
   ) => {
     const next = new URLSearchParams(params);
-    if (value && !(key === "collection" && value === "all")) next.set(key, value);
+    if (value && !(key === "collection" && value === "all"))
+      next.set(key, value);
     else next.delete(key);
     setParams(next, { replace: true });
   };
@@ -128,18 +129,26 @@ export function AgentPicker({
         </div>
       </div>
 
-      <div className="agent-collection-tabs" role="tablist" aria-label="Agent collection">
-        {([
-          ["all", "All"],
-          ["favorites", "Favorites"],
-          ["recent", "Recent"],
-        ] as const).map(([value, label]) => (
+      <div
+        className="agent-collection-tabs"
+        role="tablist"
+        aria-label="Agent collection"
+      >
+        {(
+          [
+            ["all", "All"],
+            ["favorites", "Favorites"],
+            ["recent", "Recent"],
+          ] as const
+        ).map(([value, label]) => (
           <button
             key={value}
             type="button"
             role="tab"
             aria-selected={collection === value}
-            className={collection === value ? "agent-collection-tab-active" : ""}
+            className={
+              collection === value ? "agent-collection-tab-active" : ""
+            }
             onClick={() => setFilter("collection", value)}
           >
             {label}
@@ -160,8 +169,9 @@ export function AgentPicker({
       ) : null}
       {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
+          icon={<Bot size={22} />}
           title="No matching agents"
-          detail="Try another search term or clear category filter."
+          description="Try another search term or clear category filter."
         />
       ) : null}
       {favoriteMutation.isError ? (
@@ -202,7 +212,11 @@ export function AgentPicker({
                 ) : null}
               </button>
               <IconButton
-                label={agent.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                label={
+                  agent.is_favorite
+                    ? "Remove from favorites"
+                    : "Add to favorites"
+                }
                 size="sm"
                 variant={agent.is_favorite ? "active" : "quiet"}
                 disabled={favoriteMutation.isPending}
@@ -213,7 +227,10 @@ export function AgentPicker({
                   })
                 }
               >
-                <Star size={16} fill={agent.is_favorite ? "currentColor" : "none"} />
+                <Star
+                  size={16}
+                  fill={agent.is_favorite ? "currentColor" : "none"}
+                />
               </IconButton>
             </div>
           );

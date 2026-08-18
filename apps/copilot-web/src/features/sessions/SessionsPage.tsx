@@ -149,8 +149,9 @@ export function SessionsPage() {
       ) : null}
       {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
+          icon={<ListTodo size={22} />}
           title="No sessions yet"
-          detail={
+          description={
             status || agentId || requesterAction || timeRange
               ? "No sessions match the selected filters."
               : "Start a new session when you are ready."
@@ -174,7 +175,11 @@ export function SessionsPage() {
       ) : null}
       <div className="session-list" aria-label="My sessions">
         {items.map((session) => (
-          <Link to={`/sessions/${session.id}`} className="session-row" key={session.id}>
+          <Link
+            to={`/sessions/${session.id}`}
+            className="session-row"
+            key={session.id}
+          >
             <span className="session-row-icon" aria-hidden="true">
               <ListTodo size={17} />
             </span>
@@ -189,7 +194,9 @@ export function SessionsPage() {
                 {artifactAvailability(session.artifacts)}
               </span>
             </span>
-            <StatusMark status={session.executing_run?.state ?? session.state} />
+            <StatusMark
+              status={session.executing_run?.state ?? session.state}
+            />
             <ArrowUpRight
               size={16}
               className="session-row-arrow"

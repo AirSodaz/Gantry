@@ -1,8 +1,18 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Ban, RotateCcw, Send } from "lucide-react";
-import { Button, StatusMark } from "@gantry/design-system";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Button,
+  Select,
+  type SelectOption,
+  StatusMark,
+} from "@gantry/design-system";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCopilotApi } from "../../api/ApiProvider";
 import type { RunSummary } from "../../api/types";
 import { ErrorState, LoadingState } from "../../components/AsyncState";
@@ -17,6 +27,10 @@ const cancellableRunStates = new Set([
   "canceling",
 ]);
 
+const RETRY_REVISION_OPTIONS: SelectOption[] = [
+  { value: "original_revision", label: "Original version" },
+  { value: "current_production_revision", label: "Current production version" },
+];
 export function SessionPage() {
   const { sessionId = "" } = useParams();
   const api = useCopilotApi();
@@ -38,7 +52,8 @@ export function SessionPage() {
     queryKey: ["session-runs", sessionId],
     initialPageParam: "",
     queryFn: ({ pageParam }) => api.listSessionRuns(sessionId, pageParam),
-    getNextPageParam: (page) => page.page_info.has_more ? page.page_info.next_cursor : undefined,
+    getNextPageParam: (page) =>
+      page.page_info.has_more ? page.page_info.next_cursor : undefined,
     enabled: Boolean(sessionId),
   });
   const approvalsQuery = useInfiniteQuery({
@@ -46,7 +61,9 @@ export function SessionPage() {
     initialPageParam: "",
     queryFn: ({ pageParam }) => api.listApprovals(pageParam, "pending"),
     getNextPageParam: (page) =>
-      page.page_info.has_more ? page.page_info.next_cursor ?? undefined : undefined,
+      page.page_info.has_more
+        ? (page.page_info.next_cursor ?? undefined)
+        : undefined,
     enabled: sessionQuery.data?.my_action === "approval",
   });
   const stream = useSessionStream({ api, queryClient, sessionId });
@@ -60,21 +77,34 @@ export function SessionPage() {
     onSuccess: () => {
       cancelKey.current = null;
       void queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
-      void queryClient.invalidateQueries({ queryKey: ["session-runs", sessionId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["session-runs", sessionId],
+      });
     },
   });
   const retry = useMutation({
     mutationFn: () => {
-      const run = latestRetryableRun(runsQuery.data?.pages.flatMap((page) => page.items));
+      const run = latestRetryableRun(
+        runsQuery.data?.pages.flatMap((page) => page.items),
+      );
       const etag = sessionQuery.data?.conversation_etag;
-      if (!run || !etag) throw new Error("Refresh this session before retrying.");
+      if (!run || !etag)
+        throw new Error("Refresh this session before retrying.");
       if (!retryKey.current) retryKey.current = crypto.randomUUID();
-      return api.retrySessionRun(sessionId, run.id, retryKey.current, etag, retryRevision);
+      return api.retrySessionRun(
+        sessionId,
+        run.id,
+        retryKey.current,
+        etag,
+        retryRevision,
+      );
     },
     onSuccess: () => {
       retryKey.current = null;
       void queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
-      void queryClient.invalidateQueries({ queryKey: ["session-runs", sessionId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["session-runs", sessionId],
+      });
     },
   });
   const continueSession = useMutation({
@@ -82,32 +112,52 @@ export function SessionPage() {
       const etag = sessionQuery.data?.conversation_etag;
       if (!etag) throw new Error("Refresh this session before continuing.");
       if (!followUpKey.current) followUpKey.current = crypto.randomUUID();
-      return api.appendSessionMessage(sessionId, { message: followUp.trim() }, followUpKey.current, etag);
+      return api.appendSessionMessage(
+        sessionId,
+        { message: followUp.trim() },
+        followUpKey.current,
+        etag,
+      );
     },
     onSuccess: (session) => {
       followUpKey.current = null;
       setFollowUp("");
       queryClient.setQueryData(["session", sessionId], session);
-      void queryClient.invalidateQueries({ queryKey: ["session-runs", sessionId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["session-runs", sessionId],
+      });
     },
   });
 
   const session = sessionQuery.data;
   const runs = runsQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const activeRun = session?.executing_run;
-  const canCancel = Boolean(activeRun && cancellableRunStates.has(activeRun.state));
+  const canCancel = Boolean(
+    activeRun && cancellableRunStates.has(activeRun.state),
+  );
   const retryableRun = latestRetryableRun(runs);
-  const approvals = approvalsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const approvals =
+    approvalsQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const pendingApproval = approvals.find(
-    (approval) => approval.state === "pending" && approval.run_id === activeRun?.id,
+    (approval) =>
+      approval.state === "pending" && approval.run_id === activeRun?.id,
   );
   const messageRows = useMemo(
-    () => session?.messages.map((message) => ({ ...message, text: messageText(message.parts) })) ?? [],
+    () =>
+      session?.messages.map((message) => ({
+        ...message,
+        text: messageText(message.parts),
+      })) ?? [],
     [session?.messages],
   );
   if (sessionQuery.isLoading) return <LoadingState label="Loading session" />;
   if (sessionQuery.isError || !session)
-    return <ErrorState message="This session could not be loaded." onRetry={() => void sessionQuery.refetch()} />;
+    return (
+      <ErrorState
+        message="This session could not be loaded."
+        onRetry={() => void sessionQuery.refetch()}
+      />
+    );
 
   return (
     <div className="page-wrap session-page">
@@ -195,21 +245,16 @@ export function SessionPage() {
             </Button>
             {retryableRun ? (
               <>
-                <select
-                  aria-label="Retry version"
-                  value={retryRevision}
-                  onChange={(event) =>
-                    setRetryRevision(
-                      event.target.value as typeof retryRevision,
-                    )
-                  }
-                  disabled={retry.isPending}
-                >
-                  <option value="original_revision">Original version</option>
-                  <option value="current_production_revision">
-                    Current production version
-                  </option>
-                </select>
+                <div style={{ width: "210px" }}>
+                  <Select
+                    options={RETRY_REVISION_OPTIONS}
+                    value={retryRevision}
+                    onChange={(value) =>
+                      setRetryRevision(value as typeof retryRevision)
+                    }
+                    disabled={retry.isPending}
+                  />
+                </div>
                 <Button
                   variant="secondary"
                   disabled={retry.isPending}
@@ -251,9 +296,7 @@ export function SessionPage() {
                 onClick={() => void runsQuery.fetchNextPage()}
                 disabled={runsQuery.isFetchingNextPage}
               >
-                {runsQuery.isFetchingNextPage
-                  ? "Loading..."
-                  : "Load more runs"}
+                {runsQuery.isFetchingNextPage ? "Loading..." : "Load more runs"}
               </Button>
             ) : null}
           </section>

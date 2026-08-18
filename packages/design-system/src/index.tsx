@@ -13,18 +13,53 @@ export * from "./theme";
 
 export const SPACING_UNIT = 8;
 
-export type StatusLabel =
+export type RunState =
   | "Draft"
+  | "In review"
   | "Published"
+  | "Deprecated"
+  | "Queued"
+  | "Provisioning"
   | "Running"
+  | "Awaiting approval"
+  | "Awaiting requester input"
+  | "Suspended"
+  | "Canceling"
   | "Completed"
   | "Failed"
-  | "Queued"
   | "Canceled"
-  | "Pending"
-  | "Valid"
-  | "Invalid";
+  | "Expired"
+  | "Unknown outcome";
 
+export type GovernanceState =
+  | "Requested"
+  | "Processing"
+  | "Evaluating"
+  | "Ready"
+  | "Pending"
+  | "Blocked"
+  | "Quarantined"
+  | "Active"
+  | "Released"
+  | "Retired"
+  | "Available"
+  | "Valid"
+  | "Invalid"
+  | "Passed"
+  | "Approved"
+  | "Rejected"
+  | "Disabled"
+  | "Draining"
+  | "Proposed";
+
+export type StatusLabel = RunState | GovernanceState | (string & {});
+
+export function formatStatusLabel(status?: string | null): string {
+  if (!status) return "Unknown";
+  return status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 export type ButtonVariant =
   "primary" | "secondary" | "quiet" | "danger" | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -169,10 +204,11 @@ export function StatusMark({
   status,
   className = "",
 }: {
-  status: string;
+  status?: string | null;
   className?: string;
 }) {
-  const normalized = status.toLowerCase().replace(/_/g, "-");
+  const safeStatus = status || "Unknown";
+  const normalized = safeStatus.toLowerCase().replace(/[\s_]+/g, "-");
   return (
     <span className={`ds-status ds-status-${normalized} ${className}`.trim()}>
       <span aria-hidden="true" className="ds-status-dot" />
@@ -291,11 +327,18 @@ export function Select({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const listboxRef = useRef<HTMLUListElement>(null);
   const selectId =
     id ??
     (label
       ? `ds-select-${label.toLowerCase().replace(/\s+/g, "-")}`
       : undefined);
+  const listboxId = selectId ? `${selectId}-listbox` : undefined;
+
+  const selectedIndex = options.findIndex((opt) => opt.value === value);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(
+    selectedIndex >= 0 ? selectedIndex : 0,
+  );
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -325,6 +368,18 @@ export function Select({
       };
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const initialIdx = selectedIndex >= 0 ? selectedIndex : 0;
+      setHighlightedIndex(initialIdx);
+      const list = listboxRef.current;
+      if (list) {
+        const item = list.children[initialIdx] as HTMLElement | undefined;
+        item?.focus();
+      }
+    }
+  }, [isOpen, selectedIndex]);
 
   const handleSelect = (val: string) => {
     onChange(val);
@@ -371,9 +426,16 @@ export function Select({
         role="combobox"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
+        aria-controls={isOpen ? listboxId : undefined}
         aria-labelledby={label && selectId ? `${selectId}-label` : undefined}
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            setIsOpen(true);
+          }
+        }}
         className={`ds-input ds-select-trigger ${isOpen ? "ds-select-trigger-open" : ""}`}
       >
         <div className="ds-select-trigger-content">
@@ -406,20 +468,53 @@ export function Select({
 
       {/* Floating Animated Dropdown Menu */}
       {isOpen ? (
-        <ul role="listbox" className="ds-dropdown-menu ds-select-dropdown">
-          {options.map((opt) => {
+        <ul
+          ref={listboxRef}
+          id={listboxId}
+          role="listbox"
+          className="ds-dropdown-menu ds-select-dropdown"
+        >
+          {options.map((opt, idx) => {
             const isSelected = opt.value === value;
+            const isHighlighted = idx === highlightedIndex;
             return (
               <li
                 key={opt.value}
                 role="option"
                 aria-selected={isSelected}
-                tabIndex={0}
+                tabIndex={isHighlighted ? 0 : -1}
                 onClick={() => handleSelect(opt.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     handleSelect(opt.value);
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    const next = (idx + 1) % options.length;
+                    setHighlightedIndex(next);
+                    const nextItem = listboxRef.current?.children[next] as
+                      HTMLElement | undefined;
+                    nextItem?.focus();
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const prev = (idx - 1 + options.length) % options.length;
+                    setHighlightedIndex(prev);
+                    const prevItem = listboxRef.current?.children[prev] as
+                      HTMLElement | undefined;
+                    prevItem?.focus();
+                  } else if (e.key === "Home") {
+                    e.preventDefault();
+                    setHighlightedIndex(0);
+                    const firstItem = listboxRef.current?.children[0] as
+                      HTMLElement | undefined;
+                    firstItem?.focus();
+                  } else if (e.key === "End") {
+                    e.preventDefault();
+                    const last = options.length - 1;
+                    setHighlightedIndex(last);
+                    const lastItem = listboxRef.current?.children[last] as
+                      HTMLElement | undefined;
+                    lastItem?.focus();
                   }
                 }}
                 className={`ds-dropdown-item ${isSelected ? "ds-dropdown-item-selected" : ""}`}
@@ -517,7 +612,6 @@ export function DropdownMenu({
       >
         {trigger}
       </div>
-
       {isOpen ? (
         <div
           role="menu"
@@ -614,18 +708,63 @@ export function Modal({
   footer,
   maxWidth,
 }: ModalProps) {
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElement = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && isOpen) {
         onClose();
+      } else if (event.key === "Tab" && isOpen && modalContainerRef.current) {
+        const focusable =
+          modalContainerRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          );
+        if (focusable.length === 0) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
       }
     }
+
     if (isOpen) {
+      previousFocusedElement.current =
+        document.activeElement as HTMLElement | null;
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+
+      // Set initial focus to first focusable element or modal container
+      setTimeout(() => {
+        if (modalContainerRef.current) {
+          const firstFocusable =
+            modalContainerRef.current.querySelector<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            );
+          if (firstFocusable) {
+            firstFocusable.focus();
+          } else {
+            modalContainerRef.current.focus();
+          }
+        }
+      }, 0);
+
       return () => {
         document.removeEventListener("keydown", handleKeyDown);
         document.body.style.overflow = "";
+        previousFocusedElement.current?.focus();
       };
     }
   }, [isOpen, onClose]);
@@ -644,6 +783,8 @@ export function Modal({
       }}
     >
       <div
+        ref={modalContainerRef}
+        tabIndex={-1}
         className="ds-modal-container"
         style={maxWidth ? { maxWidth: `${maxWidth}px` } : undefined}
       >
@@ -730,13 +871,17 @@ export function CodeBlock({
   maxHeight,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = () => {
-    void navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // Clipboard access may fail in restricted/unsupported contexts
+    }
   };
-
   return (
     <div className={`ds-code-block ${className}`.trim()}>
       <div className="ds-code-header">

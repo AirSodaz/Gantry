@@ -30,7 +30,6 @@ select {
 button:focus-visible,
 a:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--ds-brand-cyan);
   outline-offset: 2px;
@@ -583,14 +582,27 @@ a {
   transition: all var(--ds-duration) var(--ds-ease);
 }
 
-.agent-option:hover,
-.agent-option:focus-within {
+.agent-option:hover {
   background: var(--ds-surface-muted);
   border-color: var(--ds-border-strong);
   transform: translateY(-1px);
   box-shadow: var(--ds-shadow-sm);
 }
 
+.agent-option:focus-within {
+  border-color: var(--ds-border-strong);
+}
+
+.agent-option.agent-option-selected,
+.agent-option-selected,
+.agent-option-selected:hover,
+.agent-option-selected:focus-within {
+  border-color: var(--ds-brand-cyan);
+  background: var(--ds-surface-active);
+  box-shadow:
+    0 0 0 1.5px var(--ds-brand-cyan),
+    var(--ds-shadow-sm);
+}
 .agent-option-main {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 20px;
@@ -603,12 +615,11 @@ a {
   color: inherit;
   text-align: left;
   cursor: pointer;
+  outline: none;
 }
 
-.agent-option-selected {
-  border-color: var(--ds-brand-cyan);
-  background: var(--ds-surface-active);
-  box-shadow: 0 0 0 1px var(--ds-brand-cyan);
+.agent-option-main:focus-visible {
+  outline: none;
 }
 .agent-symbol {
   display: grid;
@@ -621,6 +632,13 @@ a {
   color: var(--ds-brand-cyan);
   font-size: 14px;
   font-weight: 700;
+  transition: all var(--ds-duration) var(--ds-ease);
+}
+
+.agent-option-selected .agent-symbol {
+  background: var(--ds-brand-glow);
+  color: var(--ds-brand-cyan);
+  border-color: var(--ds-brand-cyan);
 }
 
 .agent-option-copy {
@@ -674,14 +692,21 @@ a {
     background-color var(--ds-duration) var(--ds-ease);
 }
 
-.chatgpt-prompt-inner:focus-within {
-  border-color: var(--ds-brand-cyan);
-  box-shadow:
-    var(--ds-shadow),
-    0 0 0 3px var(--ds-brand-glow);
+.chatgpt-prompt-inner:hover {
+  border-color: var(--ds-border-strong);
 }
 
-.chatgpt-prompt-textarea {
+.chatgpt-prompt-inner:focus-within {
+  border-color: var(--ds-brand-cyan);
+  background: var(--ds-surface);
+  box-shadow:
+    var(--ds-shadow),
+    0 0 0 2px var(--ds-brand-glow);
+}
+
+.chatgpt-prompt-textarea,
+.chatgpt-prompt-textarea:focus,
+.chatgpt-prompt-textarea:focus-visible {
   width: 100%;
   min-height: 80px;
   border: none;
@@ -691,6 +716,7 @@ a {
   line-height: 1.6;
   resize: none;
   outline: none;
+  box-shadow: none;
   padding: 4px 0 12px;
 }
 

@@ -337,8 +337,12 @@ a {
 }
 
 .admin-theme-section-collapsed {
-  display: flex;
+  display: none;
   justify-content: center;
+}
+
+.admin-sidebar-collapsed .admin-theme-section-collapsed {
+  display: flex;
 }
 
 .admin-profile {
@@ -423,6 +427,13 @@ a {
   .admin-sidebar .admin-profile-info,
   .admin-sidebar .admin-theme-section {
     display: none;
+  }
+
+  .admin-sidebar .admin-theme-section-collapsed {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 6px;
   }
 
   .admin-sidebar-action-wrap {

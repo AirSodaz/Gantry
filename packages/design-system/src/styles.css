@@ -30,7 +30,9 @@ body.light,
   --ds-text: #0d0d0d;
   --ds-text-muted: #5d5d5d;
   --ds-text-dim: #8e8ea0;
-
+  --ds-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   /* Primary Button & Brand Accents (ChatGPT Solid Pill) */
   --ds-primary: #0d0d0d;
   --ds-primary-text: #ffffff;
@@ -46,7 +48,7 @@ body.light,
 
   /* Status Colors */
   --ds-status-running: #d97706;
-  --ds-status-completed: #0284c7;
+  --ds-status-completed: #10a37f;
   --ds-status-failed: #e11d48;
   --ds-status-queued: #6366f1;
   --ds-status-canceled: #71717a;
@@ -58,14 +60,15 @@ body.light,
   --ds-status-low: #0284c7;
   --ds-danger: #e11d48;
   --ds-warning: #d97706;
-  --ds-success: #0284c7;
-
+  --ds-success: #10a37f;
   /* Geometry & Shadows */
   --ds-radius-sm: 8px;
   --ds-radius: 12px;
+  --ds-radius-md: 12px;
   --ds-radius-lg: 16px;
   --ds-radius-xl: 24px;
   --ds-radius-pill: 9999px;
+  --ds-radius-full: 9999px;
 
   --ds-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
   --ds-shadow: 0 4px 20px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -111,6 +114,9 @@ body.dark,
   --ds-text: #ececec;
   --ds-text-muted: #b4b4b4;
   --ds-text-dim: #737373;
+  --ds-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 
   /* Primary Button & Brand Accents (ChatGPT Solid Pill) */
   --ds-primary: #ffffff;
@@ -127,7 +133,7 @@ body.dark,
 
   /* Status Colors */
   --ds-status-running: #f59e0b;
-  --ds-status-completed: #38bdf8;
+  --ds-status-completed: #10a37f;
   --ds-status-failed: #f43f5e;
   --ds-status-queued: #818cf8;
   --ds-status-canceled: #71717a;
@@ -139,8 +145,7 @@ body.dark,
   --ds-status-low: #38bdf8;
   --ds-danger: #f43f5e;
   --ds-warning: #f59e0b;
-  --ds-success: #38bdf8;
-
+  --ds-success: #10a37f;
   /* Geometry & Shadows */
   --ds-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --ds-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -148,6 +153,8 @@ body.dark,
     0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
   --ds-shadow-glow: 0 0 24px rgba(255, 255, 255, 0.08);
 
+  --ds-radius-md: 12px;
+  --ds-radius-full: 9999px;
   color-scheme: dark;
 }
 
@@ -700,66 +707,76 @@ body.dark,
 }
 
 /* Status Dot Colors & Breathing Animations */
+/* 1. Execution & In-Flight: Amber with pulse */
 .ds-status-running .ds-status-dot,
-.ds-status-queued .ds-status-dot,
 .ds-status-provisioning .ds-status-dot,
 .ds-status-canceling .ds-status-dot,
-.ds-status-awaiting-approval .ds-status-dot,
-.ds-status-suspended .ds-status-dot {
+.ds-status-processing .ds-status-dot,
+.ds-status-evaluating .ds-status-dot,
+.ds-status-draining .ds-status-dot,
+.ds-status-validating .ds-status-dot,
+.ds-status-hashing .ds-status-dot {
   background: var(--ds-status-running);
   animation: ds-pulse-dot 2s infinite ease-in-out;
 }
 
-.ds-status-completed .ds-status-dot,
-.ds-status-published .ds-status-dot,
-.ds-status-valid .ds-status-dot,
-.ds-status-available .ds-status-dot,
-.ds-status-approved .ds-status-dot,
-.ds-status-passed .ds-status-dot,
-.ds-status-active .ds-status-dot {
-  background: var(--ds-status-completed);
-}
-
-.ds-status-failed .ds-status-dot,
-.ds-status-rejected .ds-status-dot,
-.ds-status-quarantined .ds-status-dot,
-.ds-status-high .ds-status-dot,
-.ds-status-invalid .ds-status-dot {
-  background: var(--ds-status-failed);
-}
-
-.ds-status-canceled .ds-status-dot,
-.ds-status-disabled .ds-status-dot {
-  background: var(--ds-status-canceled);
-}
-
-.ds-status-proposed .ds-status-dot,
-.ds-status-draining .ds-status-dot,
-.ds-status-deprecated .ds-status-dot {
-  background: var(--ds-status-running);
-}
-
-.ds-status-retired .ds-status-dot {
-  background: var(--ds-status-canceled);
-}
-
-.ds-status-draft .ds-status-dot,
+/* 2. Pending, Review & Queued: Indigo / Purple hint */
+.ds-status-queued .ds-status-dot,
 .ds-status-pending .ds-status-dot,
-.ds-status-awaiting-requester-input .ds-status-dot {
+.ds-status-requested .ds-status-dot,
+.ds-status-awaiting-approval .ds-status-dot,
+.ds-status-awaiting-requester-input .ds-status-dot,
+.ds-status-in-review .ds-status-dot,
+.ds-status-draft .ds-status-dot,
+.ds-status-proposed .ds-status-dot {
   background: var(--ds-status-queued);
 }
 
-.ds-status-write .ds-status-dot,
-.ds-status-medium .ds-status-dot {
-  background: var(--ds-status-running);
-}
-
-.ds-status-read .ds-status-dot,
-.ds-status-low .ds-status-dot,
+/* 3. Success, Active & Approved: Emerald Green */
+.ds-status-completed .ds-status-dot,
+.ds-status-published .ds-status-dot,
+.ds-status-active .ds-status-dot,
+.ds-status-ready .ds-status-dot,
+.ds-status-released .ds-status-dot,
+.ds-status-available .ds-status-dot,
+.ds-status-valid .ds-status-dot,
+.ds-status-passed .ds-status-dot,
+.ds-status-approved .ds-status-dot,
 .ds-status-standard .ds-status-dot,
-.ds-status-internal .ds-status-dot,
+.ds-status-low .ds-status-dot,
 .ds-status-public .ds-status-dot {
   background: var(--ds-status-completed);
+}
+
+/* 4. Danger, Failed & Blocked: Rose Red */
+.ds-status-failed .ds-status-dot,
+.ds-status-rejected .ds-status-dot,
+.ds-status-quarantined .ds-status-dot,
+.ds-status-blocked .ds-status-dot,
+.ds-status-invalid .ds-status-dot,
+.ds-status-high .ds-status-dot,
+.ds-status-confidential .ds-status-dot {
+  background: var(--ds-status-failed);
+}
+
+/* 5. Warning & Suspended: Warm Orange */
+.ds-status-suspended .ds-status-dot,
+.ds-status-deprecated .ds-status-dot,
+.ds-status-medium .ds-status-dot,
+.ds-status-write .ds-status-dot {
+  background: var(--ds-warning);
+}
+
+/* 6. Muted, Expired & Retired: Zinc Gray */
+.ds-status-canceled .ds-status-dot,
+.ds-status-disabled .ds-status-dot,
+.ds-status-retired .ds-status-dot,
+.ds-status-expired .ds-status-dot,
+.ds-status-unknown-outcome .ds-status-dot,
+.ds-status-internal .ds-status-dot,
+.ds-status-read .ds-status-dot,
+.ds-status-not-submitted .ds-status-dot {
+  background: var(--ds-status-canceled);
 }
 /* --------------------------------------------------------------------------
    11. Card Components (ChatGPT Clean Elevated Surfaces)
@@ -844,7 +861,7 @@ body.dark,
 
 .ds-badge-success {
   background: rgba(16, 163, 127, 0.12);
-  color: var(--ds-status-completed);
+  color: var(--ds-success);
   border-color: rgba(16, 163, 127, 0.25);
 }
 

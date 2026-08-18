@@ -275,11 +275,10 @@ export function AppShell() {
             <div className="admin-theme-section">
               <ThemeToggle variant="segmented" size="sm" />
             </div>
-          ) : (
-            <div className="admin-theme-section-collapsed">
-              <ThemeToggle variant="icon" size="sm" />
-            </div>
-          )}
+          ) : null}
+          <div className="admin-theme-section-collapsed">
+            <ThemeToggle variant="icon" size="sm" />
+          </div>
 
           <div className="admin-profile" title={name}>
             <div className="admin-profile-info">

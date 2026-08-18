@@ -33,20 +33,4 @@ export function ErrorState({
   );
 }
 
-export function EmptyState({
-  title,
-  detail,
-  action,
-}: {
-  title: string;
-  detail: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="state-empty">
-      <strong>{title}</strong>
-      <p>{detail}</p>
-      {action ? <div style={{ marginTop: "12px" }}>{action}</div> : null}
-    </div>
-  );
-}
+export { EmptyState, type EmptyStateProps } from "@gantry/design-system";

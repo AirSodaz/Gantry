@@ -93,8 +93,9 @@ export function ArtifactsPage() {
       ) : null}
       {!query.isLoading && !query.isError && items.length === 0 ? (
         <EmptyState
+          icon={<FileArchive size={22} />}
           title="No artifacts found"
-          detail={
+          description={
             sessionId || classification
               ? "No artifacts match the current filter criteria."
               : "Files produced by your sessions will appear here."
