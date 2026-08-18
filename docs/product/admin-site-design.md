@@ -90,7 +90,7 @@ require an explicit confirmation surface with the affected scope and result.
 | Role | Primary page access |
 | --- | --- |
 | Organization Administrator | All pages and all-workspace aggregation; installation, platform, identity, and emergency controls |
-| Workspace Agent Editor | Agents, Skills, enabled Plugins, available Tools, workspace Runs and Evaluations |
+| Workspace Agent Editor | Agents, Skills, enabled Plugins, available Tools, workspace Runs and Evaluations; explicit self-view of Agent Sessions as viewer |
 | Security Reviewer | Agent reviews, Plugin/Tool risk, Policies, Audit, evaluation evidence, and scoped Audit export |
 | Operator | Overview, Runs, runtime artifacts, Runners, provider health, and read-only operational Audit |
 | Auditor | Read-only Overview, Runs, Integrations, Policies, Audit, and scoped Audit export within assigned scope |
@@ -889,6 +889,11 @@ Available commands depend on state and independent permissions:
   exact linked resource.
 - `Inspect tool call` shows the action digest, approval, policy decision,
   result classification, and redacted output permitted to the actor.
+- `View conversation` is available to a `workspace_agent_editor` only after an
+  explicit self-enrollment command for the Session's Agent Workspace. It adds
+  the caller as `viewer`, records Audit evidence, and opens the ordinary
+  member-scoped Copilot view; it cannot add another principal or grant write,
+  execution, approval, or membership-management authority.
 
 Destructive, authority-broadening, or external-effect commands require a
 confirmation surface with scope, expected result, and correlation ID. Run
@@ -1000,9 +1005,6 @@ Creating an Integration establishes its identity and ownership only. It does
 not issue a client credential, publish an Agent, or grant invocation authority
 implicitly.
 
-The executable resource, schema, state, and authorization target is defined in
-[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
-
 ### Integration Resource
 
 The resource uses Overview, Clients, Agent Publications, Webhooks, and Usage
@@ -1093,9 +1095,6 @@ binding target, affected Agent, owner, and recent changes.
 The catalog distinguishes a Policy's authored state from its effective use. A
 valid Draft is not active, publishing a Version does not bind it, and removing
 a Binding does not delete the immutable Version or its evidence.
-
-The executable resource, schema, state, and authorization target is defined in
-[Admin Governed Resource Contracts](../architecture/admin-governed-resource-contracts.md).
 
 ### Policy Resource
 

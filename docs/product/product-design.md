@@ -19,8 +19,8 @@ retirement.
 ### Gantry Copilot
 
 Gantry Copilot is an employee-facing application. It provides a catalog of
-approved agents, conversational and task-oriented execution, action approvals
-from the current employee's tasks, run history, and access to generated artifacts. It does
+approved agents, conversational Session execution, action approvals for Runs
+requested by the current employee, Session/Run history, and access to generated artifacts. It does
 not expose prompts, credentials, infrastructure controls, raw policy internals,
 or unrestricted terminal access.
 
@@ -310,14 +310,18 @@ simple agents.
   the same Run's next Agent loop; it does not approve or replay the action.
 - Resume the Session view after browser disconnect or a later login.
 - Allow Session owners to invite contributors and viewers; membership never
-  grants Agent configuration or execution authority.
+  grants Agent configuration or execution authority. A `workspace_agent_editor`
+  may explicitly add itself as a viewer to any Session for an Agent in its
+  managed Workspace; the action is audited and grants no write authority.
 - Execute at most one Run per Session while accepting later instructions into an
   ordered queue.
 
 ### Session History
 
-- List only Sessions where the current employee is a member and organize them by
-  intent, mode, current Run, queued work, last activity, my action, and Artifacts.
+- List owner-owned Sessions by default. An explicit accessible scope includes
+  every current owner, contributor, or viewer membership for the employee.
+  Both scopes are server-filtered and organize results by intent, mode, current
+  Run, queued work, last activity, my action, and Artifacts.
 - Show Run history inside Session detail without exposing runner, lease,
   credential, raw prompt, or cross-user operational internals.
 - Keep retry, cancel, and requester guidance attached to the Run; the Run
@@ -405,7 +409,7 @@ and [Enterprise Agent API Contracts](../architecture/enterprise-agent-api-contra
 | FR-22 | Agent metadata read, configuration read, Draft edit, and execution permissions are independently grantable and revocable. |
 | FR-23 | User-owned inbound Webhook Triggers create ordinary Runs in new or owner-bound Sessions; they cannot broaden Agent or Policy authority, and any required Agent-action approval belongs to the owner requester. |
 | FR-24 | Unattended schedules and Webhooks are owner-bound Triggers; losing owner authority or archiving a bound Session disables new occurrences without rewriting historical evidence. |
-| FR-25 | Personal, shared, and channel Sessions use fixed owner, contributor, and viewer roles; membership never grants Agent configuration or execution authority. |
+| FR-25 | Session reads require current owner, contributor, or viewer membership; Copilot defaults to owner-owned history, and a Workspace Agent Editor may only self-enroll as an audited viewer for Sessions of Agents in its assigned Workspace. Membership never grants Agent configuration or execution authority. |
 | FR-26 | Every accepted instruction has one immutable Run requester, and only that requester can decide the Run's Agent-action approvals. |
 | FR-27 | Stable Webhook event IDs and scheduled occurrence IDs are committed before queueing so retries cannot create duplicate Session Messages or Runs. |
 | FR-28 | A Run requester or current Session owner may cancel a queued or active Run, but Session ownership never grants Agent-action approval authority. |

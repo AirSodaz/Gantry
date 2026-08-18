@@ -67,11 +67,16 @@ The matrix is additive to these baseline roles: a role preset never bypasses
 organization/Workspace scope, resource state, ETag checks, or action-time
 Policy.
 
-Copilot does not reuse this Admin matrix. Its member-bound Session and
-requester-bound Run/Approval
+Copilot does not reuse this Admin matrix for ordinary Session access. Its
+member-bound Session and requester-bound Run/Approval
 Attachment, Artifact, and event authorization rules are defined in
 [Copilot Resource Contracts](../architecture/copilot-resource-contracts.md),
 including non-leaking direct reads and authorization inside list queries.
+The one deliberate bridge is the audited Admin command that lets a
+`workspace_agent_editor` add only itself as a `viewer` to a Session for an
+Agent in its managed Workspace. The command creates ordinary Session
+membership; it is not a hidden Admin read bypass and grants no write,
+execution, approval, or member-management authority.
 
 ### Action-Time Context
 
@@ -410,6 +415,9 @@ requester may approve the exact action digest.
 Audit records cover authentication, authorization decisions, configuration
 changes, publication, Session/Run commands, model routes, tool calls, approvals,
 operator terminal attachment, artifact access, exports, and emergency controls.
+Session self-enrollment by a `workspace_agent_editor` records the actor, Agent,
+Workspace, Session, resulting `viewer` membership, command key digest, and
+scope decision in the canonical Audit projection.
 
 The canonical Audit projection is cross-resource and append-only. Resource
 pages may show a bounded Recent activity slice, but they do not own separate

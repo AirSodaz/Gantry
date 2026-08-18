@@ -774,8 +774,12 @@ The server evaluates access in this order:
 6. Record the decision and resulting state in the canonical Audit projection.
 
 Agent ACL capabilities do not grant any of these Admin management capabilities.
-Conversely, an Admin role does not grant Copilot requester approval, access to
-another employee's conversation, or a business workflow approval authority.
+Conversely, an Admin role does not grant Copilot requester approval or business
+workflow approval authority. `workspace_agent_editor` has only the explicit,
+audited self-enrollment path described above; it does not automatically expose
+another employee's conversation or grant contribution or execution authority.
+This Session command is a scoped Admin workflow rather than an Agent ACL
+capability, so it is intentionally outside the capability-family matrix above.
 
 ## 8. Audit, Redaction, and Verification Boundary
 

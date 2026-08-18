@@ -480,6 +480,13 @@ and applicable data policy; starting a new Run separately requires current
 Agent `execute` authority. Owner transfer is explicit and atomic; it disables
 old-owner Triggers bound to that Session rather than transferring them silently.
 
+Copilot lists owner-owned Sessions by default and can explicitly request all
+current memberships. A `workspace_agent_editor` may use the Admin audience to
+add only itself as a normal `viewer` on a Session for an Agent in its assigned
+Workspace. The membership is visible to the owner and other members, grants
+read-only Copilot access, and carries canonical Audit evidence; the role is not
+an implicit read path and cannot create `contributor` or owner membership.
+
 ### Session Message
 
 An employee-visible conversation turn within a Session:

@@ -27,8 +27,13 @@ current Agent already owns Drafts, immutable Revisions, Deployments, and access.
    aggregate. A Session binds one Agent and is `personal`, `shared`, or
    `channel`; it remains active until its human owner archives it.
 3. Session collaboration uses fixed `owner`, `contributor`, and `viewer` roles,
-   not Allow/Deny rules or a second capability ACL. Membership does not grant
-   Agent configuration access or Agent `execute` authority.
+   not Allow/Deny rules or a second capability ACL. A principal sees only
+   Sessions where it is a current member. A `workspace_agent_editor` may
+   explicitly add itself as a `viewer` to a Session whose Agent is in its
+   managed Workspace; this is an audited self-enrollment exception, not an
+   implicit Admin bypass. Membership does not grant Agent configuration access,
+   Agent `execute` authority, approval authority, or the ability to invite
+   other members.
 4. Every accepted human or Trigger instruction appends one immutable Session
    Message and creates one Run. The authenticated instruction author, or human
    Trigger owner, is the immutable Run requester.
@@ -62,6 +67,13 @@ current Agent already owns Drafts, immutable Revisions, Deployments, and access.
   suspension, and terminal outcome state.
 - Historical Session reads depend on current membership and data policy. New
   instructions additionally require current Agent `execute` authority.
+- Copilot Web defaults to owner-owned Sessions and offers an explicit
+  accessible scope for the caller's current owner, contributor, and viewer
+  memberships. The server applies both scopes before pagination.
+- Workspace Agent Editor self-enrollment is limited to the caller becoming a
+  viewer on a Session for an Agent in the editor's managed Workspace. It is
+  auditable, cannot target another principal, and grants no write or Agent
+  capability.
 - A future Agent Instance resource remains possible only when independent
   long-term memory, credentials, or configuration must persist across multiple
   Sessions.

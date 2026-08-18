@@ -357,6 +357,11 @@ service identities, grant reasons, or owner-transfer commands. Enterprise
 Invocation intersects its Integration Publication with the effective Agent
 grant and does not use Admin roles as a shortcut.
 
+`workspace_agent_editor` is a Workspace-scoped Admin role, not an Agent ACL
+capability. Its only bridge into Session conversation access is the separate,
+audited command that adds the caller itself as a Session `viewer`; the resulting
+read remains member-authorized and exposes no Agent ACL data.
+
 The canonical Audit projection records:
 
 - grant creation, capability change, validity change, revocation, and expiry;

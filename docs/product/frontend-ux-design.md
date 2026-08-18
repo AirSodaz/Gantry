@@ -366,13 +366,18 @@ may expose a sanitized command-log component, but never an interactive shell.
 
 ### Sessions and History
 
-`Sessions` is the Copilot history projection for personal, shared, and
-channel-bound Sessions where the employee is a current member. It is
-organized around user intent rather than infrastructure attempts. Rows show
-Agent, Session title, mode, members, current Run, queued count, last activity,
-the employee's pending action, and Artifact availability. Filters cover
-Session lifecycle, mode, Agent, time, and `my action`; they never expose
-unrestricted operational Runs.
+`Sessions` defaults to Sessions owned by the employee. A clear scope control
+can switch to `Accessible`, which includes only Sessions where the employee is
+the current owner, contributor, or viewer. The server applies the scope before
+pagination. Rows show Agent, Session title, mode, members, current Run, queued
+count, last activity, the employee's pending action, and Artifact availability.
+Filters cover Session scope, lifecycle, mode, Agent, time, and `my action`; they
+never expose unrestricted operational Runs.
+
+The Admin Run workbench may offer `View conversation` for a
+`workspace_agent_editor`. The action first records the editor's explicit
+self-enrollment as a Session `viewer`, then opens the ordinary member-scoped
+Copilot view. It cannot target another principal and remains visible in Audit.
 
 Session detail expands a compact Run history showing requester, sequence,
 status, start and completion time, and a user-facing failure or retry reason.

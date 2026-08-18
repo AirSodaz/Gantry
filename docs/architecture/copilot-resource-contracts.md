@@ -45,7 +45,11 @@ request JSON cannot override it. Resource authorization follows these rules:
 - Session reads require current membership and applicable Workspace,
   classification, and retention policy. Membership uses the fixed roles
   `owner`, `contributor`, and `viewer`; it never grants Agent configuration or
-  execution authority.
+  execution authority. The only administrative exception is explicit
+  self-enrollment: a principal with `workspace_agent_editor` for the Session's
+  Agent Workspace may add itself as `viewer`. This audited command cannot
+  target another principal and grants no contribution, execution, approval, or
+  membership-management authority.
 - Each accepted instruction creates a Run whose immutable requester is the
   authenticated principal, or the human owner of an authorized Trigger. Only
   that Run requester may decide its Agent-action approval. Session ownership,
@@ -60,7 +64,7 @@ request JSON cannot override it. Resource authorization follows these rules:
 - Business workflow approvals remain in the owning Tool or enterprise system.
   Copilot may render a Tool-provided status summary but cannot decide it.
 
-There is no generic `copilot.admin` or `read_all_tasks` capability. Cross-user
+There is no generic `copilot.admin` or `sessions.read_all` capability. Cross-user
 investigation is an Admin operational projection with separate response types
 and audit requirements.
 
@@ -243,9 +247,36 @@ Favorite mutation requires the same `metadata.read` catalog access as Agent
 discovery and is idempotent. It never grants metadata, execution, or ACL
 capabilities and cannot make a temporarily unavailable publication usable.
 
-### 4.2 Session, membership, Message, and Run
+### 4.2 Session visibility, membership, Message, and Run
+
+Session visibility is the intersection of the current principal's
+`session_members` rows and the Session's Workspace, classification, and
+retention constraints. A principal may see only Sessions where it is an
+`owner`, `contributor`, or `viewer`. The service applies this predicate inside
+the query; the browser never receives an unrestricted Session list and filters
+it locally.
+
+`GET /sessions` accepts `scope=owned|accessible`. `owned` means the current
+principal is the Session owner and is the default for Copilot Web. `accessible`
+means every Session for which the current principal is a current member. The
+scope is part of the signed cursor filter. Direct reads and all subordinate
+Session resources use the same membership predicate regardless of list scope.
+
+Session owners may invite or change other members through the ordinary member
+commands. In addition, `POST /api/admin/v1/sessions/{id}:grant-self-viewer`
+allows a `workspace_agent_editor` to add only itself as a `viewer` when the
+Session's Agent belongs to a Workspace managed by that role. The command is
+idempotent, requires the Admin audience and command key, records canonical
+Audit evidence, and is rejected when the target principal is not the caller.
+It never changes the owner, grants `contributor`, or bypasses current data,
+retention, or organization boundaries.
 
 ```yaml
+SessionListScope:
+  type: string
+  enum: [owned, accessible]
+  default: owned
+
 SessionMode:
   type: string
   enum: [personal, shared, channel]
@@ -760,11 +791,11 @@ All routes are relative to `/api/copilot/v1`.
 | `PUT /attachments/{id}/content` | bytes and upload token | `204` | Exact length limit and one active grant |
 | `POST /attachments/{id}:complete` | `Idempotency-Key` | `202 Attachment`, `200` replay | Verifies digest and schedules scan |
 | `POST /sessions` | Agent, message or structured input, Attachment IDs; `Idempotency-Key` | `201 Session`, `200` replay | Creates a personal Session and first queued Run; `execute` plus active Deployment; updates recent use after commit |
-| `GET /sessions` | cursor, limit, state, mode, Agent, my action, time | `200 SessionList` | Membership is mandatory in the storage query |
+| `GET /sessions` | cursor, limit, scope, state, mode, Agent, my action, time | `200 SessionList` | `scope=owned` by default; both scopes require membership in the storage query |
 | `GET /sessions/{id}` | none | `200 Session` plus `ETag` | Member-authorized conversation projection |
 | `POST /sessions/{id}/messages` | message and optional Attachments; `If-Match`, `Idempotency-Key` | `201 Session`, `200` replay | Owner/contributor plus current Agent `execute`; creates one queued Run |
 | `GET /sessions/{id}/members` | cursor, limit | `200 SessionMemberList` | Current member |
-| `POST /sessions/{id}/members` | `AddSessionMemberRequest`; `If-Match`, `Idempotency-Key` | `201 Session` | Owner only; Workspace and data-policy checks |
+| `POST /sessions/{id}/members` | `AddSessionMemberRequest`; `If-Match`, `Idempotency-Key` | `201 Session` | Owner only for inviting another principal; Workspace and data-policy checks |
 | `PATCH /sessions/{id}/members/{principal_id}` | `UpdateSessionMemberRequest`; `If-Match`, `Idempotency-Key` | `200 Session` | Owner only; owner role is not assignable here |
 | `DELETE /sessions/{id}/members/{principal_id}` | `If-Match`, `Idempotency-Key` | `200 Session` | Owner only; cannot remove owner |
 | `POST /sessions/{id}:transfer-owner` | `TransferSessionOwnerRequest`; `If-Match`, `Idempotency-Key` | `200 Session` | Current owner only; target must be an eligible current contributor |
@@ -783,6 +814,11 @@ All routes are relative to `/api/copilot/v1`.
 The checked-in contract uses the explicit audited Artifact download command.
 Approval decisions use the common `Idempotency-Key` command header; the request
 body carries only the decision evidence for the exact action.
+
+The separate Admin audience exposes
+`POST /api/admin/v1/sessions/{id}:grant-self-viewer`. A
+`workspace_agent_editor` for the Agent Workspace may add only itself as a
+`viewer`; the command is idempotent, audited, and returns `SessionMember`.
 
 ## 6. State and Command Semantics
 

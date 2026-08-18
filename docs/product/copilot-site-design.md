@@ -33,9 +33,9 @@ organization or Workspace administration selector.
 
 | Group | Page | Route | Delivery |
 | --- | --- | --- | --- |
-| Workspace | New session | `/` | Next |
+| Workspace | New session | `/` | Current |
 | Workspace | Agents | `/agents` | Current |
-| Workspace | Sessions | `/sessions` | Next |
+| Workspace | Sessions | `/sessions` | Current; owner-default scope is target behavior |
 | Workspace | Triggers | `/triggers` | Later |
 | Governance | Approvals | `/approvals` | Current |
 | Workspace | Artifacts | `/artifacts` | Current |
@@ -64,14 +64,14 @@ Admin-style cross-Workspace aggregation.
 | Resource | Route | Responsibility | Delivery |
 | --- | --- | --- | --- |
 | Agent catalog | `/agents` | Browse approved Agents and select one | Current |
-| New session | `/` | Create a personal Session and submit its first instruction | Next |
-| Sessions | `/sessions` | Member-authorized personal, shared, and channel Session history | Next |
-| Session detail | `/sessions/:sessionId` | Conversation, members, queue, live Run, approvals, history, and Artifacts | Next |
+| New session | `/` | Create a personal Session and submit its first instruction | Current |
+| Sessions | `/sessions` | Owner-default history with an explicit member-authorized accessible scope | Current; new scope default is target behavior |
+| Session detail | `/sessions/:sessionId` | Conversation, members, queue, live Run, approvals, history, and Artifacts | Current |
 | Trigger list and creation | `/triggers` | Owner-only Webhook and scheduled Trigger management | Later |
 | Trigger detail | `/triggers/:triggerId` | Configuration, state, one-time secret rotation, and committed occurrence links | Later |
 | Approval queue | `/approvals` | Requester-bound pending action approvals | Current |
 | Approval detail | `/approvals/:approvalId` | Immutable action preview and decision evidence | Current |
-| Artifact browser | `/artifacts` | Cross-Session Artifact discovery within scope | Current; membership projection is Next |
+| Artifact browser | `/artifacts` | Cross-Session Artifact discovery within member and classification scope | Current |
 | Artifact detail | `/artifacts/:artifactId` | Metadata, scan, and download state | Current; retention projection remains Later |
 
 The standalone browser uses the same Session membership, classification, scan,
@@ -201,8 +201,10 @@ be submitted, but submission always rechecks the active Deployment.
   Session is active and the member retains Agent `execute` authority.
 - **Open approval:** links to the requester approval without duplicating the
   decision command in the Session view.
-- **Manage members:** available only to the Session owner; invite as contributor
-  or viewer, change those roles, or remove a non-owner member.
+- **Manage members:** available to the Session owner for inviting, changing, or
+  removing non-owner members. A `workspace_agent_editor` has a separate
+  self-only command to add itself as a viewer to a Session for an Agent in its
+  managed Workspace; it cannot invite, change, or remove another principal.
 - **Transfer ownership:** available only to the owner and targets an eligible
   current contributor; bound Triggers owned by the prior owner are disabled.
 - **Archive Session:** available only to the owner and blocks later human,

@@ -62,6 +62,11 @@ runner, PostgreSQL, S3-compatible object storage, and Dex for local OIDC.
   exposes first request, last activity, requester action, Artifact availability,
   compact paged Run history, server-authorized filters, cancellation, retry,
   and live Session events.
+- The target Session visibility rule is owner-default history with an explicit
+  accessible scope for current owner/contributor/viewer memberships. The
+  audited `workspace_agent_editor` self-enrollment-as-viewer command is a
+  documented target and remains pending until its Admin route, persistence
+  transition, Audit evidence, and authorization tests are implemented.
 - Requester-scoped approval list/detail/decision, Artifact browse/detail and
   audited download, requester-owned attachment upload and validation before
   Session binding, and URL-preserved Agent collection/search/category filters

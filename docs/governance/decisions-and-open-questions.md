@@ -361,6 +361,10 @@ membership. Each instruction creates a Run whose human initiator is the only
 eligible Agent-action approver. Sessions serialize execution while permitting
 ordered queued Runs. The Run requester or current Session owner may cancel a
 Run, but Session ownership never grants approval or Agent execution authority.
+Copilot history defaults to owner-owned Sessions, while the accessible scope
+contains all current memberships. A Workspace Agent Editor may explicitly and
+auditably add only itself as a viewer to a Session for an Agent in its assigned
+Workspace; the role is not an implicit conversation-read bypass.
 Webhook and scheduled Triggers choose a new or bound Session at configuration
 time, and stable occurrence IDs prevent the same delivery from entering the
 queue twice. See

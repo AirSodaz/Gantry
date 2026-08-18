@@ -104,6 +104,10 @@ Owns personal, shared, and channel-bound Sessions; fixed membership roles;
 ordered Messages; Run creation; and the one-executing-Run Session queue. It
 accepts idempotent Session creation and instruction commands, binds each Run to
 immutable resource versions, and exposes cancellation and retry commands.
+It also owns the audited membership transition used when a
+`workspace_agent_editor` explicitly adds itself as a viewer; Admin transport
+authorizes the Workspace role but does not gain a separate conversation read
+path.
 
 For enterprise callers, it also validates the integration publication, binds
 the integration client and required delegated-user principal, records the

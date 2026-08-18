@@ -126,6 +126,13 @@ conversation ETags, and the explicit audited Artifact download command
 are callable through the OpenAPI document, generated client, owning handler,
 and focused tests. Approval decisions use the common `Idempotency-Key` header.
 
+The target Session list adds `scope=owned|accessible`, with `owned` as the Web
+default and membership enforced for both values. The Admin audience also owns
+the narrow `POST /api/admin/v1/sessions/{id}:grant-self-viewer` bridge: a
+`workspace_agent_editor` may add only itself as a Session viewer for an Agent in
+its assigned Workspace, after which all reads use the ordinary Copilot member
+projection. This target route is not yet part of the callable OpenAPI surface.
+
 The target contract also includes Revision-frozen employee catalog metadata,
 Deployment-bound temporary availability, `collection=favorites|recent` catalog
 filters, the idempotent favorite command, requester-owned preference persistence,
