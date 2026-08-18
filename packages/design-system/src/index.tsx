@@ -4,14 +4,24 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
-  useEffect,
-  useRef,
   useState,
 } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import * as RadixSelect from "@radix-ui/react-select";
+import * as RadixDropdown from "@radix-ui/react-dropdown-menu";
+import * as RadixTabs from "@radix-ui/react-tabs";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Check, ChevronDown, X } from "lucide-react";
+import { cn } from "./utils";
 
 export * from "./theme";
+export * from "./utils";
 
 export const SPACING_UNIT = 8;
+
+/* --------------------------------------------------------------------------
+   1. State Vocabulary & StatusMark
+   -------------------------------------------------------------------------- */
 
 export type RunState =
   | "Draft"
@@ -60,14 +70,63 @@ export function formatStatusLabel(status?: string | null): string {
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
+export function StatusMark({
+  status,
+  className = "",
+}: {
+  status?: string | null;
+  className?: string;
+}) {
+  const safeStatus = status || "Unknown";
+  const normalized = safeStatus.toLowerCase().replace(/[\s_]+/g, "-");
+  return (
+    <span className={cn("ds-status", `ds-status-${normalized}`, className)}>
+      <span aria-hidden="true" className="ds-status-dot" />
+      {status}
+    </span>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   2. Button & IconButton (CVA)
+   -------------------------------------------------------------------------- */
+
+export const buttonVariants = cva(
+  "ds-button inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2",
+  {
+    variants: {
+      variant: {
+        primary: "ds-button-primary",
+        secondary: "ds-button-secondary",
+        quiet: "ds-button-quiet",
+        danger: "ds-button-danger",
+        accent: "ds-button-accent",
+      },
+      size: {
+        sm: "ds-button-sm",
+        md: "",
+        lg: "ds-button-lg",
+      },
+      fullWidth: {
+        true: "ds-button-full w-full",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  },
+);
+
 export type ButtonVariant =
   "primary" | "secondary" | "quiet" | "danger" | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  fullWidth?: boolean;
+export interface ButtonProps
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   isLoading?: boolean;
 }
 
@@ -81,28 +140,23 @@ export function Button({
   className = "",
   ...props
 }: ButtonProps) {
-  const sizeClass = size ? `ds-button-${size}` : "";
-  const fullWidthClass = fullWidth ? "ds-button-full" : "";
-
   return (
     <button
       {...props}
       disabled={disabled || isLoading}
-      className={`ds-button ds-button-${variant} ${sizeClass} ${fullWidthClass} ${className}`.trim()}
+      className={cn(
+        buttonVariants({
+          variant: variant as ButtonVariant,
+          size: size as ButtonSize,
+          fullWidth: Boolean(fullWidth),
+        }),
+        className,
+      )}
     >
       {isLoading ? (
         <span
           aria-hidden="true"
-          className="ds-spin"
-          style={{
-            display: "inline-block",
-            width: "14px",
-            height: "14px",
-            border: "2px solid currentColor",
-            borderRightColor: "transparent",
-            borderRadius: "50%",
-            flexShrink: 0,
-          }}
+          className="ds-spin inline-block w-3.5 h-3.5 border-2 border-current border-r-transparent rounded-full shrink-0"
         />
       ) : null}
       {children}
@@ -110,11 +164,31 @@ export function Button({
   );
 }
 
-export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export const iconButtonVariants = cva("ds-icon-button", {
+  variants: {
+    variant: {
+      default: "",
+      quiet: "ds-icon-button-quiet",
+      active: "ds-icon-button-active",
+    },
+    size: {
+      sm: "ds-icon-button-sm",
+      md: "",
+      lg: "ds-icon-button-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "md",
+  },
+});
+
+export interface IconButtonProps
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof iconButtonVariants> {
   label: string;
   children: ReactNode;
-  variant?: "default" | "quiet" | "active";
-  size?: "sm" | "md" | "lg";
 }
 
 export function IconButton({
@@ -125,20 +199,21 @@ export function IconButton({
   className = "",
   ...props
 }: IconButtonProps) {
-  const variantClass = variant !== "default" ? `ds-icon-button-${variant}` : "";
-  const sizeClass = size ? `ds-icon-button-${size}` : "";
-
   return (
     <button
       {...props}
       aria-label={label}
       title={props.title ?? label}
-      className={`ds-icon-button ${variantClass} ${sizeClass} ${className}`.trim()}
+      className={cn(iconButtonVariants({ variant, size }), className)}
     >
       {children}
     </button>
   );
 }
+
+/* --------------------------------------------------------------------------
+   3. Form Inputs & Text Fields
+   -------------------------------------------------------------------------- */
 
 export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -159,20 +234,11 @@ export function TextInput({
   return (
     <label className="ds-field" htmlFor={inputId}>
       <span className="ds-field-label">{label}</span>
-      <div
-        style={{ position: "relative", display: "flex", alignItems: "center" }}
-      >
+      <div className="relative flex items-center">
         {icon ? (
           <span
             aria-hidden="true"
-            style={{
-              position: "absolute",
-              left: "12px",
-              display: "grid",
-              placeItems: "center",
-              color: "var(--ds-text-muted)",
-              pointerEvents: "none",
-            }}
+            className="absolute left-3 grid place-items-center text-[var(--ds-text-muted)] pointer-events-none"
           >
             {icon}
           </span>
@@ -180,18 +246,14 @@ export function TextInput({
         <input
           {...props}
           id={inputId}
-          className={`ds-input ${className}`.trim()}
+          className={cn("ds-input", className)}
           style={icon ? { paddingLeft: "38px", ...props.style } : props.style}
         />
       </div>
       {error ? (
         <span
           role="alert"
-          style={{
-            color: "var(--ds-danger)",
-            fontSize: "12px",
-            marginTop: "2px",
-          }}
+          className="text-xs text-[var(--ds-danger)] mt-0.5 block"
         >
           {error}
         </span>
@@ -200,22 +262,9 @@ export function TextInput({
   );
 }
 
-export function StatusMark({
-  status,
-  className = "",
-}: {
-  status?: string | null;
-  className?: string;
-}) {
-  const safeStatus = status || "Unknown";
-  const normalized = safeStatus.toLowerCase().replace(/[\s_]+/g, "-");
-  return (
-    <span className={`ds-status ds-status-${normalized} ${className}`.trim()}>
-      <span aria-hidden="true" className="ds-status-dot" />
-      {status}
-    </span>
-  );
-}
+/* --------------------------------------------------------------------------
+   4. Card Components (CVA)
+   -------------------------------------------------------------------------- */
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
@@ -230,7 +279,7 @@ export function Card({
   return (
     <div
       {...props}
-      className={`ds-card ${interactive ? "ds-card-interactive" : ""} ${className}`.trim()}
+      className={cn("ds-card", interactive && "ds-card-interactive", className)}
     >
       {children}
     </div>
@@ -243,7 +292,7 @@ export function CardHeader({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div {...props} className={`ds-card-header ${className}`.trim()}>
+    <div {...props} className={cn("ds-card-header", className)}>
       {children}
     </div>
   );
@@ -255,7 +304,7 @@ export function CardTitle({
   ...props
 }: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 {...props} className={`ds-card-title ${className}`.trim()}>
+    <h3 {...props} className={cn("ds-card-title", className)}>
       {children}
     </h3>
   );
@@ -267,7 +316,7 @@ export function CardDescription({
   ...props
 }: HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p {...props} className={`ds-card-description ${className}`.trim()}>
+    <p {...props} className={cn("ds-card-description", className)}>
       {children}
     </p>
   );
@@ -279,7 +328,7 @@ export function CardContent({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div {...props} className={`ds-card-content ${className}`.trim()}>
+    <div {...props} className={cn("ds-card-content", className)}>
       {children}
     </div>
   );
@@ -291,11 +340,15 @@ export function CardFooter({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div {...props} className={`ds-card-footer ${className}`.trim()}>
+    <div {...props} className={cn("ds-card-footer", className)}>
       {children}
     </div>
   );
 }
+
+/* --------------------------------------------------------------------------
+   5. Select Component (Radix Select Primitive + Native Sync)
+   -------------------------------------------------------------------------- */
 
 export interface SelectOption {
   value: string;
@@ -324,74 +377,16 @@ export function Select({
   className = "",
   id,
 }: SelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const listboxRef = useRef<HTMLUListElement>(null);
   const selectId =
     id ??
     (label
       ? `ds-select-${label.toLowerCase().replace(/\s+/g, "-")}`
       : undefined);
-  const listboxId = selectId ? `${selectId}-listbox` : undefined;
-
-  const selectedIndex = options.findIndex((opt) => opt.value === value);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(
-    selectedIndex >= 0 ? selectedIndex : 0,
-  );
 
   const selectedOption = options.find((opt) => opt.value === value);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && isOpen) {
-        setIsOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      const initialIdx = selectedIndex >= 0 ? selectedIndex : 0;
-      setHighlightedIndex(initialIdx);
-      const list = listboxRef.current;
-      if (list) {
-        const item = list.children[initialIdx] as HTMLElement | undefined;
-        item?.focus();
-      }
-    }
-  }, [isOpen, selectedIndex]);
-
-  const handleSelect = (val: string) => {
-    onChange(val);
-    setIsOpen(false);
-    triggerRef.current?.focus();
-  };
-
   return (
-    <div
-      className={`ds-field ds-select-wrapper ${className}`.trim()}
-      ref={containerRef}
-    >
+    <div className={cn("ds-field ds-select-wrapper", className)}>
       {label ? (
         <span
           className="ds-field-label"
@@ -401,13 +396,14 @@ export function Select({
         </span>
       ) : null}
 
-      {/* Synchronized hidden native select for standard form and test query compatibility */}
+      {/* Synchronized hidden native select for standard HTML form/test queries compatibility */}
       <select
         id={selectId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className="ds-select-native"
+        tabIndex={-1}
       >
         <option value="" disabled>
           {placeholder}
@@ -419,136 +415,76 @@ export function Select({
         ))}
       </select>
 
-      {/* Styled Custom Select Trigger */}
-      <button
-        ref={triggerRef}
-        type="button"
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-controls={isOpen ? listboxId : undefined}
-        aria-labelledby={label && selectId ? `${selectId}-label` : undefined}
+      {/* Radix UI Headless Select */}
+      <RadixSelect.Root
+        value={value}
+        onValueChange={onChange}
         disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            e.preventDefault();
-            setIsOpen(true);
-          }
-        }}
-        className={`ds-input ds-select-trigger ${isOpen ? "ds-select-trigger-open" : ""}`}
       >
-        <div className="ds-select-trigger-content">
-          {selectedOption?.icon ? (
-            <span className="ds-select-icon">{selectedOption.icon}</span>
-          ) : null}
-          <span
-            className={
-              selectedOption ? "ds-select-value" : "ds-select-placeholder"
-            }
-          >
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-        </div>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`ds-select-chevron ${isOpen ? "ds-select-chevron-open" : ""}`}
-          aria-hidden="true"
+        <RadixSelect.Trigger
+          aria-labelledby={label && selectId ? `${selectId}-label` : undefined}
+          className="ds-input ds-select-trigger"
         >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+          <div className="ds-select-trigger-content">
+            {selectedOption?.icon ? (
+              <span className="ds-select-icon">{selectedOption.icon}</span>
+            ) : null}
+            <span
+              className={
+                selectedOption ? "ds-select-value" : "ds-select-placeholder"
+              }
+            >
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+          </div>
+          <RadixSelect.Icon asChild>
+            <ChevronDown
+              size={16}
+              className="ds-select-chevron"
+              aria-hidden="true"
+            />
+          </RadixSelect.Icon>
+        </RadixSelect.Trigger>
 
-      {/* Floating Animated Dropdown Menu */}
-      {isOpen ? (
-        <ul
-          ref={listboxRef}
-          id={listboxId}
-          role="listbox"
-          className="ds-dropdown-menu ds-select-dropdown"
-        >
-          {options.map((opt, idx) => {
-            const isSelected = opt.value === value;
-            const isHighlighted = idx === highlightedIndex;
-            return (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                tabIndex={isHighlighted ? 0 : -1}
-                onClick={() => handleSelect(opt.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleSelect(opt.value);
-                  } else if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    const next = (idx + 1) % options.length;
-                    setHighlightedIndex(next);
-                    const nextItem = listboxRef.current?.children[next] as
-                      HTMLElement | undefined;
-                    nextItem?.focus();
-                  } else if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    const prev = (idx - 1 + options.length) % options.length;
-                    setHighlightedIndex(prev);
-                    const prevItem = listboxRef.current?.children[prev] as
-                      HTMLElement | undefined;
-                    prevItem?.focus();
-                  } else if (e.key === "Home") {
-                    e.preventDefault();
-                    setHighlightedIndex(0);
-                    const firstItem = listboxRef.current?.children[0] as
-                      HTMLElement | undefined;
-                    firstItem?.focus();
-                  } else if (e.key === "End") {
-                    e.preventDefault();
-                    const last = options.length - 1;
-                    setHighlightedIndex(last);
-                    const lastItem = listboxRef.current?.children[last] as
-                      HTMLElement | undefined;
-                    lastItem?.focus();
-                  }
-                }}
-                className={`ds-dropdown-item ${isSelected ? "ds-dropdown-item-selected" : ""}`}
-              >
-                <div className="ds-dropdown-item-content">
-                  {opt.icon ? (
-                    <span className="ds-dropdown-item-icon">{opt.icon}</span>
-                  ) : null}
-                  <span>{opt.label}</span>
-                </div>
-                {isSelected ? (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="ds-dropdown-check"
-                    aria-hidden="true"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+        <RadixSelect.Portal>
+          <RadixSelect.Content
+            position="popper"
+            sideOffset={4}
+            className="ds-dropdown-menu ds-select-dropdown z-50"
+          >
+            <RadixSelect.Viewport>
+              {options.map((opt) => (
+                <RadixSelect.Item
+                  key={opt.value}
+                  value={opt.value}
+                  className="ds-dropdown-item"
+                >
+                  <div className="ds-dropdown-item-content">
+                    {opt.icon ? (
+                      <span className="ds-dropdown-item-icon">{opt.icon}</span>
+                    ) : null}
+                    <RadixSelect.ItemText>{opt.label}</RadixSelect.ItemText>
+                  </div>
+                  <RadixSelect.ItemIndicator asChild>
+                    <Check
+                      size={14}
+                      className="ds-dropdown-check"
+                      aria-hidden="true"
+                    />
+                  </RadixSelect.ItemIndicator>
+                </RadixSelect.Item>
+              ))}
+            </RadixSelect.Viewport>
+          </RadixSelect.Content>
+        </RadixSelect.Portal>
+      </RadixSelect.Root>
     </div>
   );
 }
+
+/* --------------------------------------------------------------------------
+   6. DropdownMenu Component (Radix DropdownMenu Primitive)
+   -------------------------------------------------------------------------- */
 
 export interface DropdownMenuItem {
   id: string;
@@ -562,7 +498,7 @@ export interface DropdownMenuItem {
 export interface DropdownMenuProps {
   trigger: ReactNode;
   items: (DropdownMenuItem | "divider")[];
-  align?: "left" | "right";
+  align?: "start" | "end" | "center" | "left" | "right";
   className?: string;
 }
 
@@ -572,94 +508,88 @@ export function DropdownMenu({
   align = "right",
   className = "",
 }: DropdownMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && isOpen) {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [isOpen]);
+  const resolvedAlign =
+    align === "left" ? "start" : align === "right" ? "end" : align;
 
   return (
-    <div
-      className={`ds-dropdown-wrapper ${className}`.trim()}
-      ref={containerRef}
-    >
-      <div
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="ds-dropdown-trigger-box"
-      >
-        {trigger}
-      </div>
-      {isOpen ? (
-        <div
-          role="menu"
-          className={`ds-dropdown-menu ds-dropdown-menu-${align}`}
+    <RadixDropdown.Root>
+      <RadixDropdown.Trigger asChild className={className}>
+        <div className="ds-dropdown-trigger-box">{trigger}</div>
+      </RadixDropdown.Trigger>
+
+      <RadixDropdown.Portal>
+        <RadixDropdown.Content
+          align={resolvedAlign as "start" | "end" | "center"}
+          sideOffset={4}
+          className="ds-dropdown-menu z-50"
         >
           {items.map((item, idx) => {
             if (item === "divider") {
               return (
-                <div
+                <RadixDropdown.Separator
                   key={`divider-${idx}`}
                   className="ds-dropdown-divider"
-                  role="separator"
                 />
               );
             }
 
             return (
-              <button
+              <RadixDropdown.Item
                 key={item.id}
-                type="button"
-                role="menuitem"
                 disabled={item.disabled}
-                onClick={() => {
-                  item.onClick?.();
-                  setIsOpen(false);
-                }}
-                className={`ds-dropdown-item ${item.danger ? "ds-dropdown-item-danger" : ""}`}
+                onSelect={() => item.onClick?.()}
+                className={cn(
+                  "ds-dropdown-item",
+                  item.danger && "ds-dropdown-item-danger",
+                )}
               >
                 {item.icon ? (
                   <span className="ds-dropdown-item-icon">{item.icon}</span>
                 ) : null}
                 <span>{item.label}</span>
-              </button>
+              </RadixDropdown.Item>
             );
           })}
-        </div>
-      ) : null}
-    </div>
+        </RadixDropdown.Content>
+      </RadixDropdown.Portal>
+    </RadixDropdown.Root>
   );
 }
+
+/* --------------------------------------------------------------------------
+   7. Badge Component (CVA)
+   -------------------------------------------------------------------------- */
+
+export const badgeVariants = cva(
+  "ds-badge inline-flex items-center font-medium whitespace-nowrap",
+  {
+    variants: {
+      variant: {
+        default: "ds-badge-default",
+        success: "ds-badge-success",
+        warning: "ds-badge-warning",
+        danger: "ds-badge-danger",
+        neutral: "ds-badge-neutral",
+        info: "ds-badge-info",
+      },
+      size: {
+        sm: "ds-badge-sm",
+        md: "",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "md",
+    },
+  },
+);
 
 export type BadgeVariant =
   "default" | "success" | "warning" | "danger" | "neutral" | "info";
 export type BadgeSize = "sm" | "md";
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: BadgeVariant;
-  size?: BadgeSize;
+export interface BadgeProps
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
   icon?: ReactNode;
 }
 
@@ -674,13 +604,16 @@ export function Badge({
   return (
     <span
       {...props}
-      className={`ds-badge ds-badge-${variant} ds-badge-${size} ${className}`.trim()}
+      className={cn(
+        badgeVariants({
+          variant: variant as BadgeVariant,
+          size: size as BadgeSize,
+        }),
+        className,
+      )}
     >
       {icon ? (
-        <span
-          aria-hidden="true"
-          style={{ display: "inline-flex", alignItems: "center" }}
-        >
+        <span aria-hidden="true" className="inline-flex items-center">
           {icon}
         </span>
       ) : null}
@@ -688,6 +621,10 @@ export function Badge({
     </span>
   );
 }
+
+/* --------------------------------------------------------------------------
+   8. Modal Component (Radix Dialog Primitive)
+   -------------------------------------------------------------------------- */
 
 export interface ModalProps {
   isOpen: boolean;
@@ -708,125 +645,57 @@ export function Modal({
   footer,
   maxWidth,
 }: ModalProps) {
-  const modalContainerRef = useRef<HTMLDivElement>(null);
-  const previousFocusedElement = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && isOpen) {
-        onClose();
-      } else if (event.key === "Tab" && isOpen && modalContainerRef.current) {
-        const focusable =
-          modalContainerRef.current.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-          );
-        if (focusable.length === 0) {
-          event.preventDefault();
-          return;
-        }
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    }
-
-    if (isOpen) {
-      previousFocusedElement.current =
-        document.activeElement as HTMLElement | null;
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-
-      // Set initial focus to first focusable element or modal container
-      setTimeout(() => {
-        if (modalContainerRef.current) {
-          const firstFocusable =
-            modalContainerRef.current.querySelector<HTMLElement>(
-              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-            );
-          if (firstFocusable) {
-            firstFocusable.focus();
-          } else {
-            modalContainerRef.current.focus();
-          }
-        }
-      }, 0);
-
-      return () => {
-        document.removeEventListener("keydown", handleKeyDown);
-        document.body.style.overflow = "";
-        previousFocusedElement.current?.focus();
-      };
-    }
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="ds-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ds-modal-title"
-      aria-describedby={description ? "ds-modal-desc" : undefined}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
     >
-      <div
-        ref={modalContainerRef}
-        tabIndex={-1}
-        className="ds-modal-container"
-        style={maxWidth ? { maxWidth: `${maxWidth}px` } : undefined}
-      >
-        <header className="ds-modal-header">
-          <div className="ds-modal-header-copy">
-            <h2 id="ds-modal-title" className="ds-modal-title">
-              {title}
-            </h2>
-            {description ? (
-              <p id="ds-modal-desc" className="ds-modal-description">
-                {description}
-              </p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            aria-label="Close dialog"
-            onClick={onClose}
-            className="ds-icon-button ds-icon-button-sm"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </header>
-        <div className="ds-modal-body">{children}</div>
-        {footer ? <footer className="ds-modal-footer">{footer}</footer> : null}
-      </div>
-    </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="ds-modal-overlay z-50" />
+        <Dialog.Content
+          className="ds-modal-container z-50"
+          style={maxWidth ? { maxWidth: `${maxWidth}px` } : undefined}
+          aria-describedby={description ? "ds-modal-desc" : undefined}
+        >
+          <header className="ds-modal-header">
+            <div className="ds-modal-header-copy">
+              <Dialog.Title id="ds-modal-title" className="ds-modal-title">
+                {title}
+              </Dialog.Title>
+              {description ? (
+                <Dialog.Description
+                  id="ds-modal-desc"
+                  className="ds-modal-description"
+                >
+                  {description}
+                </Dialog.Description>
+              ) : null}
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close dialog"
+                className="ds-icon-button ds-icon-button-sm"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </Dialog.Close>
+          </header>
+          <div className="ds-modal-body">{children}</div>
+          {footer ? (
+            <footer className="ds-modal-footer">{footer}</footer>
+          ) : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
+
+/* --------------------------------------------------------------------------
+   9. EmptyState Component
+   -------------------------------------------------------------------------- */
 
 export interface EmptyStateProps {
   icon?: ReactNode;
@@ -844,7 +713,7 @@ export function EmptyState({
   className = "",
 }: EmptyStateProps) {
   return (
-    <div className={`ds-empty-state ${className}`.trim()}>
+    <div className={cn("ds-empty-state", className)}>
       {icon ? (
         <div className="ds-empty-icon" aria-hidden="true">
           {icon}
@@ -856,6 +725,10 @@ export function EmptyState({
     </div>
   );
 }
+
+/* --------------------------------------------------------------------------
+   10. CodeBlock Component
+   -------------------------------------------------------------------------- */
 
 export interface CodeBlockProps {
   code: string;
@@ -871,6 +744,7 @@ export function CodeBlock({
   maxHeight,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+
   const copyToClipboard = async () => {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -882,15 +756,15 @@ export function CodeBlock({
       // Clipboard access may fail in restricted/unsupported contexts
     }
   };
+
   return (
-    <div className={`ds-code-block ${className}`.trim()}>
+    <div className={cn("ds-code-block", className)}>
       <div className="ds-code-header">
         <span>{language}</span>
         <button
           type="button"
-          className="ds-button ds-button-quiet ds-button-sm"
+          className="ds-button ds-button-quiet ds-button-sm text-[11px] px-2 py-0.5"
           onClick={copyToClipboard}
-          style={{ padding: "2px 8px", fontSize: "11px" }}
         >
           {copied ? "Copied" : "Copy"}
         </button>
@@ -904,6 +778,10 @@ export function CodeBlock({
     </div>
   );
 }
+
+/* --------------------------------------------------------------------------
+   11. Tabs Component (Radix Tabs Primitive)
+   -------------------------------------------------------------------------- */
 
 export interface TabItem {
   id: string;
@@ -921,32 +799,28 @@ export interface TabsProps {
 
 export function Tabs({ tabs, activeId, onChange, className = "" }: TabsProps) {
   return (
-    <div className={`ds-tabs ${className}`.trim()} role="tablist">
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeId;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className={`ds-tab-btn ${isActive ? "ds-tab-active" : ""}`}
-          >
+    <RadixTabs.Root
+      value={activeId}
+      onValueChange={onChange}
+      className={cn("ds-tabs", className)}
+    >
+      <RadixTabs.List className="flex items-center gap-1">
+        {tabs.map((tab) => (
+          <RadixTabs.Trigger key={tab.id} value={tab.id} className="ds-tab-btn">
             {tab.icon ? <span aria-hidden="true">{tab.icon}</span> : null}
             <span>{tab.label}</span>
             {tab.badge !== undefined ? (
               <span className="ds-tab-badge">{tab.badge}</span>
             ) : null}
-          </button>
-        );
-      })}
-    </div>
+          </RadixTabs.Trigger>
+        ))}
+      </RadixTabs.List>
+    </RadixTabs.Root>
   );
 }
 
 /* --------------------------------------------------------------------------
-   Shared Formatting Utilities
+   12. Shared Formatting Utilities
    -------------------------------------------------------------------------- */
 
 export function formatDate(value?: string | number | Date | null): string {

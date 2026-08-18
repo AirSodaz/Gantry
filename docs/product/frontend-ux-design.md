@@ -29,11 +29,14 @@ comparison, and repeated action over marketing-style presentation.
 
 ### Foundations
 
-- Use a neutral base palette with distinct semantic colors for success,
-  warning, danger, information, approval, and suspended states.
-- Use one accessible sans-serif UI family and a monospace family for commands,
+- Use a neutral base palette with distinct semantic colors for success (`#10a37f`),
+  warning (`#d97706`), danger (`#e11d48`), information/brand (`#0284c7`), approval,
+  and suspended states.
+- Use one accessible sans-serif UI family and a monospace family (`--ds-font-mono`:
+  `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`) for commands,
   logs, identifiers, JSON, and diffs.
-- Use an 8 px spacing grid and radii no larger than 8 px.
+- Use an 8 px spacing grid and consistent design token radii (`--ds-radius-sm: 8px`,
+  `--ds-radius: 12px`, `--ds-radius-lg: 16px`, `--ds-radius-full: 9999px`).
 - Use stable heights for toolbars, table rows, tabs, terminal headers, and run
   status bands to prevent layout movement during streaming.
 - Use icons from a maintained icon library such as Lucide. Every unfamiliar
@@ -43,17 +46,25 @@ comparison, and repeated action over marketing-style presentation.
 
 ### State Vocabulary
 
-Use the same state names and icons everywhere:
+Use the same state names, colors, and visual indicators everywhere across 6 standardized
+categories:
 
-`Draft`, `In review`, `Published`, `Deprecated`, `Queued`, `Provisioning`,
-`Running`, `Awaiting approval`, `Awaiting requester input`, `Suspended`,
-`Canceling`, `Completed`, `Failed`, `Canceled`, `Expired`, and `Unknown outcome`.
+1. **In-Flight & Execution** (Amber pulse dot): `Running`, `Provisioning`, `Canceling`,
+   `Processing`, `Evaluating`, `Draining`, `Validating`, `Hashing`.
+2. **Pending & Review** (Indigo/Purple static dot): `Queued`, `Pending`, `Requested`,
+   `Awaiting approval`, `Awaiting requester input`, `In review`, `Draft`, `Proposed`.
+3. **Success & Released** (Emerald green static dot `#10a37f`): `Completed`, `Published`,
+   `Active`, `Ready`, `Released`, `Available`, `Valid`, `Passed`, `Approved`, `Standard`,
+   `Low`, `Public`.
+4. **Danger & Blocked** (Rose red static dot `#e11d48`): `Failed`, `Rejected`,
+   `Quarantined`, `Blocked`, `Invalid`, `High`, `Confidential`.
+5. **Warning & Suspended** (Warm orange static dot `#f59e0b`): `Suspended`, `Deprecated`,
+   `Medium`, `Write`.
+6. **Muted & Expired** (Zinc gray static dot `#71717a`): `Canceled`, `Disabled`,
+   `Retired`, `Expired`, `Unknown outcome`, `Internal`, `Read`, `Not submitted`.
 
-Async governance and catalog surfaces use the same vocabulary where applicable:
-`Requested`, `Processing`, `Evaluating`, `Ready`, `Pending`, `Blocked`,
-`Quarantined`, `Active`, `Released`, and `Retired`. A page may expose a narrower
-subset, but it must not rename a shared state or silently collapse a blocked or
-unknown outcome into success or ordinary failure.
+A page may expose a narrower subset, but it must not rename a shared state or silently
+collapse a blocked or unknown outcome into success or ordinary failure.
 
 ## 3. Design Style and Philosophy
 
@@ -99,10 +110,23 @@ requiring horizontal scrolling.
 
 ### Maintainability and Dependency Discipline
 
-Use the platform first. Prefer native browser capabilities and mature,
-well-maintained libraries over custom implementations:
+Use the platform first. Prefer native browser capabilities, Headless UI primitives,
+and type-safe token architectures over monolithic UI frameworks or hand-crafted low-level
+overlays:
 
-- **Layout**: CSS Grid and Flexbox. No custom grid frameworks.
+- **Layout**: CSS Grid, Flexbox, and Tailwind CSS utility composition. No custom grid frameworks.
+- **Component Primitives**: Radix UI headless primitives (`@radix-ui/react-dialog`,
+  `@radix-ui/react-select`, `@radix-ui/react-dropdown-menu`, `@radix-ui/react-tabs`)
+  for accessible dialogs, portals, comboboxes, dropdowns, and tabs. These primitives provide
+  built-in focus trapping, collision-aware portal positioning, keyboard roaming (`ArrowDown`,
+  `ArrowUp`, `Home`, `End`, `Escape`), and complete WAI-ARIA semantics without styling constraints.
+- **Component Encapsulation**: All visual primitives are strictly encapsulated in `@gantry/design-system`
+  using Class Variance Authority (`cva`) and `cn()` (`clsx` + `tailwind-merge`). Business
+  surfaces consume high-level components with typed variants rather than duplicating raw styling utility strings.
+- **Design Tokens & Theme Binding**: Semantic CSS variables (`--ds-bg`, `--ds-surface`,
+  `--ds-border`, `--ds-primary`, `--ds-brand-cyan`, `--ds-success`, `--ds-danger`) define light
+  and dark themes at the `:root` and `[data-theme]` boundary.
+- **Build Toolchain**: Vite 8 with Rolldown bundler for sub-second build, HMR, and test execution.
 - **Scrolling and virtualization**: native `overflow` and `content-visibility`
   before reaching for a virtualization library; add one only when profiling
   proves native performance is insufficient for measured data volumes.
